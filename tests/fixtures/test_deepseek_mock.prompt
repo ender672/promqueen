@@ -1,0 +1,14 @@
+---
+api_url: http://localhost:4000/chat/completions
+api_call_headers:
+  Authorization: Bearer sk-mock-key
+  Content-Type: application/json
+api_call_props:
+  model: deepseek-coder
+  stream: true
+---
+@user
+Write a python function to calculate factorial.
+
+@assistant
+def factorial(n):

@@ -9,7 +9,7 @@
     "sendprompt": "sendprompt.js"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test tests/integration/*.test.js"
   },
   "keywords": [],
   "author": "",

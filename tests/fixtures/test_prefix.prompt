@@ -1,0 +1,8 @@
+---
+api_url: https://api.deepseek.com/beta/chat/completions
+---
+@user
+Write a python function to calculate factorial.
+
+@assistant
+def factorial(n):
