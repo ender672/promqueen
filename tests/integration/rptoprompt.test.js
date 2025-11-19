@@ -14,17 +14,15 @@ test('rptoprompt processes prompt file correctly', async (t) => {
         }
     }
 
-    const promptFile = path.join(__dirname, '../fixtures/test_prefix.prompt');
+    const promptFile = path.join(__dirname, '../fixtures/input/test_prefix.prompt');
+    const expectedOutputFile = path.join(__dirname, '../fixtures/output/rptoprompt_expected.txt');
     const outputStream = new StringStream();
 
     rpToPrompt(promptFile, outputStream);
 
     const output = outputStream.data;
+    const fs = require('fs');
+    const expectedOutput = fs.readFileSync(expectedOutputFile, 'utf8');
 
-    // Verify YAML front matter
-    assert.ok(output.includes('api_url: https://api.deepseek.com/beta/chat/completions'), 'Output should contain api_url');
-
-    // Verify messages
-    assert.ok(output.includes('@user\nWrite a python function to calculate factorial.'), 'Output should contain user message');
-    assert.ok(output.includes('@assistant\ndef factorial(n):'), 'Output should contain assistant message');
+    assert.strictEqual(output, expectedOutput, 'Output should match expected output from fixture');
 });

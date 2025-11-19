@@ -20,7 +20,7 @@ test('DeepSeek prefix completion', async (t) => {
     await new Promise((resolve, reject) => {
         const server = mockServer.listen(PORT, async () => {
             try {
-                const promptFile = path.join(__dirname, '../fixtures/test_deepseek_mock.prompt');
+                const promptFile = path.join(__dirname, '../fixtures/input/test_deepseek_mock.prompt');
                 const stdoutStream = new StringStream();
                 const stderrStream = new StringStream();
 
