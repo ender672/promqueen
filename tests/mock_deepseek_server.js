@@ -1,6 +1,14 @@
 const http = require('http');
 
 const server = http.createServer((req, res) => {
+    // Check for Authorization header
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: { message: 'Missing or invalid Authorization header', type: 'invalid_request_error', param: null, code: 'invalid_api_key' } }));
+        return;
+    }
+
     res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
