@@ -1,5 +1,6 @@
 ---
 api_url: https://api.deepseek.com/beta/chat/completions
+dot_config_loading: false
 ---
 @user
 Write a python function to calculate factorial.

@@ -6,6 +6,7 @@ api_call_headers:
 api_call_props:
   model: deepseek-coder
   stream: true
+dot_config_loading: false
 ---
 @user
 Write a python function to calculate factorial.

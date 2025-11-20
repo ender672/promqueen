@@ -6,6 +6,7 @@ api_call_headers:
 api_call_props:
   model: deepseek-coder
   stream: false
+dot_config_loading: false
 ---
 @user
 Say "Non-streaming test successful"
