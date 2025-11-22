@@ -15,11 +15,11 @@ test('rptoprompt processes prompt file correctly', async (t) => {
         }
     }
 
-    const promptStream = fs.createReadStream(path.join(__dirname, '../fixtures/input/test_prefix.prompt'), 'utf8');
+    const prompt = fs.readFileSync(path.join(__dirname, '../fixtures/input/test_prefix.prompt'), 'utf8');
     const expectedOutputFile = path.join(__dirname, '../fixtures/output/rptoprompt_expected.txt');
     const outputStream = new StringStream();
 
-    await rpToPrompt(promptStream, outputStream);
+    await rpToPrompt(prompt, outputStream);
 
     const output = outputStream.data;
     const expectedOutput = fs.readFileSync(expectedOutputFile, 'utf8');

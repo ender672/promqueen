@@ -54,9 +54,8 @@ function combineAdjacentMessagesWithSameRole(messages) {
   }, []);
 }
 
-async function rpToPrompt(inputStream = process.stdin, outputStream = process.stdout, basePath = process.cwd()) {
-  const fileContent = await streamConsumers.text(inputStream);
-  let { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(fileContent);
+async function rpToPrompt(prompt, outputStream = process.stdout, basePath = process.cwd()) {
+  let { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(prompt);
   const config = pqutils.resolveConfig(runtimeConfig, basePath);
   const user = config.roleplay.user;
 
@@ -103,22 +102,16 @@ async function main() {
   const [, , filePath] = process.argv;
 
   try {
-    let inputStream;
-    let basePath;
+    let prompt;
 
     if (filePath) {
       const resolvedPath = path.resolve(filePath);
-      inputStream = fs.createReadStream(resolvedPath, 'utf8');
-      basePath = resolvedPath;
+      prompt = fs.readFileSync(resolvedPath, 'utf8');
     } else {
-      inputStream = process.stdin;
-      // When reading from stdin, we treat the "file" as being in the current working directory.
-      // rpToPrompt calls path.dirname(basePath) to find templates, so we construct a path
-      // that results in process.cwd() when dirname is called.
-      basePath = path.join(process.cwd(), 'stdin');
+      prompt = fs.readFileSync(0, 'utf-8');
     }
 
-    await rpToPrompt(inputStream, process.stdout, basePath);
+    await rpToPrompt(prompt, process.stdout, process.cwd());
   } catch (error) {
     console.error('Error reading input:', error);
     process.exit(1);
