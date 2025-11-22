@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 const fs = require('fs');
-const path = require('path');
 const process = require('process');
 const eventsourceParser = require('eventsource-parser');
 const commander = require('commander');
@@ -154,6 +153,7 @@ async function main() {
   commander.program.argument('[prompt_path]', 'Path to the prompt file.');
   commander.program.option('-e, --expression <string>', 'Inline prompt string');
   commander.program.option('-d, --data <pair>', 'Key/value pairs (key=value, key=@file)', cmdLineParseDataArg, {});
+  commander.program.option('-m, --message-template-loader-path <path>', 'Message template loader path.', process.cwd());
   commander.program.parse(process.argv);
   const [filePath] = commander.program.args;
   const options = commander.program.opts();
@@ -162,7 +162,7 @@ async function main() {
   if (filePath) {
     prompt = fs.readFileSync(filePath, 'utf8');
   }
-  await sendPrompt(prompt, process.cwd(), process.cwd(), options.data, process.stdout, process.stderr);
+  await sendPrompt(prompt, process.cwd(), options.messageTemplateLoaderPath, options.data, process.stdout, process.stderr);
 }
 
 if (require.main === module) {

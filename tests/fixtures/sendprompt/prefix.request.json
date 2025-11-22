@@ -1,0 +1,19 @@
+{
+    "url": "https://api.deepseek.com/v1/chat/completions",
+    "method": "POST",
+    "body": {
+        "model": "deepseek-coder",
+        "stream": true,
+        "messages": [
+            {
+                "role": "user",
+                "content": "Write a python function to calculate factorial."
+            },
+            {
+                "role": "assistant",
+                "content": "def factorial(n):\n",
+                "prefix": true
+            }
+        ]
+    }
+}

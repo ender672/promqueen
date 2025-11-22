@@ -1,0 +1,14 @@
+{
+    "url": "https://api.deepseek.com/v1/chat/completions",
+    "method": "POST",
+    "body": {
+        "model": "deepseek-chat",
+        "temperature": 0.7,
+        "messages": [
+            {
+                "role": "user",
+                "content": "Hello, world!\n"
+            }
+        ]
+    }
+}

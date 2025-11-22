@@ -78,18 +78,18 @@ function main() {
   const resolvedPath = path.resolve(filePath);
   const fileContent = fs.readFileSync(resolvedPath, 'utf8');
 
-  const { config: runtimeConfig, history } = pqutils.parseDataAndChatHistory(fileContent);
+  const { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(fileContent);
   const fullConfig = pqutils.resolveConfig(runtimeConfig, __dirname);
   const user = fullConfig.user;
 
-  if (history) {
-    const finalPadding = getFinalMessagePadding(history.at(-1).content)
+  if (messages) {
+    const finalPadding = getFinalMessagePadding(messages.at(-1).content)
     if (finalPadding) {
       process.stdout.write(finalPadding);
     }
   }
 
-  const nextSpeaker = guessNextSpeaker(history, user);
+  const nextSpeaker = guessNextSpeaker(messages, user);
   if (nextSpeaker) {
     process.stdout.write(`@${nextSpeaker}\n`);
   }

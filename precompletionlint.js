@@ -107,37 +107,37 @@ function getFinalMessagePadding(message) {
 }
 
 function main() {
-    const [,, filePath] = process.argv;
+  const [, , filePath] = process.argv;
 
-    if (!filePath) {
-        console.error('Error: Please provide a file path as an argument.');
-        console.log('Usage: node parseFile.js <path/to/your/file.txt>');
-        process.exit(1);
+  if (!filePath) {
+    console.error('Error: Please provide a file path as an argument.');
+    console.log('Usage: node parseFile.js <path/to/your/file.txt>');
+    process.exit(1);
+  }
+
+  const resolvedPath = path.resolve(filePath);
+  const fileContent = fs.readFileSync(resolvedPath, 'utf8');
+
+  const { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(fileContent);
+  const fullConfig = pqutils.resolveConfig(runtimeConfig, __dirname);
+  const user = fullConfig.user;
+
+  const nameAutocomplete = getNameAutocomplete(messages, [user] + PROMPT_ROLES);
+  if (nameAutocomplete) {
+    process.stdout.write(nameAutocomplete);
+  }
+
+  if (messages) {
+    const finalPadding = getFinalMessagePadding(messages.at(-1).content)
+    if (finalPadding) {
+      process.stdout.write(finalPadding);
     }
+  }
 
-    const resolvedPath = path.resolve(filePath);
-    const fileContent = fs.readFileSync(resolvedPath, 'utf8');
-
-    const { config: runtimeConfig, history } = pqutils.parseDataAndChatHistory(fileContent);
-    const fullConfig = pqutils.resolveConfig(runtimeConfig, __dirname);
-    const user = fullConfig.user;
-
-    const nameAutocomplete = getNameAutocomplete(history, [user] + PROMPT_ROLES);
-    if (nameAutocomplete) {
-        process.stdout.write(nameAutocomplete);
-    }
-
-    if (history) {
-        const finalPadding = getFinalMessagePadding(history.at(-1).content)
-        if (finalPadding) {
-            process.stdout.write(finalPadding);
-        }
-    }
-
-    const nextSpeaker = guessNextSpeaker(history, user);
-    if (nextSpeaker) {
-        process.stdout.write(`@${nextSpeaker}\n`);
-    }
+  const nextSpeaker = guessNextSpeaker(messages, user);
+  if (nextSpeaker) {
+    process.stdout.write(`@${nextSpeaker}\n`);
+  }
 }
 
 main();

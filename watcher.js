@@ -77,6 +77,7 @@ function watchFiles() {
   watcher.on('change', async (filePath) => {
     console.log(`\n[WATCHER] Detected change in: ${filePath}`);
     const absolutePath = path.resolve(filePath);
+    const templateLoaderPath = path.dirname(absolutePath);
     const rptopromptOutputPath = path.resolve('_rptoprompt_output.js');
 
     // CRITICAL: To prevent infinite loops, we temporarily stop
@@ -110,12 +111,12 @@ function watchFiles() {
       // --- Step 3: Run sendprompt.js ---
       console.log(`[STEP 3/4] Running sendprompt.js...`);
       streamC = fs.createWriteStream(absolutePath, { flags: 'a' });
-      await streamScriptOutput('sendprompt.js', [rptopromptOutputPath], streamC);
+      await streamScriptOutput('sendprompt.js', [rptopromptOutputPath, `--message-template-loader-path=${templateLoaderPath}`], streamC);
       streamC.end(); // Manually end this stream
       streamC = null; // Clear reference
       console.log(`[STEP 3/4] Successfully streamed sendprompt.js output.`);
 
-      // --- Step 4: Run precompletionprecompletionlint.js ---
+      // --- Step 4: Run postcompletionlint.js ---
       console.log(`[STEP 4/4] Running postcompletionlint.js...`);
       streamD = fs.createWriteStream(absolutePath, { flags: 'a' });
       await streamScriptOutput('precompletionlint.js', [absolutePath], streamD);
