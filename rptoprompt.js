@@ -58,33 +58,27 @@ async function rpToPrompt(inputStream = process.stdin, outputStream = process.st
   const fileContent = await streamConsumers.text(inputStream);
   let { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(fileContent);
   const config = pqutils.resolveConfig(runtimeConfig, basePath);
-  const user = config.user;
+  const user = config.roleplay.user;
 
   // if last message is empty, the user is indicating which character to impersonate
   let userRequestedCharacter = null;
   if (messages.length && !messages.at(-1).content) {
-    userRequestedCharacter = messages.pop().name;
+    userRequestedCharacter = messages.at(-1).name;
   }
 
-  const templateVars = {
-    user: user,
-    char: config.char,
-  }
-  const templatePath = path.dirname(basePath);
   addRoles(messages, user);
-
-  if (config.combined_group_chat) {
-    if (userRequestedCharacter) {
-      messages.push({ name: userRequestedCharacter, content: '' });
-    }
+  if (config.roleplay.combined_group_chat) {
     prefixWithNames(messages);
     namedMessagesAsAssistantRole(messages);
   } else if (userRequestedCharacter) {
-    if (config.impersonation_instruction) {
-      const instruction = nunjucks.renderString(config.impersonation_instruction, { char: userRequestedCharacter });
+    messages.pop();
+    if (config.roleplay.impersonation_instruction) {
+      const instruction = nunjucks.renderString(config.roleplay.impersonation_instruction, { char: userRequestedCharacter });
       messages.push({ role: 'user', content: instruction });
     }
   } else if (messages.length && messages.at(-1).name) {
+    // we're going to ask the llm to complete a prefixed message
+    messages.pop();
     messages.at(-1).role = 'assistant';
   }
 
