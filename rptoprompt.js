@@ -118,18 +118,26 @@ function serializeHistory(messages, outputStream) {
 
 async function main() {
   const [, , filePath] = process.argv;
-  if (!filePath) {
-    console.error('Error: Please provide a file path as an argument.');
-    console.error('Usage: node rptoprompt.js <path/to/your/file.txt>');
-    process.exit(1);
-  }
 
   try {
-    const resolvedPath = path.resolve(filePath);
-    const inputStream = fs.createReadStream(resolvedPath, 'utf8');
-    await rpToPrompt(inputStream, process.stdout, resolvedPath);
+    let inputStream;
+    let basePath;
+
+    if (filePath) {
+      const resolvedPath = path.resolve(filePath);
+      inputStream = fs.createReadStream(resolvedPath, 'utf8');
+      basePath = resolvedPath;
+    } else {
+      inputStream = process.stdin;
+      // When reading from stdin, we treat the "file" as being in the current working directory.
+      // rpToPrompt calls path.dirname(basePath) to find templates, so we construct a path
+      // that results in process.cwd() when dirname is called.
+      basePath = path.join(process.cwd(), 'stdin');
+    }
+
+    await rpToPrompt(inputStream, process.stdout, basePath);
   } catch (error) {
-    console.error('Error reading file:', error);
+    console.error('Error reading input:', error);
     process.exit(1);
   }
 }
