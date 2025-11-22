@@ -5,7 +5,6 @@ const path = require('path');
 const yaml = require('js-yaml');
 const process = require('process');
 const streamConsumers = require("node:stream/consumers");
-const nunjucks = require('nunjucks');
 const pqutils = require('./lib/pqutils.js');
 
 const PROMPT_ROLES = ['system', 'user', 'assistant'];
@@ -25,15 +24,6 @@ function addRoles(messages, userName) {
     if (PROMPT_ROLES.includes(message.name)) {
       delete message.name;
     }
-  });
-}
-
-function renderTemplates(messages, basePath, vars) {
-  const env = new nunjucks.Environment(
-    new nunjucks.FileSystemLoader(basePath)
-  );
-  messages.forEach(message => {
-    message.content = env.renderString(message.content, vars);
   });
 }
 
@@ -66,7 +56,7 @@ function combineAdjacentMessagesWithSameRole(messages) {
 
 async function rpToPrompt(inputStream = process.stdin, outputStream = process.stdout, basePath = process.cwd()) {
   const fileContent = await streamConsumers.text(inputStream);
-  let { config: runtimeConfig, history: messages } = pqutils.parseDataAndChatHistory(fileContent);
+  let { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(fileContent);
   const config = pqutils.resolveConfig(runtimeConfig, basePath);
   const user = config.user;
 
@@ -81,7 +71,6 @@ async function rpToPrompt(inputStream = process.stdin, outputStream = process.st
     char: config.char,
   }
   const templatePath = path.dirname(basePath);
-  renderTemplates(messages, templatePath, templateVars);
   addRoles(messages, user);
 
   if (config.combined_group_chat) {

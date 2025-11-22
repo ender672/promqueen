@@ -1,6 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
+const fs = require('fs');
 
 test('DeepSeek prefix completion', async (t) => {
     const mockServer = require('../mock_deepseek_server.js');
@@ -23,8 +24,9 @@ test('DeepSeek prefix completion', async (t) => {
                 const promptFile = path.join(__dirname, '../fixtures/input/test_deepseek_mock.prompt');
                 const stdoutStream = new StringStream();
                 const stderrStream = new StringStream();
+                const prompt = fs.readFileSync(promptFile, 'utf8');
 
-                await sendPrompt({ promptPath: promptFile }, stdoutStream, stderrStream);
+                await sendPrompt(prompt, process.cwd(), process.cwd(), {}, stdoutStream, stderrStream);
 
                 const stdout = stdoutStream.data;
 

@@ -6,6 +6,7 @@ const process = require('process');
 const eventsourceParser = require('eventsource-parser');
 const commander = require('commander');
 const pqutils = require('./lib/pqutils.js');
+const nunjucks = require('nunjucks');
 
 async function* getStream(response) {
   const decoder = new TextDecoder('utf-8');
@@ -39,46 +40,7 @@ function usageToCostString(pricing, usage) {
   return `total cost (cents): ${costTotal.toFixed(5)}, requests per penny: ${requestsPerPenny.toFixed(2)}, uncached in: ${costUncached.toFixed(5)}, cached in: ${costCached.toFixed(5)}, output: ${costOutput.toFixed(5)}`;
 }
 
-async function sendPrompt(options, outputStream = process.stdout, errorStream = process.stderr) {
-  const { promptPath, attachment } = options;
-
-  const resolvedPath = path.resolve(promptPath);
-  const fileContent = fs.readFileSync(resolvedPath, 'utf8');
-
-  const { config: runtimeConfig, history } = pqutils.parseDataAndChatHistory(fileContent);
-  const fullConfig = pqutils.resolveConfig(runtimeConfig, __dirname);
-
-  const prompt = history.map(message => {
-    return {
-      role: message.name,
-      content: message.content
-    }
-  })
-
-  // Check for DeepSeek prefix completion
-  const lastMessage = prompt.at(-1);
-  if (lastMessage && lastMessage.role === 'assistant') {
-    lastMessage.prefix = true;
-  }
-
-  if (attachment) {
-    const resolvedAttachmentPath = path.resolve(attachment);
-    const contents = fs.readFileSync(resolvedAttachmentPath, 'utf8');
-    const attachmentPortion = `\nHere is the content of the attached file "${attachment}":\n\n<document>${contents}</document>`;
-    prompt.at(-1).content += attachmentPortion;
-  }
-
-  const body = fullConfig.api_call_props;
-  body.messages = prompt;
-
-  fs.writeFileSync('_request.json', JSON.stringify(body, null, 2));
-
-  const response = await fetch(fullConfig.api_url, {
-    method: 'POST',
-    headers: fullConfig.api_call_headers,
-    body: JSON.stringify(body),
-  });
-
+async function responseToOutput(response, fullConfig, outputStream, errorStream) {
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(`API request failed: ${response.status} - ${errorText}`);
@@ -120,15 +82,82 @@ async function sendPrompt(options, outputStream = process.stdout, errorStream = 
   }
 }
 
+function generateApiPayload(config, messages, templatePath, templateContext) {
+  const prompt = messages.map(message => {
+    return {
+      role: message.name,
+      content: message.content
+    }
+  })
+
+  messages.forEach(message => {
+    message.content = nunjucks.renderString(message.content, templateContext);
+  });
+
+  const lastMessage = prompt.at(-1);
+  if (lastMessage && lastMessage.role === 'assistant') {
+    lastMessage.prefix = true;
+  }
+
+  const body = config.api_call_props;
+  body.messages = prompt;
+  return body;
+}
+
+async function sendPrompt(prompt, cwd, messageTemplateLoaderPath, messageTemplateContext, outputStream = process.stdout, errorStream = process.stderr) {
+  const { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(prompt);
+  const config = pqutils.resolveConfig(runtimeConfig, cwd);
+  const fullMessageTemplateContext = {
+    ...messageTemplateContext,
+    ...config.message_template_variables,
+  }
+  const body = generateApiPayload(config, messages, messageTemplateLoaderPath, fullMessageTemplateContext);
+  const response = await fetch(config.api_url, {
+    method: 'POST',
+    headers: config.api_call_headers,
+    body: JSON.stringify(body),
+  });
+  await responseToOutput(response, config, outputStream, errorStream);
+}
+
+function cmdLineParseDataArg(value, previous) {
+  const eqIndex = value.indexOf('=');
+  if (eqIndex === -1) {
+    console.error(`Error: Invalid data format "${value}". Expected key=value`);
+    process.exit(1);
+  }
+
+  const key = value.substring(0, eqIndex);
+  let rawVal = value.substring(eqIndex + 1);
+  let finalVal = rawVal;
+
+  if (rawVal.startsWith('@')) {
+    const path = rawVal.slice(1);
+    if (path === '-') {
+      finalVal = fs.readFileSync(0, 'utf-8');
+    } else {
+      finalVal = fs.readFileSync(path, 'utf-8');
+    }
+  }
+
+  previous[key] = finalVal;
+  return previous;
+}
+
 async function main() {
   commander.program.description('Send a prompt to an LLM.');
-  commander.program.argument('<prompt_path>', 'Path to the prompt file.');
-  commander.program.option('-a, --attachment <path>', 'Path to an attachment file.');
+  commander.program.argument('[prompt_path]', 'Path to the prompt file.');
+  commander.program.option('-e, --expression <string>', 'Inline prompt string');
+  commander.program.option('-d, --data <pair>', 'Key/value pairs (key=value, key=@file)', cmdLineParseDataArg, {});
   commander.program.parse(process.argv);
   const [filePath] = commander.program.args;
   const options = commander.program.opts();
 
-  await sendPrompt({ promptPath: filePath, attachment: options.attachment });
+  let prompt = options.expression;
+  if (filePath) {
+    prompt = fs.readFileSync(filePath, 'utf8');
+  }
+  await sendPrompt(prompt, process.cwd(), process.cwd(), options.data, process.stdout, process.stderr);
 }
 
 if (require.main === module) {
