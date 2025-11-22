@@ -4,25 +4,43 @@ const path = require('path');
 const { rpToPrompt } = require('../../rptoprompt.js');
 const fs = require('fs');
 
-test('rptoprompt processes prompt file correctly', async (t) => {
-    // Create a simple writable stream to capture output
-    class StringStream {
-        constructor() {
-            this.data = '';
-        }
-        write(chunk) {
-            this.data += chunk.toString();
-        }
+
+const fixturesDir = path.join(__dirname, '../fixtures/rptoprompt');
+
+// Helper class to capture output
+class StringStream {
+    constructor() {
+        this.data = '';
     }
+    write(chunk) {
+        this.data += chunk.toString();
+    }
+}
 
-    const prompt = fs.readFileSync(path.join(__dirname, '../fixtures/input/test_prefix.prompt'), 'utf8');
-    const expectedOutputFile = path.join(__dirname, '../fixtures/output/rptoprompt_expected.txt');
-    const outputStream = new StringStream();
+// Find all input files
+const files = fs.readdirSync(fixturesDir);
+const inputFiles = files.filter(f => f.endsWith('.input.prompt'));
 
-    await rpToPrompt(prompt, outputStream);
+inputFiles.forEach(inputFile => {
+    const testName = inputFile.replace('.input.prompt', '');
+    const expectedOutputFile = inputFile.replace('.input.prompt', '.output.txt');
 
-    const output = outputStream.data;
-    const expectedOutput = fs.readFileSync(expectedOutputFile, 'utf8');
+    test(`rptoprompt processes ${testName}`, async (t) => {
+        const inputPath = path.join(fixturesDir, inputFile);
+        const outputPath = path.join(fixturesDir, expectedOutputFile);
 
-    assert.strictEqual(output, expectedOutput, 'Output should match expected output from fixture');
+        if (!fs.existsSync(outputPath)) {
+            throw new Error(`Expected output file not found: ${outputPath}`);
+        }
+
+        const prompt = fs.readFileSync(inputPath, 'utf8');
+        const outputStream = new StringStream();
+
+        await rpToPrompt(prompt, outputStream);
+
+        const output = outputStream.data;
+        const expectedOutput = fs.readFileSync(outputPath, 'utf8');
+
+        assert.strictEqual(output, expectedOutput, `Output for ${testName} should match expected output`);
+    });
 });
