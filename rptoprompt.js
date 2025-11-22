@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
 const process = require('process');
+const streamConsumers = require("node:stream/consumers");
 const nunjucks = require('nunjucks');
 const pqutils = require('./lib/pqutils.js');
 
@@ -63,16 +64,10 @@ function combineAdjacentMessagesWithSameRole(messages) {
   }, []);
 }
 
-function rpToPrompt(filePath, outputStream = process.stdout) {
-  if (!filePath) {
-    throw new Error('Error: Please provide a file path as an argument.');
-  }
-
-  const resolvedPath = path.resolve(filePath);
-  const fileContent = fs.readFileSync(resolvedPath, 'utf8');
-
+async function rpToPrompt(inputStream = process.stdin, outputStream = process.stdout, basePath = process.cwd()) {
+  const fileContent = await streamConsumers.text(inputStream);
   let { config: runtimeConfig, history: messages } = pqutils.parseDataAndChatHistory(fileContent);
-  const config = pqutils.resolveConfig(runtimeConfig, __dirname);
+  const config = pqutils.resolveConfig(runtimeConfig, basePath);
   const user = config.user;
 
   // if last message is empty, the user is indicating which character to impersonate
@@ -85,7 +80,7 @@ function rpToPrompt(filePath, outputStream = process.stdout) {
     user: user,
     char: config.char,
   }
-  const templatePath = path.dirname(resolvedPath);
+  const templatePath = path.dirname(basePath);
   renderTemplates(messages, templatePath, templateVars);
   addRoles(messages, user);
 
@@ -121,16 +116,20 @@ function serializeHistory(messages, outputStream) {
   }
 }
 
-function main() {
+async function main() {
   const [, , filePath] = process.argv;
+  if (!filePath) {
+    console.error('Error: Please provide a file path as an argument.');
+    console.error('Usage: node rptoprompt.js <path/to/your/file.txt>');
+    process.exit(1);
+  }
 
   try {
-    rpToPrompt(filePath);
-  } catch (e) {
-    console.error(e.message);
-    if (e.message.includes('Please provide a file path')) {
-      console.log('Usage: node rptoprompt.js <path/to/your/file.txt>');
-    }
+    const resolvedPath = path.resolve(filePath);
+    const inputStream = fs.createReadStream(resolvedPath, 'utf8');
+    await rpToPrompt(inputStream, process.stdout, resolvedPath);
+  } catch (error) {
+    console.error('Error reading file:', error);
     process.exit(1);
   }
 }
