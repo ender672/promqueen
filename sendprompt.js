@@ -82,7 +82,7 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
   }
 }
 
-function generateApiPayload(config, messages, templatePath, templateContext) {
+function generateApiMessages(messages, templatePath, templateContext) {
   const prompt = messages.map(message => {
     return {
       role: message.name,
@@ -90,8 +90,11 @@ function generateApiPayload(config, messages, templatePath, templateContext) {
     }
   })
 
-  messages.forEach(message => {
-    message.content = nunjucks.renderString(message.content, templateContext);
+  const env = new nunjucks.Environment(
+    new nunjucks.FileSystemLoader(templatePath)
+  );
+  prompt.forEach(message => {
+    message.content = env.renderString(message.content, templateContext);
   });
 
   const lastMessage = prompt.at(-1);
@@ -99,9 +102,7 @@ function generateApiPayload(config, messages, templatePath, templateContext) {
     lastMessage.prefix = true;
   }
 
-  const body = config.api_call_props;
-  body.messages = prompt;
-  return body;
+  return prompt;
 }
 
 async function sendPrompt(prompt, cwd, messageTemplateLoaderPath, messageTemplateContext, outputStream = process.stdout, errorStream = process.stderr) {
@@ -111,7 +112,11 @@ async function sendPrompt(prompt, cwd, messageTemplateLoaderPath, messageTemplat
     ...messageTemplateContext,
     ...config.message_template_variables,
   }
-  const body = generateApiPayload(config, messages, messageTemplateLoaderPath, fullMessageTemplateContext);
+  const promptMessages = generateApiMessages(messages, messageTemplateLoaderPath, fullMessageTemplateContext);
+  const body = {
+    ...config.api_call_props,
+    messages: promptMessages,
+  }
   const response = await fetch(config.api_url, {
     method: 'POST',
     headers: config.api_call_headers,
