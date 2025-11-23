@@ -6,6 +6,10 @@ const eventsourceParser = require('eventsource-parser');
 const commander = require('commander');
 const pqutils = require('./lib/pqutils.js');
 const nunjucks = require('nunjucks');
+const console = require('console');
+const path = require('path');
+
+let logger = null;
 
 async function* getStream(response) {
   const decoder = new TextDecoder('utf-8');
@@ -31,12 +35,19 @@ async function* getStream(response) {
 
 function usageToCostString(pricing, usage) {
   const cachedTokens = usage["prompt_tokens_details"]["cached_tokens"];
-  const costUncached = (usage["prompt_tokens"] - cachedTokens) / 1000000 * pricing.cost_uncached;
+  const promptTokens = usage["prompt_tokens"];
+  const costUncached = (promptTokens - cachedTokens) / 1000000 * pricing.cost_uncached;
   const costCached = cachedTokens / 1000000 * pricing.cost_cached;
   const costOutput = usage["completion_tokens"] / 1000000 * pricing.cost_output;
   const costTotal = costUncached + costCached + costOutput;
   const requestsPerPenny = 1 / costTotal;
-  return `total cost (cents): ${costTotal.toFixed(5)}, requests per penny: ${requestsPerPenny.toFixed(2)}, uncached in: ${costUncached.toFixed(5)}, cached in: ${costCached.toFixed(5)}, output: ${costOutput.toFixed(5)}`;
+
+  let cachedPercentage = 0;
+  if (promptTokens > 0) {
+    cachedPercentage = (cachedTokens / promptTokens) * 100;
+  }
+
+  return `total cost: ${costTotal.toFixed(5)}¢, requests/penny: ${requestsPerPenny.toFixed(2)}, uncached in: ${costUncached.toFixed(5)}¢, cached in: ${costCached.toFixed(5)}¢, output: ${costOutput.toFixed(5)}¢, ${cachedPercentage.toFixed(1)}% cached`;
 }
 
 async function responseToOutput(response, fullConfig, outputStream, errorStream) {
@@ -56,8 +67,8 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
       }
 
       const json = JSON.parse(event.data);
-      if (fullConfig.pricing && json.usage) {
-        errorStream.write(usageToCostString(fullConfig.pricing, json.usage));
+      if (logger && fullConfig.pricing && json.usage) {
+        logger.info(usageToCostString(fullConfig.pricing, json.usage));
       }
 
       let content = json.choices[0]?.delta?.content || '';
@@ -73,8 +84,8 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
     }
   } else {
     const json = await response.json();
-    if (fullConfig.pricing && json.usage) {
-      errorStream.write(usageToCostString(fullConfig.pricing, json.usage));
+    if (logger && fullConfig.pricing && json.usage) {
+      logger.info(usageToCostString(fullConfig.pricing, json.usage));
     }
     const content = json.choices?.[0]?.message?.content || '';
     outputStream.write(content);
@@ -111,10 +122,18 @@ async function sendPrompt(prompt, cwd, messageTemplateLoaderPath, messageTemplat
     ...messageTemplateContext,
     ...config.message_template_variables,
   }
+  if (config.debug_log_path) {
+    const basePath = path.join(config.debug_log_path, 'sendprompt');
+    logger = pqutils.getLogger(basePath);
+  }
   const promptMessages = generateApiMessages(messages, messageTemplateLoaderPath, fullMessageTemplateContext);
   const body = {
     ...config.api_call_props,
     messages: promptMessages,
+  }
+  if (logger) {
+    logger.info(prompt);
+    logger.info(JSON.stringify(body, null, 2));
   }
   const response = await fetch(config.api_url, {
     method: 'POST',
