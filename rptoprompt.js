@@ -6,6 +6,7 @@ const yaml = require('js-yaml');
 const process = require('process');
 const streamConsumers = require("node:stream/consumers");
 const pqutils = require('./lib/pqutils.js');
+const nunjucks = require('nunjucks');
 
 const PROMPT_ROLES = ['system', 'user', 'assistant'];
 

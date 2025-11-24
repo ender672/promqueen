@@ -1,151 +1,154 @@
 #!/usr/bin/env node
 
-// This script recursively watches for .txt file updates
-// and runs a chain of scripts (a, b, c) in response.
-//
-// THIS VERSION STREAMS all script output directly to files
-// instead of buffering.
-
-const fs = require('fs'); // Use 'fs' for streams
+const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process'); // Use spawn for streams
+const { spawn } = require('child_process');
 const chokidar = require('chokidar');
 
-// --- Helper Function to Run Scripts and Stream Output ---
-/**
- * Runs a Node.js script and pipes its stdout to a writable stream.
- * @param {string} scriptPath - Path to the .js script to run.
- * @param {string[]} args - An array of string arguments to pass.
- * @param {fs.WriteStream} outputStream - The stream to write stdout to.
- * @returns {Promise<boolean>} - A promise that resolves with true if data was written, false otherwise.
- */
-function streamScriptOutput(scriptPath, args, outputStream) {
-  return new Promise((resolve, reject) => {
-    let dataWritten = false;
-    const child = spawn('node', [scriptPath, ...args]);
+function runPipeline(filePath) {
+  return new Promise(async (resolve, reject) => {
+    const absolutePath = path.resolve(filePath);
+    const templateLoaderPath = path.dirname(absolutePath);
 
-    // Track if any data actually comes through stdout
-    child.stdout.on('data', () => {
-      dataWritten = true;
-    });
+    console.log(`[WATCHER] Processing ${filePath}...`);
 
-    // Pipe stdout directly to the file stream.
-    // We set end: false so the caller (which created the stream)
-    // is responsible for calling outputStream.end().
-    child.stdout.pipe(outputStream, { end: false });
+    // Helper to run a command and pipe its stdout to the file
+    const runStep = (command, args, pipeToFile = true) => {
+      return new Promise((resolveStep, rejectStep) => {
+        const proc = spawn(command, args);
 
-    let stderrData = '';
-    child.stderr.on('data', (data) => {
-      stderrData += data.toString();
-    });
+        if (pipeToFile) {
+          const fileStream = fs.createWriteStream(absolutePath, { flags: 'a' });
+          proc.stdout.pipe(fileStream);
 
-    child.on('close', (code) => {
-      if (code !== 0) {
-        console.error(`Error executing ${scriptPath}:`, stderrData.trim());
-        return reject(new Error(stderrData || `Process exited with code ${code}`));
-      }
-      if (stderrData) {
-        // Log warnings or other stderr output even on success
-        console.warn(`Stderr from ${scriptPath}:`, stderrData.trim());
-      }
-      resolve(dataWritten); // Resolve with whether data was written
-    });
+          fileStream.on('error', (err) => {
+            console.error(`Error writing to file for ${command}:`, err);
+            // Don't reject here, let the process exit handle it, or maybe we should?
+            // For now, let's just log.
+          });
+        } else {
+          proc.stdout.pipe(process.stdout);
+        }
 
-    // Handle errors during spawn or process execution
-    child.on('error', (error) => {
+        let stderr = '';
+        proc.stderr.on('data', (data) => {
+          stderr += data.toString();
+        });
+
+        proc.on('close', (code) => {
+          if (code !== 0) {
+            console.error(`${command} exited with code ${code}`);
+            if (stderr) console.error(stderr);
+            rejectStep(new Error(`${command} failed with code ${code}`));
+          } else {
+            resolveStep();
+          }
+        });
+
+        proc.on('error', (err) => rejectStep(err));
+      });
+    };
+
+    try {
+      // 1. Run precompletionlint.js
+      await runStep('node', ['precompletionlint.js', absolutePath]);
+
+      // 2. Run rptoprompt.js -> sendprompt.js
+      await new Promise((resolvePipeline, rejectPipeline) => {
+        const rptoprompt = spawn('node', ['rptoprompt.js', absolutePath]);
+        const sendprompt = spawn('node', [
+          'sendprompt.js',
+          '-',
+          `--message-template-loader-path=${templateLoaderPath}`
+        ]);
+
+        const fileStream = fs.createWriteStream(absolutePath, { flags: 'a' });
+
+        rptoprompt.stdout.pipe(sendprompt.stdin);
+        sendprompt.stdout.pipe(fileStream);
+
+        let rptopromptStderr = '';
+        rptoprompt.stderr.on('data', (data) => rptopromptStderr += data.toString());
+
+        let sendpromptStderr = '';
+        sendprompt.stderr.on('data', (data) => sendpromptStderr += data.toString());
+
+        rptoprompt.on('close', (code) => {
+          if (code !== 0) {
+            console.error(`rptoprompt exited with code ${code}`);
+            if (rptopromptStderr) console.error(rptopromptStderr);
+            sendprompt.kill();
+            rejectPipeline(new Error(`rptoprompt failed with code ${code}`));
+          }
+        });
+
+        sendprompt.on('close', (code) => {
+          if (code !== 0) {
+            console.error(`sendprompt exited with code ${code}`);
+            if (sendpromptStderr) console.error(sendpromptStderr);
+            rejectPipeline(new Error(`sendprompt failed with code ${code}`));
+          } else {
+            resolvePipeline();
+          }
+        });
+
+        rptoprompt.on('error', rejectPipeline);
+        sendprompt.on('error', rejectPipeline);
+        fileStream.on('error', rejectPipeline);
+      });
+
+      // 3. Run postcompletionlint.js
+      await runStep('node', ['postcompletionlint.js', absolutePath]);
+
+      console.log(`[WATCHER] Finished processing ${filePath}`);
+      resolve();
+
+    } catch (error) {
       reject(error);
-    });
-
-    // Handle errors on the output stream itself
-    outputStream.on('error', (error) => {
-      reject(error);
-    });
+    }
   });
 }
 
-// --- Main Watcher Function ---
-function watchFiles() {
-  console.log("Initializing watcher for all '**/*.txt' files...");
+async function watchFiles(watchPath) {
+  console.log(`Initializing watcher for: ${watchPath}`);
 
-  const watcher = chokidar.watch('../chat/**/*.txt', {
+  const watcher = chokidar.watch(watchPath, {
     persistent: true,
-    ignoreInitial: true, // Don't fire on all existing files at start
-    ignored: ['node_modules', '_rptoprompt_output.js'], // Ignore helper files
+    ignoreInitial: true,
+    ignored: ['node_modules', '_rptoprompt_output.js'],
   });
 
-  // --- File Change Event Handler ---
   watcher.on('change', async (filePath) => {
     console.log(`\n[WATCHER] Detected change in: ${filePath}`);
-    const absolutePath = path.resolve(filePath);
-    const templateLoaderPath = path.dirname(absolutePath);
-    const rptopromptOutputPath = path.resolve('_rptoprompt_output.js');
 
-    // CRITICAL: To prevent infinite loops, we temporarily stop
-    // watching the file we are about to modify.
+    // Unwatch to prevent infinite loops
     watcher.unwatch(filePath);
-    console.log(`[WATCHER] Unwatched ${filePath} to prevent loops.`);
-
-    // We must manage stream lifecycles carefully
-    let streamA = null;
-    let streamB = null;
-    let streamC = null;
-    let streamD = null;
 
     try {
-      // --- Step 1: Run precompletionprecompletionlint.js ---
-      console.log(`[STEP 1/4] Running precompletionlint.js...`);
-      streamA = fs.createWriteStream(absolutePath, { flags: 'a' });
-      await streamScriptOutput('precompletionlint.js', [absolutePath], streamA);
-      streamA.end(); // Manually end this stream
-      streamA = null; // Clear reference
-      console.log(`[STEP 1/4] Successfully streamed precompletionlint.js output.`);
-
-      // --- Step 2: Run rptoprompt.js ---
-      console.log(`[STEP 2/4] Running rptoprompt.js...`);
-      streamB = fs.createWriteStream(rptopromptOutputPath, { flags: 'w' });
-      await streamScriptOutput('rptoprompt.js', [absolutePath], streamB);
-      streamB.end(); // Manually end this stream
-      streamB = null; // Clear reference
-      console.log(`[STEP 2/4] Successfully streamed rptoprompt.js output to ${rptopromptOutputPath}`);
-
-      // --- Step 3: Run sendprompt.js ---
-      console.log(`[STEP 3/4] Running sendprompt.js...`);
-      streamC = fs.createWriteStream(absolutePath, { flags: 'a' });
-      await streamScriptOutput('sendprompt.js', [rptopromptOutputPath, `--message-template-loader-path=${templateLoaderPath}`], streamC);
-      streamC.end(); // Manually end this stream
-      streamC = null; // Clear reference
-      console.log(`[STEP 3/4] Successfully streamed sendprompt.js output.`);
-
-      // --- Step 4: Run postcompletionlint.js ---
-      console.log(`[STEP 4/4] Running postcompletionlint.js...`);
-      streamD = fs.createWriteStream(absolutePath, { flags: 'a' });
-      await streamScriptOutput('precompletionlint.js', [absolutePath], streamD);
-      streamD.end(); // Manually end this stream
-      streamD = null; // Clear reference
-      console.log(`[STEP 4/4] Successfully streamed precompletionlint.js output.`);
-
-      console.log(`[WATCHER] Successfully processed ${filePath}`);
-
+      await runPipeline(filePath);
     } catch (error) {
       console.error(`[WATCHER] Error processing ${filePath}:`, error.message);
-      // Ensure all streams are closed on error to prevent file locks
-      if (streamA && !streamA.destroyed) streamA.end();
-      if (streamB && !streamB.destroyed) streamB.end();
-      if (streamC && !streamC.destroyed) streamC.end();
-      if (streamD && !streamD.destroyed) streamD.end();
     } finally {
-      // CRITICAL: Re-add the file to the watcher,
-      // whether the process succeeded or failed.
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      watcher.add(filePath);
-      console.log(`[WATCHER] Re-watching ${filePath}. Waiting for next change...`);
+      // Re-watch after a short delay to ensure file locks are released
+      setTimeout(() => {
+        watcher.add(filePath);
+        console.log(`[WATCHER] Re-watching ${filePath}`);
+      }, 1000);
     }
   });
 
   watcher.on('error', (error) => console.error(`Watcher error: ${error}`));
 
-  console.log('Watcher is now running. Edit any .txt file to trigger the process.');
+  console.log('[WATCHER] Ready and waiting for changes...');
 }
 
-// Start the watcher
-watchFiles();
+async function main() {
+  const watchPath = process.argv[2];
+  if (!watchPath) {
+    console.error('Usage: node watcher.js <path_to_watch>');
+    process.exit(1);
+  }
+  await watchFiles(watchPath);
+}
+
+main();

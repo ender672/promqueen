@@ -178,8 +178,10 @@ async function main() {
   const options = commander.program.opts();
 
   let prompt = options.expression;
-  if (filePath) {
+  if (filePath && filePath !== '-') {
     prompt = fs.readFileSync(filePath, 'utf8');
+  } else if (!prompt) {
+    prompt = fs.readFileSync(0, 'utf-8');
   }
   await sendPrompt(prompt, process.cwd(), options.messageTemplateLoaderPath, options.data, process.stdout, process.stderr);
 }
