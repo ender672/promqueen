@@ -5,7 +5,6 @@ const process = require('process');
 const eventsourceParser = require('eventsource-parser');
 const commander = require('commander');
 const pqutils = require('./lib/pqutils.js');
-const nunjucks = require('nunjucks');
 const console = require('console');
 const path = require('path');
 
@@ -92,41 +91,27 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
   }
 }
 
-function generateApiMessages(messages, templatePath, templateContext) {
-  const prompt = messages.map(message => {
-    return {
-      role: message.name,
-      content: message.content
-    }
-  })
-
-  const env = new nunjucks.Environment(
-    new nunjucks.FileSystemLoader(templatePath)
-  );
-  prompt.forEach(message => {
-    message.content = env.renderString(message.content, templateContext);
-  });
-
-  const lastMessage = prompt.at(-1);
-  if (lastMessage && lastMessage.role === 'assistant') {
-    lastMessage.prefix = true;
-  }
-
-  return prompt;
-}
-
-async function sendPrompt(prompt, cwd, messageTemplateLoaderPath, messageTemplateContext, outputStream = process.stdout, errorStream = process.stderr) {
+async function sendPrompt(prompt, cwd, outputStream = process.stdout, errorStream = process.stderr) {
   const { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(prompt);
   const config = pqutils.resolveConfig(runtimeConfig, cwd);
-  const fullMessageTemplateContext = {
-    ...messageTemplateContext,
-    ...config.message_template_variables,
-  }
+
   if (config.debug_log_path) {
     const basePath = path.join(config.debug_log_path, 'sendprompt');
     logger = pqutils.getLogger(basePath);
   }
-  const promptMessages = generateApiMessages(messages, messageTemplateLoaderPath, fullMessageTemplateContext);
+
+  const promptMessages = messages.map(message => {
+    return {
+      role: message.name,
+      content: message.content
+    }
+  });
+
+  const lastMessage = promptMessages.at(-1);
+  if (lastMessage && lastMessage.role === 'assistant') {
+    lastMessage.prefix = true;
+  }
+
   const body = {
     ...config.api_call_props,
     messages: promptMessages,
@@ -143,36 +128,10 @@ async function sendPrompt(prompt, cwd, messageTemplateLoaderPath, messageTemplat
   await responseToOutput(response, config, outputStream, errorStream);
 }
 
-function cmdLineParseDataArg(value, previous) {
-  const eqIndex = value.indexOf('=');
-  if (eqIndex === -1) {
-    console.error(`Error: Invalid data format "${value}". Expected key=value`);
-    process.exit(1);
-  }
-
-  const key = value.substring(0, eqIndex);
-  let rawVal = value.substring(eqIndex + 1);
-  let finalVal = rawVal;
-
-  if (rawVal.startsWith('@')) {
-    const path = rawVal.slice(1);
-    if (path === '-') {
-      finalVal = fs.readFileSync(0, 'utf-8');
-    } else {
-      finalVal = fs.readFileSync(path, 'utf-8');
-    }
-  }
-
-  previous[key] = finalVal;
-  return previous;
-}
-
 async function main() {
   commander.program.description('Send a prompt to an LLM.');
   commander.program.argument('[prompt_path]', 'Path to the prompt file.');
   commander.program.option('-e, --expression <string>', 'Inline prompt string');
-  commander.program.option('-d, --data <pair>', 'Key/value pairs (key=value, key=@file)', cmdLineParseDataArg, {});
-  commander.program.option('-m, --message-template-loader-path <path>', 'Message template loader path.', process.cwd());
   commander.program.parse(process.argv);
   const [filePath] = commander.program.args;
   const options = commander.program.opts();
@@ -183,7 +142,7 @@ async function main() {
   } else if (!prompt) {
     prompt = fs.readFileSync(0, 'utf-8');
   }
-  await sendPrompt(prompt, process.cwd(), options.messageTemplateLoaderPath, options.data, process.stdout, process.stderr);
+  await sendPrompt(prompt, process.cwd(), process.stdout, process.stderr);
 }
 
 if (require.main === module) {

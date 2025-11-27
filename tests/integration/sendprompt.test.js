@@ -64,8 +64,6 @@ inputFiles.forEach(inputFile => {
       await sendPrompt(
         prompt,
         process.cwd(),
-        process.cwd(),
-        {},
         outputStream,
         errorStream
       );
