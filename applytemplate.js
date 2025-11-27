@@ -31,22 +31,24 @@ function cmdLineParseDataArg(value, previous) {
   return previous;
 }
 
-function generateApiMessages(messages, templatePath, templateContext) {
-  const prompt = messages.map(message => {
-    return {
-      role: message.name,
-      content: message.content
-    }
-  })
+async function applyTemplate(promptText, options, outputStream = process.stdout) {
+  const { config, messagesString } = pqutils.parseConfigOnly(promptText);
+  const resolvedConfig = pqutils.resolveConfig(config, process.cwd());
+
+  const fullMessageTemplateContext = {
+    ...options.data,
+    ...resolvedConfig.message_template_variables,
+  };
 
   const env = new nunjucks.Environment(
-    new nunjucks.FileSystemLoader(templatePath)
+    new nunjucks.FileSystemLoader(options.message_template_loader_path)
   );
-  prompt.forEach(message => {
-    message.content = env.renderString(message.content, templateContext);
-  });
+  const renderedMessages = env.renderString(messagesString, fullMessageTemplateContext);
 
-  return prompt;
+  outputStream.write('---\n');
+  outputStream.write(yaml.dump(config));
+  outputStream.write('---\n');
+  outputStream.write(renderedMessages);
 }
 
 async function main() {
@@ -66,37 +68,11 @@ async function main() {
     promptText = fs.readFileSync(0, 'utf-8');
   }
 
-  const { config, messages } = pqutils.parseConfigAndMessages(promptText);
-
-  // Resolve config to get any template variables defined in the file/config
-  // We use process.cwd() as base path for config resolution
-  const resolvedConfig = pqutils.resolveConfig(config, process.cwd());
-
-  const fullMessageTemplateContext = {
-    ...options.data,
-    ...resolvedConfig.message_template_variables,
-  };
-
-  const renderedMessages = generateApiMessages(messages, options.messageTemplateLoaderPath, fullMessageTemplateContext);
-
-  // Reconstruct the output
-  // We want to output the original frontmatter (or resolved? usually original + overrides)
-  // But here we just want to output the processed messages with the config.
-  // Let's dump the config back to YAML.
-
-  const configYaml = yaml.dump(config);
-
-  console.log('---');
-  console.log(configYaml.trim());
-  console.log('---');
-
-  renderedMessages.forEach(msg => {
-    console.log(`@${msg.role}`);
-    console.log(msg.content);
-    console.log(''); // Empty line between messages
-  });
+  await applyTemplate(promptText, options, process.stdout);
 }
 
 if (require.main === module) {
   main();
 }
+
+module.exports = { applyTemplate };
