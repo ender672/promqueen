@@ -36,10 +36,10 @@ function prefixWithNames(messages) {
   });
 }
 
-function namedMessagesAsAssistantRole(messages) {
+function namedMessagesAsRole(messages, role) {
   messages.forEach(message => {
     if (message.name) {
-      message.role = 'assistant';
+      message.role = role;
     }
   });
 }
@@ -69,9 +69,21 @@ async function rpToPrompt(prompt, outputStream = process.stdout, basePath = proc
   addRoles(messages, user);
   if (config.roleplay.combined_group_chat) {
     prefixWithNames(messages);
-    namedMessagesAsAssistantRole(messages);
-  } else if (userRequestedCharacter) {
+    namedMessagesAsRole(messages, 'assistant');
+  } else if (userRequestedCharacter && config.roleplay.chaos_monkey) {
     messages.pop();
+    prefixWithNames(messages);
+    namedMessagesAsRole(messages, 'user');
+    if (config.roleplay.impersonation_instruction) {
+      const instruction = nunjucks.renderString(config.roleplay.impersonation_instruction, { char: userRequestedCharacter });
+      messages.push({ role: 'user', content: instruction });
+    }    
+  } else if (userRequestedCharacter) {
+    if (config.roleplay.prefix_with_name) {
+      prefixWithNames(messages);
+    } else {
+      messages.pop();
+    }
     if (config.roleplay.impersonation_instruction) {
       const instruction = nunjucks.renderString(config.roleplay.impersonation_instruction, { char: userRequestedCharacter });
       messages.push({ role: 'user', content: instruction });
