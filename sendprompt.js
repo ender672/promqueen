@@ -7,6 +7,7 @@ const commander = require('commander');
 const pqutils = require('./lib/pqutils.js');
 const console = require('console');
 const path = require('path');
+const yaml = require('js-yaml');
 
 let logger = null;
 
@@ -91,9 +92,9 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
   }
 }
 
-async function sendPrompt(prompt, cwd, outputStream = process.stdout, errorStream = process.stderr) {
+async function sendPrompt(prompt, cwd, outputStream = process.stdout, errorStream = process.stderr, cliConfig = {}) {
   const { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(prompt);
-  const config = pqutils.resolveConfig(runtimeConfig, cwd);
+  const config = pqutils.resolveConfig(runtimeConfig, cwd, cliConfig);
 
   if (config.debug_log_path) {
     const basePath = path.join(config.debug_log_path, 'sendprompt');
@@ -132,9 +133,21 @@ async function main() {
   commander.program.description('Send a prompt to an LLM.');
   commander.program.argument('[prompt_path]', 'Path to the prompt file.');
   commander.program.option('-e, --expression <string>', 'Inline prompt string');
+  commander.program.option('-c, --config <path>', 'Path to a YAML config file');
   commander.program.parse(process.argv);
   const [filePath] = commander.program.args;
   const options = commander.program.opts();
+
+  let cliConfig = {};
+  if (options.config) {
+    try {
+      const configContent = fs.readFileSync(options.config, 'utf8');
+      cliConfig = yaml.load(configContent) || {};
+    } catch (e) {
+      console.error(`Error loading config file: ${e.message}`);
+      process.exit(1);
+    }
+  }
 
   let prompt = options.expression;
   if (filePath && filePath !== '-') {
@@ -142,7 +155,7 @@ async function main() {
   } else if (!prompt) {
     prompt = fs.readFileSync(0, 'utf-8');
   }
-  await sendPrompt(prompt, process.cwd(), process.stdout, process.stderr);
+  await sendPrompt(prompt, process.cwd(), process.stdout, process.stderr, cliConfig);
 }
 
 if (require.main === module) {
