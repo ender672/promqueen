@@ -1,0 +1,10 @@
+---
+message_template_variables:
+  my_path: tests/fixtures/applytemplate/simple.txt
+  my_prefix: tests/fixtures/applytemplate/concat
+---
+Start
+{% include my_path %}
+Middle
+{% include my_prefix ~ '.txt' %}
+End
