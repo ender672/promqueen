@@ -41,7 +41,7 @@ async function applyTemplate(promptText, options, outputStream = process.stdout)
   };
 
   const env = new nunjucks.Environment(
-    new nunjucks.FileSystemLoader(options.message_template_loader_path)
+    new nunjucks.FileSystemLoader(options.messageTemplateLoaderPath)
   );
   const renderedMessages = env.renderString(messagesString, fullMessageTemplateContext);
 
