@@ -122,7 +122,7 @@ function main() {
   const fullConfig = pqutils.resolveConfig(runtimeConfig, __dirname);
   const user = fullConfig.user;
 
-  const nameAutocomplete = getNameAutocomplete(messages, [user] + PROMPT_ROLES);
+  const nameAutocomplete = getNameAutocomplete(messages, [user, ...PROMPT_ROLES]);
   if (nameAutocomplete) {
     process.stdout.write(nameAutocomplete);
   }
