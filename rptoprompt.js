@@ -60,13 +60,19 @@ async function rpToPrompt(prompt, outputStream = process.stdout, basePath = proc
   const config = pqutils.resolveConfig(runtimeConfig, basePath);
   const user = config.roleplay.user;
 
+  addRoles(messages, user);
+
   // if last message is empty, the user is indicating which character to impersonate
   let userRequestedCharacter = null;
-  if (messages.length && !messages.at(-1).content) {
+  if (messages.length && !messages.at(-1).content && messages.at(-1).name) {
     userRequestedCharacter = messages.at(-1).name;
   }
 
-  addRoles(messages, user);
+  const templateVars = {
+    char: userRequestedCharacter,
+    user: user,
+  }
+
   if (config.roleplay.combined_group_chat) {
     prefixWithNames(messages);
     namedMessagesAsRole(messages, 'assistant');
@@ -75,7 +81,7 @@ async function rpToPrompt(prompt, outputStream = process.stdout, basePath = proc
     prefixWithNames(messages);
     namedMessagesAsRole(messages, 'user');
     if (config.roleplay.impersonation_instruction) {
-      const instruction = nunjucks.renderString(config.roleplay.impersonation_instruction, { char: userRequestedCharacter });
+      const instruction = nunjucks.renderString(config.roleplay.impersonation_instruction, templateVars);
       messages.push({ role: 'user', content: instruction });
     }    
   } else if (userRequestedCharacter) {
@@ -84,8 +90,11 @@ async function rpToPrompt(prompt, outputStream = process.stdout, basePath = proc
     } else {
       messages.pop();
     }
-    if (config.roleplay.impersonation_instruction) {
-      const instruction = nunjucks.renderString(config.roleplay.impersonation_instruction, { char: userRequestedCharacter });
+    if (userRequestedCharacter === user && config.roleplay.user_impersonation_instruction) {
+      const instruction = nunjucks.renderString(config.roleplay.user_impersonation_instruction, templateVars);
+      messages.push({ role: 'user', content: instruction });
+    } else if (config.roleplay.impersonation_instruction) {
+      const instruction = nunjucks.renderString(config.roleplay.impersonation_instruction, templateVars);
       messages.push({ role: 'user', content: instruction });
     }
   } else if (messages.length && messages.at(-1).name) {

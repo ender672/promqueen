@@ -55,15 +55,17 @@ function runPipeline(filePath) {
 
       // 2. Run rptoprompt.js -> sendprompt.js
       await new Promise((resolvePipeline, rejectPipeline) => {
-        const rptoprompt = spawn('node', ['rptoprompt.js', absolutePath]);
-        const sendprompt = spawn('node', [
-          'sendprompt.js',
-          '-',
-          `--message-template-loader-path=${templateLoaderPath}`
+        const templated = spawn('node', [
+          'applytemplate.js',
+          absolutePath,
+          '--message-template-loader-path', templateLoaderPath
         ]);
+        const rptoprompt = spawn('node', ['rptoprompt.js']);
+        const sendprompt = spawn('node', ['sendprompt.js', '-']);
 
         const fileStream = fs.createWriteStream(absolutePath, { flags: 'a' });
 
+        templated.stdout.pipe(rptoprompt.stdin);
         rptoprompt.stdout.pipe(sendprompt.stdin);
         sendprompt.stdout.pipe(fileStream);
 

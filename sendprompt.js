@@ -110,7 +110,11 @@ async function sendPrompt(prompt, cwd, outputStream = process.stdout, errorStrea
 
   const lastMessage = promptMessages.at(-1);
   if (lastMessage && lastMessage.role === 'assistant') {
-    lastMessage.prefix = true;
+    if (lastMessage.message) {
+      lastMessage.prefix = true;
+    } else {
+      promptMessages.pop();
+    }
   }
 
   const body = {
@@ -118,8 +122,8 @@ async function sendPrompt(prompt, cwd, outputStream = process.stdout, errorStrea
     messages: promptMessages,
   }
   if (logger) {
-    // logger.info(prompt);
-    // logger.info(JSON.stringify(body, null, 2));
+    logger.info(prompt);
+    logger.info(JSON.stringify(body, null, 2));
   }
   const response = await fetch(config.api_url, {
     method: 'POST',
