@@ -124,7 +124,7 @@ function main() {
 
   const nameAutocomplete = getNameAutocomplete(messages, [user, ...PROMPT_ROLES]);
   if (nameAutocomplete) {
-    process.stdout.write(nameAutocomplete);
+    process.stdout.write(nameAutocomplete + '\n');
   }
 
   if (messages) {

@@ -7,65 +7,26 @@ const fs = require('fs');
 const scriptPath = path.resolve(__dirname, '../../precompletionlint.js');
 const fixturesDir = path.resolve(__dirname, '../fixtures/precompletionlint');
 
-function runLint(content) {
-  const tmpFile = path.join(fixturesDir, `tmp_${Math.random().toString(36).substring(7)}.txt`);
-  fs.writeFileSync(tmpFile, content);
-  try {
-    const result = spawnSync('node', [scriptPath, tmpFile], { encoding: 'utf8' });
-    return result.stdout;
-  } finally {
-    if (fs.existsSync(tmpFile)) {
-      fs.unlinkSync(tmpFile);
+// Find all input files
+const files = fs.readdirSync(fixturesDir);
+const inputFiles = files.filter(f => f.endsWith('.input.prompt'));
+
+inputFiles.forEach(inputFile => {
+  const testName = inputFile.replace('.input.prompt', '').replace(/_/g, ' ');
+  const expectedOutputFile = inputFile.replace('.input.prompt', '.output.txt');
+
+  test(`precompletionlint ${testName}`, async (t) => {
+    const inputPath = path.join(fixturesDir, inputFile);
+    const outputPath = path.join(fixturesDir, expectedOutputFile);
+
+    if (!fs.existsSync(outputPath)) {
+      throw new Error(`Expected output file not found: ${outputPath}`);
     }
-  }
-}
 
-test('precompletionlint autocompletes name', (t) => {
-  const input = `---
-user: User
----
-@Jim
-Hello
+    const result = spawnSync('node', [scriptPath, inputPath], { encoding: 'utf8' });
+    const output = result.stdout;
+    const expectedOutput = fs.readFileSync(outputPath, 'utf8');
 
-@J`;
-  const output = runLint(input);
-  assert.strictEqual(output, 'im');
-});
-
-test('precompletionlint adds padding and guesses next speaker', (t) => {
-  const input = `---
-user: User
----
-@Jim
-Hello`;
-  const output = runLint(input);
-  assert.strictEqual(output, '\n\n@User\n');
-});
-
-test('precompletionlint handles empty message for assistant guess', (t) => {
-  const input = `---
-user: User
----
-@User
-Hi`;
-  const output = runLint(input);
-  assert.strictEqual(output, '\n\n@assistant\n');
-});
-
-test('precompletionlint autocompletes from extraNames (user)', (t) => {
-  const input = `---
-user: User
----
-@U`;
-  const output = runLint(input);
-  assert.strictEqual(output, 'ser');
-});
-
-test('precompletionlint autocompletes from PROMPT_ROLES', (t) => {
-  const input = `---
-user: User
----
-@as`;
-  const output = runLint(input);
-  assert.strictEqual(output, 'sistant');
+    assert.strictEqual(output, expectedOutput, `Output for ${testName} should match expected output`);
+  });
 });
