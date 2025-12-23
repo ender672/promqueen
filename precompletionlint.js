@@ -106,6 +106,29 @@ function getFinalMessagePadding(message) {
   return '\n\n';
 }
 
+function precompletionLint(fileContent, outputStream, baseDir) {
+  const { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(fileContent);
+  const fullConfig = pqutils.resolveConfig(runtimeConfig, baseDir);
+  const user = fullConfig.user;
+
+  const nameAutocomplete = getNameAutocomplete(messages, [user, ...PROMPT_ROLES]);
+  if (nameAutocomplete) {
+    outputStream.write(nameAutocomplete + '\n');
+  }
+
+  if (messages) {
+    const finalPadding = getFinalMessagePadding(messages.at(-1).content)
+    if (finalPadding) {
+      outputStream.write(finalPadding);
+    }
+  }
+
+  const nextSpeaker = guessNextSpeaker(messages, user);
+  if (nextSpeaker) {
+    outputStream.write(`@${nextSpeaker}\n`);
+  }
+}
+
 function main() {
   const [, , filePath] = process.argv;
 
@@ -118,26 +141,16 @@ function main() {
   const resolvedPath = path.resolve(filePath);
   const fileContent = fs.readFileSync(resolvedPath, 'utf8');
 
-  const { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(fileContent);
-  const fullConfig = pqutils.resolveConfig(runtimeConfig, __dirname);
-  const user = fullConfig.user;
-
-  const nameAutocomplete = getNameAutocomplete(messages, [user, ...PROMPT_ROLES]);
-  if (nameAutocomplete) {
-    process.stdout.write(nameAutocomplete + '\n');
-  }
-
-  if (messages) {
-    const finalPadding = getFinalMessagePadding(messages.at(-1).content)
-    if (finalPadding) {
-      process.stdout.write(finalPadding);
-    }
-  }
-
-  const nextSpeaker = guessNextSpeaker(messages, user);
-  if (nextSpeaker) {
-    process.stdout.write(`@${nextSpeaker}\n`);
-  }
+  precompletionLint(fileContent, process.stdout, __dirname);
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  precompletionLint,
+  guessNextSpeaker,
+  getNameAutocomplete,
+  getFinalMessagePadding
+};
