@@ -19,6 +19,8 @@
     "commander": "^14.0.2",
     "eventsource-parser": "^3.0.6",
     "js-yaml": "^4.1.1",
-    "nunjucks": "^3.2.4"
+    "nunjucks": "^3.2.4",
+    "png-chunk-text": "^1.0.0",
+    "png-chunks-extract": "^1.0.0"
   }
 }
