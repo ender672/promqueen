@@ -110,7 +110,7 @@ async function sendPrompt(prompt, cwd, outputStream = process.stdout, errorStrea
 
   const lastMessage = promptMessages.at(-1);
   if (lastMessage && lastMessage.role === 'assistant') {
-    if (lastMessage.message) {
+    if (lastMessage.content) {
       lastMessage.prefix = true;
     } else {
       promptMessages.pop();
