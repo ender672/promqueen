@@ -48,7 +48,7 @@ function getNameAutocomplete(history, extraNames) {
   }
 
   // Autocomplete only works if the last message is empty. No newline.
-  if (history[history.length - 1].content !== "") {
+  if (history[history.length - 1].content !== "" && history[history.length - 1].content !== null) {
     return null;
   }
 
@@ -114,9 +114,7 @@ function precompletionLint(fileContent, outputStream, baseDir) {
   const nameAutocomplete = getNameAutocomplete(messages, [user, ...PROMPT_ROLES]);
   if (nameAutocomplete) {
     outputStream.write(nameAutocomplete + '\n');
-  }
-
-  if (messages) {
+  } else if (messages && messages.length > 0) {
     const finalPadding = getFinalMessagePadding(messages.at(-1).content)
     if (finalPadding) {
       outputStream.write(finalPadding);

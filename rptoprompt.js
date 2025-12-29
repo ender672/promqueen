@@ -63,9 +63,18 @@ async function rpToPrompt(prompt, outputStream = process.stdout, basePath = proc
   addRoles(messages, user);
 
   // if last message is empty, the user is indicating which character to impersonate
+  // if last message ends with a space, it's also an impersonation request but with a prefix
   let userRequestedCharacter = null;
-  if (messages.length && !messages.at(-1).content && messages.at(-1).name) {
-    userRequestedCharacter = messages.at(-1).name;
+  let hasPrefilledMessage = false;
+
+  if (messages.length && messages[messages.length - 1].name) {
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage.content === null || lastMessage.content === "") {
+      userRequestedCharacter = lastMessage.name;
+    } else if (typeof lastMessage.content === 'string' && lastMessage.content.endsWith(' ')) {
+      userRequestedCharacter = lastMessage.name;
+      hasPrefilledMessage = true;
+    }
   }
 
   const templateVars = {
@@ -77,19 +86,27 @@ async function rpToPrompt(prompt, outputStream = process.stdout, basePath = proc
     prefixWithNames(messages);
     namedMessagesAsRole(messages, 'assistant');
   } else if (userRequestedCharacter && config.roleplay.chaos_monkey) {
-    messages.pop();
-    prefixWithNames(messages);
+    if (!hasPrefilledMessage) {
+      messages.pop();
+      prefixWithNames(messages);
+    }
     namedMessagesAsRole(messages, 'user');
     if (config.roleplay.impersonation_instruction) {
       const instruction = nunjucks.renderString(config.roleplay.impersonation_instruction, templateVars);
       messages.push({ role: 'user', content: instruction });
-    }    
+    }
   } else if (userRequestedCharacter) {
-    if (config.roleplay.prefix_with_name) {
-      prefixWithNames(messages);
-    } else {
+    let prefilledMessage = null;
+    if (hasPrefilledMessage) {
+      prefilledMessage = messages.pop();
+    } else if (!config.roleplay.prefix_with_name) {
       messages.pop();
     }
+
+    if (config.roleplay.prefix_with_name) {
+      prefixWithNames(messages);
+    }
+
     if (userRequestedCharacter === user && config.roleplay.user_impersonation_instruction) {
       const instruction = nunjucks.renderString(config.roleplay.user_impersonation_instruction, templateVars);
       messages.push({ role: 'user', content: instruction });
@@ -97,10 +114,14 @@ async function rpToPrompt(prompt, outputStream = process.stdout, basePath = proc
       const instruction = nunjucks.renderString(config.roleplay.impersonation_instruction, templateVars);
       messages.push({ role: 'user', content: instruction });
     }
-  } else if (messages.length && messages.at(-1).name) {
+
+    if (prefilledMessage) {
+      messages.push({ role: 'assistant', content: prefilledMessage.content });
+    }
+  } else if (messages.length && messages[messages.length - 1].name) {
     // we're going to ask the llm to complete a prefixed message
     messages.pop();
-    messages.at(-1).role = 'assistant';
+    messages[messages.length - 1].role = 'assistant';
   }
 
   messages = combineAdjacentMessagesWithSameRole(messages);
