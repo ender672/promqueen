@@ -74,7 +74,7 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
       let content = json.choices[0]?.delta?.content || '';
       if (content && isFirstEvent) {
         isFirstEvent = false;
-        if (content[0] == "\n") {
+        if (content[0] == "\n" || content[0] == " ") {
           content = content.slice(1);
         }
       }
