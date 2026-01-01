@@ -5,42 +5,7 @@ const path = require('path');
 const process = require('process');
 const pqutils = require('./lib/pqutils.js');
 
-const PROMPT_ROLES = ['system', 'user', 'assistant'];
 
-function guessNextSpeaker(history, userName) {
-  if (!history || history.length === 0) {
-    return null;
-  }
-
-  const lastMessage = history[history.length - 1];
-  const lastSpeaker = lastMessage.name;
-  const lastContent = lastMessage.content;
-
-  // Use trim() to check if the content is just whitespace
-  if (lastContent === null || lastContent.trim() === '') {
-    return null;
-  }
-
-  if (lastContent.endsWith(' ')) {
-    return null;
-  }
-
-  // Iterate backwards through the history
-  for (let i = history.length - 1; i >= 0; i--) {
-    const message = history[i];
-    const rolesToExclude = [...PROMPT_ROLES, userName, lastSpeaker];
-
-    if (!rolesToExclude.includes(message.name)) {
-      return message.name;
-    }
-  }
-
-  if (lastSpeaker !== userName) {
-    return userName;
-  }
-
-  return 'assistant';
-}
 
 function getNameAutocomplete(history, extraNames) {
   if (!history || history.length === 0) {
@@ -111,7 +76,7 @@ function precompletionLint(fileContent, outputStream, baseDir) {
   const fullConfig = pqutils.resolveConfig(runtimeConfig, baseDir);
   const user = fullConfig.user;
 
-  const nameAutocomplete = getNameAutocomplete(messages, [user, ...PROMPT_ROLES]);
+  const nameAutocomplete = getNameAutocomplete(messages, [user, ...pqutils.PROMPT_ROLES]);
   if (nameAutocomplete) {
     outputStream.write(nameAutocomplete + '\n');
   } else if (messages && messages.length > 0) {
@@ -121,7 +86,7 @@ function precompletionLint(fileContent, outputStream, baseDir) {
     }
   }
 
-  const nextSpeaker = guessNextSpeaker(messages, user);
+  const nextSpeaker = pqutils.guessNextSpeaker(messages, user);
   if (nextSpeaker) {
     outputStream.write(`@${nextSpeaker}\n`);
   }
@@ -148,7 +113,6 @@ if (require.main === module) {
 
 module.exports = {
   precompletionLint,
-  guessNextSpeaker,
   getNameAutocomplete,
   getFinalMessagePadding
 };

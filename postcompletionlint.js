@@ -5,38 +5,7 @@ const path = require('path');
 const process = require('process');
 const pqutils = require('./lib/pqutils.js');
 
-const PROMPT_ROLES = ['system', 'user', 'assistant'];
 
-function guessNextSpeaker(history, userName) {
-  if (!history || history.length === 0) {
-    return null;
-  }
-
-  const lastMessage = history[history.length - 1];
-  const lastSpeaker = lastMessage.name;
-  const lastContent = lastMessage.content;
-
-  // Use trim() to check if the content is just whitespace
-  if (lastContent.trim() === '') {
-    return null;
-  }
-
-  if (lastSpeaker !== userName) {
-    return userName;
-  }
-
-  // Iterate backwards through the history
-  const rolesToExclude = [...PROMPT_ROLES, lastSpeaker];
-  for (let i = history.length - 1; i >= 0; i--) {
-    const message = history[i];
-
-    if (!rolesToExclude.includes(message.name)) {
-      return message.name;
-    }
-  }
-
-  return 'assistant';
-}
 
 function getFinalMessagePadding(message) {
   // If the final message is null, don't do anything.
@@ -89,7 +58,7 @@ function main() {
     }
   }
 
-  const nextSpeaker = guessNextSpeaker(messages, user);
+  const nextSpeaker = pqutils.guessNextSpeaker(messages, user);
   if (nextSpeaker) {
     process.stdout.write(`@${nextSpeaker}\n`);
   }
