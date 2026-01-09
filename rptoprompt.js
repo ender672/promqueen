@@ -83,20 +83,6 @@ async function rpToPrompt(prompt, outputStream = process.stdout, basePath = proc
   if (config.roleplay.combined_group_chat) {
     prefixWithNames(messages);
     namedMessagesAsRole(messages, 'assistant');
-  } else if (userRequestedCharacter && config.roleplay.chaos_monkey) {
-    if (!hasPrefilledMessage) {
-      messages.pop();
-      prefixWithNames(messages);
-    }
-    namedMessagesAsRole(messages, 'user');
-    if (config.roleplay.impersonation_instruction || (config.roleplay.char_impersonation_instruction && config.roleplay.char_impersonation_instruction[userRequestedCharacter])) {
-      let instructionTemplate = config.roleplay.impersonation_instruction;
-      if (config.roleplay.char_impersonation_instruction && config.roleplay.char_impersonation_instruction[userRequestedCharacter]) {
-        instructionTemplate = config.roleplay.char_impersonation_instruction[userRequestedCharacter];
-      }
-      const instruction = nunjucks.renderString(instructionTemplate, templateVars);
-      messages.push({ role: 'user', content: instruction });
-    }
   } else if (userRequestedCharacter) {
     let prefilledMessage = null;
     if (hasPrefilledMessage) {
@@ -109,19 +95,14 @@ async function rpToPrompt(prompt, outputStream = process.stdout, basePath = proc
       prefixWithNames(messages);
     }
 
-    if (userRequestedCharacter === user && config.roleplay.user_impersonation_instruction) {
-      const instruction = nunjucks.renderString(config.roleplay.user_impersonation_instruction, templateVars);
-      messages.push({ role: 'user', content: instruction });
-    } else {
-      let instructionTemplate = config.roleplay.impersonation_instruction;
-      if (config.roleplay.char_impersonation_instruction && config.roleplay.char_impersonation_instruction[userRequestedCharacter]) {
-        instructionTemplate = config.roleplay.char_impersonation_instruction[userRequestedCharacter];
-      }
+    let instructionTemplate = config.roleplay.impersonation_instruction;
+    if (config.roleplay.char_impersonation_instruction && config.roleplay.char_impersonation_instruction[userRequestedCharacter]) {
+      instructionTemplate = config.roleplay.char_impersonation_instruction[userRequestedCharacter];
+    }
 
-      if (instructionTemplate) {
-        const instruction = nunjucks.renderString(instructionTemplate, templateVars);
-        messages.push({ role: 'user', content: instruction });
-      }
+    if (instructionTemplate) {
+      const instruction = nunjucks.renderString(instructionTemplate, templateVars);
+      messages.push({ role: 'user', content: instruction });
     }
 
     if (prefilledMessage) {
