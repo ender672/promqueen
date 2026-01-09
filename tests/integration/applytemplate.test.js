@@ -24,7 +24,7 @@ inputFiles.forEach(inputFile => {
   const testName = inputFile.replace('.input.prompt', '');
   const expectedOutputFile = inputFile.replace('.input.prompt', '.output.txt');
 
-  test(`applytemplate processes ${testName}`, async (t) => {
+  test(`applytemplate - ${testName}`, async (t) => {
     const inputPath = path.join(fixturesDir, inputFile);
     const outputPath = path.join(fixturesDir, expectedOutputFile);
 

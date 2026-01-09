@@ -8,8 +8,6 @@ const streamConsumers = require("node:stream/consumers");
 const pqutils = require('./lib/pqutils.js');
 const nunjucks = require('nunjucks');
 
-const PROMPT_ROLES = ['system', 'user', 'assistant'];
-
 function buildNameMap(promptRoles, userName) {
   const nameMap = Object.fromEntries(
     promptRoles.map(role => [role, role])
@@ -19,10 +17,10 @@ function buildNameMap(promptRoles, userName) {
 }
 
 function addRoles(messages, userName) {
-  const nameMap = buildNameMap(PROMPT_ROLES, userName);
+  const nameMap = buildNameMap(pqutils.PROMPT_ROLES, userName);
   messages.forEach(message => {
     message.role = nameMap[message.name] || 'assistant';
-    if (PROMPT_ROLES.includes(message.name)) {
+    if (pqutils.PROMPT_ROLES.includes(message.name)) {
       delete message.name;
     }
   });

@@ -32,7 +32,7 @@ function cmdLineParseDataArg(value, previous) {
 }
 
 async function applyTemplate(promptText, options, outputStream = process.stdout) {
-  const { config, messagesString } = pqutils.parseConfigOnly(promptText);
+  const { config, messages } = pqutils.parseConfigAndMessages(promptText);
   const resolvedConfig = pqutils.resolveConfig(config, process.cwd());
 
   const fullMessageTemplateContext = {
@@ -40,15 +40,30 @@ async function applyTemplate(promptText, options, outputStream = process.stdout)
     ...resolvedConfig.message_template_variables,
   };
 
+  if (fullMessageTemplateContext.char === undefined) {
+    const skipNames = [...pqutils.PROMPT_ROLES, fullMessageTemplateContext.user];
+    const firstCharMsg = messages.find(m => !skipNames.includes(m.name));
+
+    if (firstCharMsg) {
+      fullMessageTemplateContext.char = firstCharMsg.name;
+    }
+  }
+
   const env = new nunjucks.Environment(
     new nunjucks.FileSystemLoader(options.messageTemplateLoaderPath)
   );
-  const renderedMessages = env.renderString(messagesString, fullMessageTemplateContext);
+
+  let renderedMessages = [];
+  for (let message of messages) {
+    const content = env.renderString(message.content, fullMessageTemplateContext);
+    const namePart = message.name ? `@${message.name}\n` : '';
+    renderedMessages.push(`${namePart}${content}`);
+  }
 
   outputStream.write('---\n');
   outputStream.write(yaml.dump(config));
   outputStream.write('---\n');
-  outputStream.write(renderedMessages);
+  outputStream.write(renderedMessages.join('\n\n'));
 }
 
 async function main() {

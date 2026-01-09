@@ -1,0 +1,16 @@
+---
+dot_config_loading: false
+message_template_variables:
+  user: Jim
+---
+@system
+This is the system prompt. You are MyChar.
+
+@Jim
+This is a user message. "Hi MyChar!"
+
+@MyChar
+Templating should automatically detect that this is the character. "I am MyChar!"
+
+@Foo
+"Oh, hello MyChar!"

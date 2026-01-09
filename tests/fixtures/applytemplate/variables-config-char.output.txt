@@ -1,0 +1,17 @@
+---
+dot_config_loading: false
+message_template_variables:
+  user: Jim
+  char: Foo
+---
+@system
+This is the system prompt. You are Foo.
+
+@Jim
+This is a user message. "Hi Foo!"
+
+@MyChar
+"Oh, hi, Foo!"
+
+@Foo
+"Hello everybody, I am Foo!"
