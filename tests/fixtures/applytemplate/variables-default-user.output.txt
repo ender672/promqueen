@@ -1,0 +1,10 @@
+---
+roleplay:
+  user: Jim
+dot_config_loading: false
+---
+@system
+This is the system prompt. The user is Jim.
+
+@Jim
+This is a user message. "Hi, I am Jim!"

@@ -1,0 +1,12 @@
+---
+roleplay:
+  user: Jim
+dot_config_loading: false
+message_template_variables:
+  user: Sam
+---
+@system
+This is the system prompt. The user is {{ user }}.
+
+@Jim
+This is a user message. "Hi, I am {{ user }}!"

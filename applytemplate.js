@@ -40,6 +40,10 @@ async function applyTemplate(promptText, options, outputStream = process.stdout)
     ...resolvedConfig.message_template_variables,
   };
 
+  if (fullMessageTemplateContext.user === undefined && resolvedConfig.roleplay && resolvedConfig.roleplay.user) {
+    fullMessageTemplateContext.user = resolvedConfig.roleplay.user;
+  }
+
   if (fullMessageTemplateContext.char === undefined) {
     const skipNames = [...pqutils.PROMPT_ROLES, fullMessageTemplateContext.user];
     const firstCharMsg = messages.find(m => !skipNames.includes(m.name));
