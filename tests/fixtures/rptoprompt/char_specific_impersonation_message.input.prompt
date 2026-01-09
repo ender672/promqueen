@@ -1,0 +1,26 @@
+---
+roleplay:
+  user: Bob
+  impersonation_instruction: '[OOC: You are {{char}}.]'
+  char_impersonation_instruction:
+    Bob: '[OOC: This is a char-specific impersonation instruction for {{char}}.]'
+    Alice: '[OOC: And another one for Alice, aka {{char}}. {{user}} should work, too.]'
+dot_config_loading: false
+---
+@system
+This is the system instruction
+
+@user
+This is a user instruction
+
+@Bob
+Hi, Alice!
+
+@Alice
+Hi, Bob!
+
+@Jay
+Hey all!
+Write a python function to calculate factorial.
+
+@Bob
