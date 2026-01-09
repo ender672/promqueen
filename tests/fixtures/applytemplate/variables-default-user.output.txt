@@ -1,6 +1,5 @@
 ---
-roleplay:
-  user: Jim
+roleplay_user: Jim
 dot_config_loading: false
 ---
 @system

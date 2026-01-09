@@ -1,6 +1,5 @@
 ---
-roleplay:
-  combined_group_chat: true
+roleplay_combined_group_chat: true
 dot_config_loading: false
 ---
 @system

@@ -1,6 +1,6 @@
 ---
-roleplay:
-  user: Jim
+roleplay_user: Jim
+dot_config_loading: false
 ---
 @Jim
 Msg 1

@@ -40,8 +40,9 @@ async function applyTemplate(promptText, options, outputStream = process.stdout)
     ...resolvedConfig.message_template_variables,
   };
 
-  if (fullMessageTemplateContext.user === undefined && resolvedConfig.roleplay && resolvedConfig.roleplay.user) {
-    fullMessageTemplateContext.user = resolvedConfig.roleplay.user;
+  debugger;
+  if (fullMessageTemplateContext.user === undefined && resolvedConfig.roleplay_user) {
+    fullMessageTemplateContext.user = resolvedConfig.roleplay_user;
   }
 
   if (fullMessageTemplateContext.char === undefined) {

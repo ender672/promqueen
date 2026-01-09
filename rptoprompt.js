@@ -56,7 +56,7 @@ function combineAdjacentMessagesWithSameRole(messages) {
 async function rpToPrompt(prompt, outputStream = process.stdout, basePath = process.cwd()) {
   let { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(prompt);
   const config = pqutils.resolveConfig(runtimeConfig, basePath);
-  const user = config.roleplay.user;
+  const user = config.roleplay_user;
 
   addRoles(messages, user);
 
@@ -80,24 +80,24 @@ async function rpToPrompt(prompt, outputStream = process.stdout, basePath = proc
     user: user,
   }
 
-  if (config.roleplay.combined_group_chat) {
+  if (config.roleplay_combined_group_chat) {
     prefixWithNames(messages);
     namedMessagesAsRole(messages, 'assistant');
   } else if (userRequestedCharacter) {
     let prefilledMessage = null;
     if (hasPrefilledMessage) {
       prefilledMessage = messages.pop();
-    } else if (!config.roleplay.prefix_with_name) {
+    } else if (!config.roleplay_prefix_with_name) {
       messages.pop();
     }
 
-    if (config.roleplay.prefix_with_name) {
+    if (config.roleplay_prefix_with_name) {
       prefixWithNames(messages);
     }
 
-    let instructionTemplate = config.roleplay.impersonation_instruction;
-    if (config.roleplay.char_impersonation_instruction && config.roleplay.char_impersonation_instruction[userRequestedCharacter]) {
-      instructionTemplate = config.roleplay.char_impersonation_instruction[userRequestedCharacter];
+    let instructionTemplate = config.roleplay_impersonation_instruction;
+    if (config.roleplay_char_impersonation_instruction && config.roleplay_char_impersonation_instruction[userRequestedCharacter]) {
+      instructionTemplate = config.roleplay_char_impersonation_instruction[userRequestedCharacter];
     }
 
     if (instructionTemplate) {

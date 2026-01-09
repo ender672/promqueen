@@ -1,7 +1,6 @@
 ---
-roleplay:
-  user: Bob
-  impersonation_instruction: '[OOC: You are {{char}}.]'
+roleplay_user: Bob
+roleplay_impersonation_instruction: '[OOC: You are {{char}}.]'
 dot_config_loading: false
 ---
 @system

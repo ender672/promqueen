@@ -1,6 +1,6 @@
 ---
-roleplay:
-  user: Bob
+roleplay_user: Bob
+dot_config_loading: false
 ---
 @user
 This is a user instruction

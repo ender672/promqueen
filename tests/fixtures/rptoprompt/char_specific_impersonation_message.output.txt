@@ -1,10 +1,9 @@
 ---
-roleplay:
-  user: Bob
-  impersonation_instruction: '[OOC: You are {{char}}.]'
-  char_impersonation_instruction:
-    Bob: '[OOC: This is a char-specific impersonation instruction for {{char}}.]'
-    Alice: '[OOC: And another one for Alice, aka {{char}}. {{user}} should work, too.]'
+roleplay_user: Bob
+roleplay_impersonation_instruction: '[OOC: You are {{char}}.]'
+roleplay_char_impersonation_instruction:
+  Bob: '[OOC: This is a char-specific impersonation instruction for {{char}}.]'
+  Alice: '[OOC: And another one for Alice, aka {{char}}. {{user}} should work, too.]'
 dot_config_loading: false
 ---
 @system
