@@ -74,7 +74,7 @@ function getFinalMessagePadding(message) {
 function precompletionLint(fileContent, outputStream, baseDir) {
   const { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(fileContent);
   const fullConfig = pqutils.resolveConfig(runtimeConfig, baseDir);
-  const user = fullConfig.user;
+  const user = fullConfig.roleplay?.user;
 
   const nameAutocomplete = getNameAutocomplete(messages, [user, ...pqutils.PROMPT_ROLES]);
   if (nameAutocomplete) {

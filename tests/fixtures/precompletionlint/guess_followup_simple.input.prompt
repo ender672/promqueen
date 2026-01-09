@@ -1,5 +1,6 @@
 ---
-user: Jim
+roleplay:
+  user: Jim
 ---
 @Jim
 Hello

@@ -1,5 +1,6 @@
 ---
-user: Bob
+roleplay:
+  user: Bob
 ---
 @user
 This is a user instruction
