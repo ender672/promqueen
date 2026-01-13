@@ -53,7 +53,7 @@ function combineAdjacentMessagesWithSameRole(messages) {
   }, []);
 }
 
-async function rpToPrompt(prompt, outputStream = process.stdout, basePath = process.cwd()) {
+async function rpToPrompt(prompt, basePath = process.cwd()) {
   let { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(prompt);
   const config = pqutils.resolveConfig(runtimeConfig, basePath);
   const user = config.roleplay_user;
@@ -116,19 +116,22 @@ async function rpToPrompt(prompt, outputStream = process.stdout, basePath = proc
 
   messages = combineAdjacentMessagesWithSameRole(messages);
 
-  outputStream.write('---\n');
-  outputStream.write(yaml.dump(runtimeConfig));
-  outputStream.write('---\n');
-  serializeHistory(messages, outputStream);
+  let output = '---\n';
+  output += yaml.dump(runtimeConfig);
+  output += '---\n';
+  output += serializeHistory(messages);
+  return output;
 }
 
-function serializeHistory(messages, outputStream) {
+function serializeHistory(messages) {
+  let output = '';
   for (const [index, message] of messages.entries()) {
     if (index !== 0) {
-      outputStream.write("\n\n");
+      output += "\n\n";
     }
-    outputStream.write(`@${message.role}\n${message.content}`);
+    output += `@${message.role}\n${message.content}`;
   }
+  return output;
 }
 
 async function main() {
@@ -144,7 +147,8 @@ async function main() {
       prompt = fs.readFileSync(0, 'utf-8');
     }
 
-    await rpToPrompt(prompt, process.stdout, process.cwd());
+    const output = await rpToPrompt(prompt, process.cwd());
+    process.stdout.write(output);
   } catch (error) {
     console.error('Error reading input:', error);
     process.exit(1);
