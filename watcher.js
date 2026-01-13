@@ -2,8 +2,12 @@
 
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
 const chokidar = require('chokidar');
+const { precompletionLint } = require('./precompletionlint.js');
+const { applyTemplate } = require('./applytemplate.js');
+const { rpToPrompt } = require('./rptoprompt.js');
+const { sendPrompt } = require('./sendprompt.js');
+const { postCompletionLint } = require('./postcompletionlint.js');
 
 function runPipeline(filePath) {
   return new Promise(async (resolve, reject) => {
@@ -12,100 +16,44 @@ function runPipeline(filePath) {
 
     console.log(`[WATCHER] Processing ${filePath}...`);
 
-    // Helper to run a command and pipe its stdout to the file
-    const runStep = (command, args, pipeToFile = true) => {
-      return new Promise((resolveStep, rejectStep) => {
-        const proc = spawn(command, args);
-
-        if (pipeToFile) {
-          const fileStream = fs.createWriteStream(absolutePath, { flags: 'a' });
-          proc.stdout.pipe(fileStream);
-
-          fileStream.on('error', (err) => {
-            console.error(`Error writing to file for ${command}:`, err);
-            // Don't reject here, let the process exit handle it, or maybe we should?
-            // For now, let's just log.
-          });
-        } else {
-          proc.stdout.pipe(process.stdout);
-        }
-
-        let stderr = '';
-        proc.stderr.on('data', (data) => {
-          stderr += data.toString();
-        });
-
-        proc.on('close', (code) => {
-          if (code !== 0) {
-            console.error(`${command} exited with code ${code}`);
-            if (stderr) console.error(stderr);
-            rejectStep(new Error(`${command} failed with code ${code}`));
-          } else {
-            resolveStep();
-          }
-        });
-
-        proc.on('error', (err) => rejectStep(err));
-      });
-    };
-
     try {
-      // 1. Run precompletionlint.js
-      await runStep('node', ['precompletionlint.js', absolutePath]);
+      // 1. Run precompletionlint
+      let content = fs.readFileSync(absolutePath, 'utf8');
+      const preOutput = precompletionLint(content, __dirname);
+      if (preOutput) {
+        fs.appendFileSync(absolutePath, preOutput);
+        // Update content for the next step
+        content = fs.readFileSync(absolutePath, 'utf8');
+      }
 
-      // 2. Run rptoprompt.js -> sendprompt.js
-      await new Promise((resolvePipeline, rejectPipeline) => {
-        const templated = spawn('node', [
-          'applytemplate.js',
-          absolutePath,
-          '--message-template-loader-path', templateLoaderPath
-        ]);
-        const rptoprompt = spawn('node', ['rptoprompt.js']);
-        const sendprompt = spawn('node', ['sendprompt.js', '-']);
+      // 2. Run applytemplate -> rptoprompt -> sendprompt
+      const templated = await applyTemplate(content, {
+        messageTemplateLoaderPath: templateLoaderPath,
+        data: {}
+      }, null);
 
-        const fileStream = fs.createWriteStream(absolutePath, { flags: 'a' });
+      const prompt = await rpToPrompt(templated, process.cwd());
 
-        templated.stdout.pipe(rptoprompt.stdin);
-        rptoprompt.stdout.pipe(sendprompt.stdin);
-        sendprompt.stdout.pipe(fileStream);
+      const fileStream = fs.createWriteStream(absolutePath, { flags: 'a' });
+      // We need to wait for the stream to finish
+      await sendPrompt(prompt, process.cwd(), fileStream, process.stderr, {});
 
-        let rptopromptStderr = '';
-        rptoprompt.stderr.on('data', (data) => rptopromptStderr += data.toString());
+      fileStream.end();
 
-        let sendpromptStderr = '';
-        sendprompt.stderr.on('data', (data) => sendpromptStderr += data.toString());
+      await new Promise((fulfill) => fileStream.on('finish', fulfill));
 
-        rptoprompt.on('close', (code) => {
-          if (code !== 0) {
-            console.error(`rptoprompt exited with code ${code}`);
-            if (rptopromptStderr) console.error(rptopromptStderr);
-            sendprompt.kill();
-            rejectPipeline(new Error(`rptoprompt failed with code ${code}`));
-          }
-        });
-
-        sendprompt.on('close', (code) => {
-          if (code !== 0) {
-            console.error(`sendprompt exited with code ${code}`);
-            if (sendpromptStderr) console.error(sendpromptStderr);
-            rejectPipeline(new Error(`sendprompt failed with code ${code}`));
-          } else {
-            resolvePipeline();
-          }
-        });
-
-        rptoprompt.on('error', rejectPipeline);
-        sendprompt.on('error', rejectPipeline);
-        fileStream.on('error', rejectPipeline);
-      });
-
-      // 3. Run postcompletionlint.js
-      await runStep('node', ['postcompletionlint.js', absolutePath]);
+      // 3. Run postcompletionlint
+      content = fs.readFileSync(absolutePath, 'utf8');
+      const postOutput = postCompletionLint(content, __dirname);
+      if (postOutput) {
+        fs.appendFileSync(absolutePath, postOutput);
+      }
 
       console.log(`[WATCHER] Finished processing ${filePath}`);
       resolve();
 
     } catch (error) {
+      console.error(`[WATCHER] Error processing ${filePath}:`, error);
       reject(error);
     }
   });
@@ -153,4 +101,10 @@ async function main() {
   await watchFiles(watchPath);
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  runPipeline
+};

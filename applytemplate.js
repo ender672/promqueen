@@ -31,7 +31,7 @@ function cmdLineParseDataArg(value, previous) {
   return previous;
 }
 
-async function applyTemplate(promptText, options, outputStream = process.stdout) {
+async function applyTemplate(promptText, options) {
   const { config, messages } = pqutils.parseConfigAndMessages(promptText);
   const resolvedConfig = pqutils.resolveConfig(config, process.cwd());
 
@@ -40,7 +40,6 @@ async function applyTemplate(promptText, options, outputStream = process.stdout)
     ...resolvedConfig.message_template_variables,
   };
 
-  debugger;
   if (fullMessageTemplateContext.user === undefined && resolvedConfig.roleplay_user) {
     fullMessageTemplateContext.user = resolvedConfig.roleplay_user;
   }
@@ -65,10 +64,12 @@ async function applyTemplate(promptText, options, outputStream = process.stdout)
     renderedMessages.push(`${namePart}${content}`);
   }
 
-  outputStream.write('---\n');
-  outputStream.write(yaml.dump(config));
-  outputStream.write('---\n');
-  outputStream.write(renderedMessages.join('\n\n'));
+  let output = '---\n';
+  output += yaml.dump(config);
+  output += '---\n';
+  output += renderedMessages.join('\n\n');
+
+  return output;
 }
 
 async function main() {
@@ -88,7 +89,13 @@ async function main() {
     promptText = fs.readFileSync(0, 'utf-8');
   }
 
-  await applyTemplate(promptText, options, process.stdout);
+  const output = await applyTemplate(promptText, options);
+
+  if (filePath && filePath !== '-') {
+    fs.writeFileSync(filePath, output);
+  } else {
+    process.stdout.write(output);
+  }
 }
 
 if (require.main === module) {
