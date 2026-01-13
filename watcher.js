@@ -3,58 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const chokidar = require('chokidar');
-const { precompletionLint } = require('./precompletionlint.js');
-const { applyTemplate } = require('./applytemplate.js');
-const { rpToPrompt } = require('./rptoprompt.js');
-const { sendPrompt } = require('./sendprompt.js');
-const { postCompletionLint } = require('./postcompletionlint.js');
-
-async function runPipeline(filePath) {
-  const absolutePath = path.resolve(filePath);
-  const templateLoaderPath = path.dirname(absolutePath);
-
-  console.log(`[WATCHER] Processing ${filePath}...`);
-
-  try {
-    // 1. Run precompletionlint
-    let content = fs.readFileSync(absolutePath, 'utf8');
-    const preOutput = precompletionLint(content, __dirname);
-    if (preOutput) {
-      fs.appendFileSync(absolutePath, preOutput);
-      // Update content for the next step
-      content = fs.readFileSync(absolutePath, 'utf8');
-    }
-
-    // 2. Run applytemplate -> rptoprompt -> sendprompt
-    const templated = await applyTemplate(content, {
-      messageTemplateLoaderPath: templateLoaderPath,
-      data: {}
-    }, null);
-
-    const prompt = await rpToPrompt(templated, process.cwd());
-
-    const fileStream = fs.createWriteStream(absolutePath, { flags: 'a' });
-    // We need to wait for the stream to finish
-    await sendPrompt(prompt, process.cwd(), fileStream, process.stderr, {});
-
-    fileStream.end();
-
-    await new Promise((fulfill) => fileStream.on('finish', fulfill));
-
-    // 3. Run postcompletionlint
-    content = fs.readFileSync(absolutePath, 'utf8');
-    const postOutput = postCompletionLint(content, __dirname);
-    if (postOutput) {
-      fs.appendFileSync(absolutePath, postOutput);
-    }
-
-    console.log(`[WATCHER] Finished processing ${filePath}`);
-
-  } catch (error) {
-    console.error(`[WATCHER] Error processing ${filePath}:`, error);
-    throw error;
-  }
-}
+const { runPipeline } = require('./run_pipeline.js');
 
 async function watchFiles(watchPath) {
   console.log(`Initializing watcher for: ${watchPath}`);
