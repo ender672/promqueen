@@ -6,15 +6,6 @@ const { applyTemplate } = require('../../applytemplate.js');
 
 const fixturesDir = path.join(__dirname, '../fixtures/applytemplate');
 
-// Helper class to capture output
-class StringStream {
-  constructor() {
-    this.data = '';
-  }
-  write(chunk) {
-    this.data += chunk.toString();
-  }
-}
 
 // Find all input files
 const files = fs.readdirSync(fixturesDir);
@@ -33,11 +24,9 @@ inputFiles.forEach(inputFile => {
     }
 
     const prompt = fs.readFileSync(inputPath, 'utf8');
-    const outputStream = new StringStream();
 
-    await applyTemplate(prompt, {}, outputStream);
+    const output = await applyTemplate(prompt, {});
 
-    const output = outputStream.data;
     const expectedOutput = fs.readFileSync(outputPath, 'utf8');
 
     assert.strictEqual(output, expectedOutput, `Output for ${testName} should match expected output`);
