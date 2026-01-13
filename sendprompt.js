@@ -66,8 +66,9 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
       }
 
       const json = JSON.parse(event.data);
-      if (fullConfig.pricing && json.usage && fullConfig.debug_log_path) {
-        // TODO: implement cost logging to file if needed, for now just skipping logger.info
+      if (fullConfig.pricing && json.usage) {
+        const costString = usageToCostString(fullConfig.pricing, json.usage);
+        errorStream.write(costString + '\n');
       }
 
       let content = json.choices[0]?.delta?.content || '';
@@ -83,8 +84,9 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
     }
   } else {
     const json = await response.json();
-    if (fullConfig.pricing && json.usage && fullConfig.debug_log_path) {
-      // TODO: implement cost logging to file if needed, for now just skipping logger.info
+    if (fullConfig.pricing && json.usage) {
+      const costString = usageToCostString(fullConfig.pricing, json.usage);
+      errorStream.write(costString + '\n');
     }
     const content = json.choices?.[0]?.message?.content || '';
     outputStream.write(content);
