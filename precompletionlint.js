@@ -71,25 +71,29 @@ function getFinalMessagePadding(message) {
   return '\n\n';
 }
 
-function precompletionLint(fileContent, outputStream, baseDir) {
+function precompletionLint(fileContent, baseDir) {
   const { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(fileContent);
   const fullConfig = pqutils.resolveConfig(runtimeConfig, baseDir);
   const user = fullConfig.roleplay_user;
 
+  let output = '';
+
   const nameAutocomplete = getNameAutocomplete(messages, [user, ...pqutils.PROMPT_ROLES]);
   if (nameAutocomplete) {
-    outputStream.write(nameAutocomplete + '\n');
+    output += nameAutocomplete + '\n';
   } else if (messages && messages.length > 0) {
     const finalPadding = getFinalMessagePadding(messages.at(-1).content)
     if (finalPadding) {
-      outputStream.write(finalPadding);
+      output += finalPadding;
     }
   }
 
   const nextSpeaker = pqutils.guessNextSpeaker(messages, user);
   if (nextSpeaker) {
-    outputStream.write(`@${nextSpeaker}\n`);
+    output += `@${nextSpeaker}\n`;
   }
+
+  return output;
 }
 
 function main() {
@@ -104,7 +108,8 @@ function main() {
   const resolvedPath = path.resolve(filePath);
   const fileContent = fs.readFileSync(resolvedPath, 'utf8');
 
-  precompletionLint(fileContent, process.stdout, __dirname);
+  const output = precompletionLint(fileContent, __dirname);
+  process.stdout.write(output);
 }
 
 if (require.main === module) {

@@ -7,14 +7,7 @@ const { precompletionLint } = require('../../precompletionlint.js');
 const fixturesDir = path.resolve(__dirname, '../fixtures/precompletionlint');
 
 // Helper class to capture output
-class StringStream {
-  constructor() {
-    this.data = '';
-  }
-  write(chunk) {
-    this.data += chunk.toString();
-  }
-}
+
 
 // Find all input files
 const files = fs.readdirSync(fixturesDir);
@@ -33,12 +26,8 @@ inputFiles.forEach(inputFile => {
     }
 
     const input = fs.readFileSync(inputPath, 'utf8');
-    const outputStream = new StringStream();
     const baseDir = path.resolve(__dirname, '../..');
-
-    precompletionLint(input, outputStream, baseDir);
-
-    const output = outputStream.data;
+    const output = precompletionLint(input, baseDir);
     const expectedOutput = fs.readFileSync(outputPath, 'utf8');
 
     assert.strictEqual(output, expectedOutput, `Output for ${testName} should match expected output`);
