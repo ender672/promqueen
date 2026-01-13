@@ -15,7 +15,7 @@ inputFiles.forEach(inputFile => {
   const testName = inputFile.replace('.input.prompt', '');
   const expectedOutputFile = inputFile.replace('.input.prompt', '.output.txt');
 
-  test(`rptoprompt processes ${testName}`, async (t) => {
+  test(`rptoprompt processes ${testName}`, async () => {
     const inputPath = path.join(fixturesDir, inputFile);
     const outputPath = path.join(fixturesDir, expectedOutputFile);
 

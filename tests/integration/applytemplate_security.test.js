@@ -16,7 +16,7 @@ class StringStream {
   }
 }
 
-test('applytemplate prevents directory traversal in include', async (t) => {
+test('applytemplate prevents directory traversal in include', async () => {
   const exploitPromptPath = path.join(allowedDir, 'exploit.prompt');
   const promptText = fs.readFileSync(exploitPromptPath, 'utf8');
   const outputStream = new StringStream();

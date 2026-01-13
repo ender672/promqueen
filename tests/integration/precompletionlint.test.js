@@ -17,7 +17,7 @@ inputFiles.forEach(inputFile => {
   const testName = inputFile.replace('.input.prompt', '').replace(/_/g, ' ');
   const expectedOutputFile = inputFile.replace('.input.prompt', '.output.txt');
 
-  test(`precompletionlint ${testName}`, async (t) => {
+  test(`precompletionlint ${testName}`, async () => {
     const inputPath = path.join(fixturesDir, inputFile);
     const outputPath = path.join(fixturesDir, expectedOutputFile);
 

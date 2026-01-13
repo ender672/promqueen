@@ -10,9 +10,9 @@ const { extractAiCardData } = require('./lib/cardutils');
 function filenameSafeCharname(name) {
     // Replace spaces with underscores
     let sanitized = name.replace(/ /g, '_');
-    
+
     // Remove characters not in the whitelist (Alphanumeric + _ + -)
-    sanitized = sanitized.replace(/[^a-zA-Z0-9_\-]/g, '');
+    sanitized = sanitized.replace(/[^a-zA-Z0-9_-]/g, '');
 
     if (!sanitized || sanitized.length > 200) {
         return "unnamed";
@@ -46,7 +46,7 @@ function exportCharacterMessages(characterData) {
 
     // 2. Handle Alternate Greetings
     const alternateGreetings = characterData.alternate_greetings || [];
-    
+
     // Using forEach to handle the index (enumerate equivalent)
     alternateGreetings.forEach((greeting, index) => {
         const filename = `${safeName}-alternate-greeting-${index + 1}.txt`;

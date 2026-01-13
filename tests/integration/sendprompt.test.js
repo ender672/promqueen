@@ -1,4 +1,4 @@
-const { test, before, after } = require('node:test');
+const { test } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
@@ -24,7 +24,7 @@ inputFiles.forEach(inputFile => {
   const testName = inputFile.replace('.input.prompt', '');
   const requestExpectationFile = inputFile.replace('.input.prompt', '.request.json');
 
-  test(`sendprompt processes ${testName}`, async (t) => {
+  test(`sendprompt processes ${testName}`, async () => {
     const inputPath = path.join(fixturesDir, inputFile);
     const requestExpectationPath = path.join(fixturesDir, requestExpectationFile);
 

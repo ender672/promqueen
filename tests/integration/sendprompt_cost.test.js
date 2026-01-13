@@ -12,10 +12,10 @@ class StringStream {
     }
 }
 
-test('sendprompt logs cost to stderr when pricing and usage are present', async (t) => {
+test('sendprompt logs cost to stderr when pricing and usage are present', async () => {
     // Mock global.fetch
     const originalFetch = global.fetch;
-    global.fetch = async (url, options) => {
+    global.fetch = async () => {
         return {
             ok: true,
             status: 200,

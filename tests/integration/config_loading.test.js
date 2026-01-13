@@ -5,7 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const { resolveConfig } = require('../../lib/pqutils.js');
 
-test('resolveConfig honors dot_config_loading option', async (t) => {
+test('resolveConfig honors dot_config_loading option', async () => {
   // Setup a temporary directory structure
   // /tmp/test-dir/
   //   .chathistory (contains user: 'config_user')
