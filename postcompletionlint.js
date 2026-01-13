@@ -35,22 +35,26 @@ function getFinalMessagePadding(message) {
   return '\n\n';
 }
 
-function postCompletionLint(fileContent, outputStream, baseDir) {
+function postCompletionLint(fileContent, baseDir) {
   const { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(fileContent);
   const fullConfig = pqutils.resolveConfig(runtimeConfig, baseDir);
   const user = fullConfig.user;
 
+  let output = '';
+
   if (messages) {
     const finalPadding = getFinalMessagePadding(messages.at(-1).content)
     if (finalPadding) {
-      outputStream.write(finalPadding);
+      output += finalPadding;
     }
   }
 
   const nextSpeaker = pqutils.guessNextSpeaker(messages, user);
   if (nextSpeaker) {
-    outputStream.write(`@${nextSpeaker}\n`);
+    output += `@${nextSpeaker}\n`;
   }
+
+  return output;
 }
 
 function main() {
@@ -65,7 +69,8 @@ function main() {
   const resolvedPath = path.resolve(filePath);
   const fileContent = fs.readFileSync(resolvedPath, 'utf8');
 
-  postCompletionLint(fileContent, process.stdout, __dirname);
+  const output = postCompletionLint(fileContent, __dirname);
+  process.stdout.write(output);
 }
 
 if (require.main === module) {
