@@ -9,7 +9,6 @@ const console = require('console');
 const path = require('path');
 const yaml = require('js-yaml');
 
-let logger = null;
 
 async function* getStream(response) {
   const decoder = new TextDecoder('utf-8');
@@ -67,8 +66,8 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
       }
 
       const json = JSON.parse(event.data);
-      if (logger && fullConfig.pricing && json.usage) {
-        logger.info(usageToCostString(fullConfig.pricing, json.usage));
+      if (fullConfig.pricing && json.usage && fullConfig.debug_log_path) {
+        // TODO: implement cost logging to file if needed, for now just skipping logger.info
       }
 
       let content = json.choices[0]?.delta?.content || '';
@@ -84,8 +83,8 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
     }
   } else {
     const json = await response.json();
-    if (logger && fullConfig.pricing && json.usage) {
-      logger.info(usageToCostString(fullConfig.pricing, json.usage));
+    if (fullConfig.pricing && json.usage && fullConfig.debug_log_path) {
+      // TODO: implement cost logging to file if needed, for now just skipping logger.info
     }
     const content = json.choices?.[0]?.message?.content || '';
     outputStream.write(content);
@@ -96,10 +95,6 @@ async function sendPrompt(prompt, cwd, outputStream = process.stdout, errorStrea
   const { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(prompt);
   const config = pqutils.resolveConfig(runtimeConfig, cwd, cliConfig);
 
-  if (config.debug_log_path) {
-    const basePath = path.join(config.debug_log_path, 'sendprompt');
-    logger = pqutils.getLogger(basePath);
-  }
 
   const promptMessages = messages.map(message => {
     return {
@@ -121,9 +116,13 @@ async function sendPrompt(prompt, cwd, outputStream = process.stdout, errorStrea
     ...config.api_call_props,
     messages: promptMessages,
   }
-  if (logger) {
-    logger.info(prompt);
-    logger.info(JSON.stringify(body, null, 2));
+  if (config.debug_log_path) {
+    const debugDir = path.resolve(config.debug_log_path);
+    if (!fs.existsSync(debugDir)) {
+      fs.mkdirSync(debugDir, { recursive: true });
+    }
+    const debugPath = path.join(debugDir, 'last_request_payload.json');
+    fs.writeFileSync(debugPath, JSON.stringify(body, null, 2));
   }
   const response = await fetch(config.api_url, {
     method: 'POST',
