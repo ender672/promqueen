@@ -5,31 +5,71 @@ const fs = require('fs');
 const os = require('os');
 const { resolveConfig } = require('../../lib/pqutils.js');
 
-test('resolveConfig honors dot_config_loading option', async () => {
-  // Setup a temporary directory structure
-  // /tmp/test-dir/
-  //   .chathistory (contains user: 'config_user')
+test('resolveConfig honors dot_config_loading option and only checks home dir', async (t) => {
+  // Mock os.homedir
+  const originalHomedir = os.homedir;
+
+  // Setup directory structure
+  // /tmp/fake-home/
+  //   .chathistory
+  // /tmp/other-path/
+  //   .chathistory (should be ignored)
   //   subdir/
 
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pq-test-'));
-  const configFile = path.join(tmpDir, '.chathistory');
-  const subDir = path.join(tmpDir, 'subdir');
+  const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'pq-home-'));
+  const otherPath = fs.mkdtempSync(path.join(os.tmpdir(), 'pq-other-'));
 
-  fs.mkdirSync(subDir);
-  fs.writeFileSync(configFile, 'api_url: https://api.llm.com/v1/chat/completions\n');
+  const homeConfig = path.join(fakeHome, '.chathistory');
+  const otherConfig = path.join(otherPath, '.chathistory');
+  const workingDir = path.join(otherPath, 'subdir');
 
-  // Test 1: Default behavior (should load config)
-  const configDefault = resolveConfig({}, subDir);
-  assert.strictEqual(configDefault.api_url, 'https://api.llm.com/v1/chat/completions', 'Should load config from parent directory by default');
+  fs.mkdirSync(workingDir);
 
-  // Test 2: Explicitly enabled (should load config)
-  const configEnabled = resolveConfig({ dot_config_loading: true }, subDir);
-  assert.strictEqual(configEnabled.api_url, 'https://api.llm.com/v1/chat/completions', 'Should load config when dot_config_loading is true');
+  // Define contents
+  fs.writeFileSync(homeConfig, 'api_url: https://home.llm.com\n');
+  fs.writeFileSync(otherConfig, 'api_url: https://other.llm.com\n');
 
-  // Test 3: Explicitly disabled (should NOT load config)
-  const configDisabled = resolveConfig({ dot_config_loading: false }, subDir);
+  // Override homedir
+  os.homedir = () => fakeHome;
+
+  // Cleanup hook
+  t.after(() => {
+    os.homedir = originalHomedir;
+    fs.rmSync(fakeHome, { recursive: true, force: true });
+    fs.rmSync(otherPath, { recursive: true, force: true });
+  });
+
+  // Test 1: Should load from home dir
+  const configHome = resolveConfig({}, workingDir);
+  assert.strictEqual(configHome.api_url, 'https://home.llm.com', 'Should load config from home directory');
+
+  // Test 2: Should NOT load from parent dir (otherPath) if it's not home
+  // To test this effectively, we temporarily un-mock home or mock it to empty dir?
+  // Actually, Test 1 proves it loads from home. 
+  // We need to prove it does NOT load from `otherPath` even though `otherConfig` exists.
+  // In `pqutils.js`, it ONLY checks home. So if we are in `workingDir`, and `root/otherPath/.chathistory` exists,
+  // previous logic would have found it (walking up). New logic should SKIP it and go straight to `fakeHome`.
+  // Since `configHome.api_url` is `https://home.llm.com`, this confirms it picked home OVER other (or ignored other).
+  // Wait, resolveConfig merges? No, it loads one file? 
+  // It finds ONE file. `findDotConfigFile` returns the first one found.
+  // OLD logic: walk up. Would find `otherPath/.chathistory` first (closer).
+  // NEW logic: check home. Should find `fakeHome/.chathistory`.
+
+  // So Test 1 asserting 'https://home.llm.com' proves that it either:
+  // a) Looked in home and found it.
+  // b) Looked in parent, didn't find (or found and was overwritten? No, it returns path).
+
+  // Let's explicitly test that if home has NO config, and parent DOES, it returns nothing/defaults.
+
+  // Test 3: Homedir has no config, parent has config. Should be empty.
+  fs.rmSync(homeConfig);
+  const configNoHome = resolveConfig({}, workingDir);
+  assert.strictEqual(configNoHome.api_url, undefined, 'Should NOT load config from parent directory if not in home');
+
+  // Test 4: Explicitly disabled
+  // Restore home config for this test
+  fs.writeFileSync(homeConfig, 'api_url: https://home.llm.com\n');
+  const configDisabled = resolveConfig({ dot_config_loading: false }, workingDir);
   assert.strictEqual(configDisabled.api_url, undefined, 'Should NOT load config when dot_config_loading is false');
 
-  // Cleanup
-  fs.rmSync(tmpDir, { recursive: true, force: true });
 });
