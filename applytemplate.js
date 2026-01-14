@@ -2,7 +2,6 @@
 
 const fs = require('fs');
 const process = require('process');
-const commander = require('commander');
 const nunjucks = require('nunjucks');
 const pqutils = require('./lib/pqutils.js');
 const yaml = require('js-yaml');
@@ -73,6 +72,7 @@ async function applyTemplate(promptText, options) {
 }
 
 async function main() {
+  const commander = require('commander');
   commander.program.description('Apply Jinja2 templates to a prompt file.');
   commander.program.argument('[prompt_path]', 'Path to the prompt file.');
   commander.program.option('-d, --data <pair>', 'Key/value pairs (key=value, key=@file)', cmdLineParseDataArg, {});

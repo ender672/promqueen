@@ -40,7 +40,6 @@
         "@types/mocha": "^10.0.1",
         "@types/node": "16.x",
         "esbuild": "^0.24.2",
-        "commander": "^14.0.2",
         "eventsource-parser": "^3.0.6",
         "js-yaml": "^4.1.1",
         "nunjucks": "^3.2.4"

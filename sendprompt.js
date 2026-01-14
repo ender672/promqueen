@@ -3,7 +3,6 @@
 const fs = require('fs');
 const process = require('process');
 const eventsourceParser = require('eventsource-parser');
-const commander = require('commander');
 const pqutils = require('./lib/pqutils.js');
 const console = require('console');
 const path = require('path');
@@ -135,6 +134,7 @@ async function sendPrompt(prompt, cwd, outputStream = process.stdout, errorStrea
 }
 
 async function main() {
+  const commander = require('commander');
   commander.program.description('Send a prompt to an LLM.');
   commander.program.argument('[prompt_path]', 'Path to the prompt file.');
   commander.program.option('-e, --expression <string>', 'Inline prompt string');
