@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const process = require('process');
-const nunjucks = require('nunjucks');
+
 const pqutils = require('./lib/pqutils.js');
 const yaml = require('js-yaml');
 

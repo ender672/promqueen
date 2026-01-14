@@ -5,7 +5,7 @@ const path = require('path');
 const yaml = require('js-yaml');
 const process = require('process');
 const pqutils = require('./lib/pqutils.js');
-const nunjucks = require('nunjucks');
+const { renderTemplate } = require('./lib/rendertemplate.js');
 
 function buildNameMap(promptRoles, userName) {
   const nameMap = Object.fromEntries(
@@ -100,7 +100,7 @@ async function rpToPrompt(prompt, basePath = process.cwd()) {
     }
 
     if (instructionTemplate) {
-      const instruction = nunjucks.renderString(instructionTemplate, templateVars);
+      const instruction = renderTemplate(instructionTemplate, templateVars);
       messages.push({ role: 'user', content: instruction });
     }
 

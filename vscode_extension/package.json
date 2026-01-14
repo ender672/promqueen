@@ -41,8 +41,7 @@
         "@types/vscode": "^1.75.0",
         "esbuild": "^0.24.2",
         "eventsource-parser": "^3.0.6",
-        "js-yaml": "^4.1.1",
-        "nunjucks": "^3.2.4"
+        "js-yaml": "^4.1.1"
     },
     "repository": {
         "type": "git",
