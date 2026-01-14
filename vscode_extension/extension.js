@@ -2,9 +2,9 @@ const vscode = require('vscode');
 const path = require('path');
 const os = require('os');
 const { precompletionLint } = require('../precompletionlint.js');
-const { applyTemplate } = require('../applytemplate.js');
+const { applyTemplate } = require('../lib/applytemplate-core.js');
 const { rpToPrompt } = require('../rptoprompt.js');
-const { sendPrompt } = require('../sendprompt.js');
+const { sendPrompt } = require('../lib/sendprompt-core.js');
 const { postCompletionLint } = require('../postcompletionlint.js');
 
 /**

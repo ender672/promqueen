@@ -36,9 +36,9 @@
         "build": "esbuild ./extension.js --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node"
     },
     "devDependencies": {
-        "@types/vscode": "^1.75.0",
         "@types/mocha": "^10.0.1",
         "@types/node": "16.x",
+        "@types/vscode": "^1.75.0",
         "esbuild": "^0.24.2",
         "eventsource-parser": "^3.0.6",
         "js-yaml": "^4.1.1",

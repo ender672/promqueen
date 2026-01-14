@@ -5,6 +5,8 @@ test/**
 .gitignore
 vsc-extension-quickstart.md
 webpack.config.js
+extension.js
+meta.json
 node_modules/**
 out/**
 .eslintrc.json
