@@ -45,5 +45,9 @@
         "js-yaml": "^4.1.1",
         "nunjucks": "^3.2.4"
     },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/placeholder/promqueen-extension.git"
+    },
     "dependencies": {}
 }
