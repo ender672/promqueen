@@ -54,6 +54,22 @@ const documentMock = {
 
 const editorMock = {
     document: documentMock,
+    edit: async (callback, options) => {
+        console.log(`[MockEditor] Edit called with options: ${JSON.stringify(options)}`);
+        const editBuilder = {
+            delete: (range) => {
+                console.log(`[MockEditor] Delete range: ${range.start.line}:${range.start.character} - ${range.end.line}:${range.end.character}`);
+                // Store for verification
+                vscodeMock._lastEdit = { type: 'delete', range };
+                console.log(`VERIFICATION: Delete edit FOUND. Range: ${range.start.character} to ${range.end.character}`);
+            },
+            insert: (position, text) => {
+                console.log(`[MockEditor] Insert at ${position.line}:${position.character}: ${text}`);
+            }
+        };
+        await callback(editBuilder);
+        return true;
+    }
 };
 
 const vscodeMock = {
@@ -114,6 +130,36 @@ async function runTest() {
     console.log("--- Test Case 1: Normal last message ---");
     if (vscodeMock.commands['promqueen.regenerateLastMessage']) {
         await vscodeMock.commands['promqueen.regenerateLastMessage']();
+
+        // Assertions for Case 1
+        // text: ...\n\n@assistant\nHi there!
+        // last delimiter index = text.lastIndexOf('\n\n@') -> points to before @assistant
+        // roleNewline -> \n after @assistant
+        // startIndex -> roleNewline + 1
+        // We expect deletion to START after "@assistant\n"
+        // Let's verify exactly.
+        const case1Text = documentText;
+        const lastDelim = case1Text.lastIndexOf('\n\n@');
+        const roleNewline = case1Text.indexOf('\n', lastDelim + 3); // +3 for \n\n@
+        const expectedStart = roleNewline + 1;
+        const expectedEnd = case1Text.length;
+
+        if (vscodeMock._lastEdit) {
+            const range = vscodeMock._lastEdit.range;
+            if (range.start.character !== expectedStart) {
+                console.error(`FAIL: Expected start ${expectedStart}, got ${range.start.character}`);
+                process.exit(1);
+            }
+            if (range.end.character !== expectedEnd) {
+                console.error(`FAIL: Expected end ${expectedEnd}, got ${range.end.character}`);
+                process.exit(1);
+            }
+            console.log("PASS: Deletion range matches content-only deletion.");
+        } else {
+            console.error("FAIL: No delete edit found.");
+            process.exit(1);
+        }
+
     } else {
         console.error("Command promqueen.regenerateLastMessage not registered!");
         process.exit(1);
@@ -132,11 +178,12 @@ Do something
 
 @assistant
 `;
-    // Last index of \n\n@ is before @assistant.
-    // Logic should see @assistant is empty.
-    // Should find previous \n\n@ ... wait, first message usually doesn't have \n\n@ if it follows YAML directly?
-    // In our mock text above: `\n\n@user` -> yes.
-    // So it should delete from `\n\n@user` onwards.
+    // Logic:
+    // lastIndex (@assistant) is empty.
+    // Backtracks to prevIndex (@user).
+    // Should preserve @user role line.
+    // START deletion after `@user\n`.
+    // END deletion at `text.length` (deletes user message AND empty assistant role).
 
     // override getText for second pass
     documentMock.getText = () => textCase2;
@@ -144,6 +191,33 @@ Do something
     vscodeMock._lastEdit = null;
 
     await vscodeMock.commands['promqueen.regenerateLastMessage']();
+
+    // Assertions for Case 2
+    const lastDelim2 = textCase2.lastIndexOf('\n\n@', textCase2.length - 15); // Skip the last one (@assistant)
+    // Actually our code uses lastIndexOf(delimiter, lastIndex - 1)
+    const lastIndex2 = textCase2.lastIndexOf('\n\n@');
+    const prevIndex2 = textCase2.lastIndexOf('\n\n@', lastIndex2 - 1);
+
+    // We expect start after @user\n
+    const roleNewline2 = textCase2.indexOf('\n', prevIndex2 + 3);
+    const expectedStart2 = roleNewline2 + 1;
+    const expectedEnd2 = textCase2.length;
+
+    if (vscodeMock._lastEdit) {
+        const range = vscodeMock._lastEdit.range;
+        if (range.start.character !== expectedStart2) {
+            console.error(`FAIL: Case 2 Expected start ${expectedStart2}, got ${range.start.character}`);
+            process.exit(1);
+        }
+        if (range.end.character !== expectedEnd2) {
+            console.error(`FAIL: Case 2 Expected end ${expectedEnd2}, got ${range.end.character}`);
+            process.exit(1);
+        }
+        console.log("PASS: Case 2 Deletion range matches content-only deletion (preserving previous role).");
+    } else {
+        console.error("FAIL: Case 2 No delete edit found.");
+        process.exit(1);
+    }
 }
 
 runTest();

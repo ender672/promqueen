@@ -11,7 +11,7 @@ const { postCompletionLint } = require('../postcompletionlint.js');
  * @param {vscode.ExtensionContext} context
  */
 function activate(context) {
-    let disposable = vscode.commands.registerCommand('promqueen.runPipeline', async function () {
+    let disposable = vscode.commands.registerCommand('promqueen.runPipeline', async function (options = {}) {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
             vscode.window.showErrorMessage('PromQueen: No active text editor.');
@@ -37,7 +37,7 @@ function activate(context) {
                         const position = lastLine.range.end;
                         editBuilder.insert(position, text);
                     }, {
-                        undoStopBefore: isFirstEdit,
+                        undoStopBefore: isFirstEdit && !options.disableUndoStopBefore,
                         undoStopAfter: false
                     });
                 } else {
@@ -175,39 +175,52 @@ function activate(context) {
 
             if (!hasContent) {
                 // The last message is empty (just a role). 
-                // We want to remove this AND the previous message.
+                // We want to regenerate the PREVIOUS message.
                 // So we need to find the delimiter BEFORE this one.
                 const prevIndex = text.lastIndexOf(delimiter, lastIndex - 1);
                 if (prevIndex !== -1) {
-                    startIndex = prevIndex;
+                    // We found the previous delimiter (e.g. \n\n@Assistant)
+                    // We want to KEEP "@Assistant\n" and delete the rest.
+                    // Find the end of the role line.
+                    const roleNewline = text.indexOf('\n', prevIndex + delimiter.length);
+                    if (roleNewline !== -1) {
+                        startIndex = roleNewline + 1;
+                    } else {
+                        // Weird case: "@Assistant" at EOF?
+                        startIndex = text.length;
+                    }
                 } else {
                     // No previous delimiter, check YAML
                     const yamlEnd = text.indexOf('\n---\n');
                     if (yamlEnd !== -1) {
+                        // User prompt started after YAML?
+                        // If we can't find a delimiter, maybe we just delete content after YAML?
+                        // But we want to preserve the role if possible. 
+                        // If there is no delimiter, there might be no role header "standard" here.
+                        // Let's fallback to original behavior: delete everything after YAML.
                         startIndex = yamlEnd + 5;
                     } else {
                         startIndex = 0;
                     }
                 }
             } else {
-                // Last message has content, so just delete it.
-                startIndex = lastIndex;
+                // Last message has content.
+                // We want to KEEP the role line.
+                const roleNewline = text.indexOf('\n', lastIndex + delimiter.length);
+                if (roleNewline !== -1) {
+                    startIndex = roleNewline + 1;
+                } else {
+                    startIndex = lastIndex; // Fallback
+                }
             }
         } else {
-            // No delimiter found, check if it's the first message (after YAML)
-            // YAML ends with `\n---\n` or starts the file.
-            // We can just look for the end of the YAML frontmatter.
+            // No delimiter found.
+            // Check for YAML
             const yamlEnd = text.indexOf('\n---\n');
             if (yamlEnd !== -1) {
-                // Start deleting after the YAML block
-                startIndex = yamlEnd + 5; // +5 for \n---\n
+                startIndex = yamlEnd + 5;
             } else {
-                // No YAML block? Just delete everything? 
-                // Or maybe we shouldn't touch it.
-                // Let's assume standard format and maybe just delete from beginning if no YAML?
-                // Safer to do nothing if format isn't recognized or maybe just user prompt starts at 0.
-                // If there's no previous message, maybe we just clear the document except for YAML?
-                startIndex = text.length; // Do nothing effectively
+                startIndex = text.length;
             }
         }
 
@@ -216,13 +229,16 @@ function activate(context) {
             const endPos = document.positionAt(text.length);
             const range = new vscode.Range(startPos, endPos);
 
-            const edit = new vscode.WorkspaceEdit();
-            edit.delete(document.uri, range);
-            await vscode.workspace.applyEdit(edit);
+            await editor.edit(editBuilder => {
+                editBuilder.delete(range);
+            }, {
+                undoStopBefore: true,
+                undoStopAfter: false
+            });
         }
 
         // Trigger the pipeline
-        await vscode.commands.executeCommand('promqueen.runPipeline');
+        await vscode.commands.executeCommand('promqueen.runPipeline', { disableUndoStopBefore: true });
     });
 
     context.subscriptions.push(docDisposable);
