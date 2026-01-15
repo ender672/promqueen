@@ -38,11 +38,12 @@ function activate(context) {
             const preOutput = precompletionLint(text, projectRoot);
 
             if (preOutput) {
-                await editor.edit(editBuilder => {
-                    const lastLine = document.lineAt(document.lineCount - 1);
-                    const position = lastLine.range.end;
-                    editBuilder.insert(position, preOutput);
-                });
+                const edit = new vscode.WorkspaceEdit();
+                const lastLine = document.lineAt(document.lineCount - 1);
+                const position = lastLine.range.end;
+                edit.insert(document.uri, position, preOutput);
+                await vscode.workspace.applyEdit(edit);
+
                 // Update local text after edit
                 text = document.getText();
             }
@@ -62,14 +63,11 @@ function activate(context) {
             let editQueue = Promise.resolve();
             const queueEdit = (chunk) => {
                 editQueue = editQueue.then(async () => {
-                    // Re-acquire document/editor states if needed, but activeTextEditor should suffice
-                    // Check if editor is still valid/visible? 
-                    // For simplicity, assume user stays on file.
-                    await editor.edit(editBuilder => {
-                        const lastLine = document.lineAt(document.lineCount - 1);
-                        const position = lastLine.range.end;
-                        editBuilder.insert(position, chunk);
-                    });
+                    const edit = new vscode.WorkspaceEdit();
+                    const lastLine = document.lineAt(document.lineCount - 1);
+                    const position = lastLine.range.end;
+                    edit.insert(document.uri, position, chunk);
+                    await vscode.workspace.applyEdit(edit);
                 });
             };
 
@@ -99,11 +97,11 @@ function activate(context) {
             const postOutput = postCompletionLint(finalText, projectRoot);
 
             if (postOutput) {
-                await editor.edit(editBuilder => {
-                    const lastLine = document.lineAt(document.lineCount - 1);
-                    const position = lastLine.range.end;
-                    editBuilder.insert(position, postOutput);
-                });
+                const edit = new vscode.WorkspaceEdit();
+                const lastLine = document.lineAt(document.lineCount - 1);
+                const position = lastLine.range.end;
+                edit.insert(document.uri, position, postOutput);
+                await vscode.workspace.applyEdit(edit);
             }
 
             vscode.window.showInformationMessage('PromQueen: Pipeline finished.');

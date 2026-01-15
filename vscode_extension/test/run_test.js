@@ -23,14 +23,29 @@ const editorMock = {
     }
 };
 
+class WorkspaceEditMock {
+    constructor() {
+        this.edits = [];
+    }
+    insert(uri, position, text) {
+        this.edits.push({ type: 'insert', uri, position, text });
+        console.log(`[WorkspaceEdit] Insert at ${JSON.stringify(position)}: ${JSON.stringify(text)}`);
+    }
+}
+
 const vscodeMock = {
+    WorkspaceEdit: WorkspaceEditMock,
     window: {
         activeTextEditor: editorMock,
         showErrorMessage: (msg) => console.error('[VSCode Error]', msg),
         showInformationMessage: (msg) => console.log('[VSCode Info]', msg)
     },
     workspace: {
-        getWorkspaceFolder: () => ({ uri: { fsPath: path.resolve(__dirname, '../../') } })
+        getWorkspaceFolder: () => ({ uri: { fsPath: path.resolve(__dirname, '../../') } }),
+        applyEdit: async (edit) => {
+            console.log(`[VSCode] Applying ${edit.edits.length} edits`);
+            return true;
+        }
     },
     commands: {
         registerCommand: (command, callback) => {
