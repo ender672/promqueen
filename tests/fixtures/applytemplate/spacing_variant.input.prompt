@@ -1,0 +1,10 @@
+---
+roleplay_user: human
+message_template_loader_path: tests/fixtures/applytemplate
+message_template_variables:
+  my_variable: "worked"
+---
+Test 1: {{my_variable}}
+Test 2: {{ my_variable }}
+Test 3: {%include 'spacing_include.txt'%}
+Test 4: {% include 'spacing_include.txt' %}
