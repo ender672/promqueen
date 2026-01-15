@@ -13,7 +13,8 @@ const documentMock = {
 
 const editorMock = {
     document: documentMock,
-    edit: async (callback) => {
+    edit: async (callback, options) => {
+        console.log(`[MockEditor] Edit called with options: ${JSON.stringify(options)}`);
         const editBuilder = {
             insert: (pos, text) => {
                 console.log(`[MockEditor] Insert: ${JSON.stringify(text)}`);
@@ -61,14 +62,17 @@ const vscodeMock = {
         }
     },
     commands: {
+        _commands: new Map(),
         registerCommand: (command, callback) => {
             console.log(`[VSCode] Registered command: ${command}`);
-            // Expose callback to run it
-            vscodeMock._commandCallback = callback;
+            vscodeMock.commands._commands.set(command, callback);
             return { dispose: () => { } };
         },
         executeCommand: async (command) => {
             console.log(`[VSCode] Executing command: ${command}`);
+            if (vscodeMock.commands._commands.has(command)) {
+                await vscodeMock.commands._commands.get(command)();
+            }
         }
     }
 };
@@ -104,16 +108,16 @@ async function runTest() {
     const extension = require('../dist/extension.js');
     extension.activate({ subscriptions: [] });
 
-    if (vscodeMock._commandCallback) {
-        console.log("Executing command callback...");
+    if (vscodeMock.commands._commands.has('promqueen.runPipeline')) {
+        console.log("Executing promqueen.runPipeline...");
         try {
-            await vscodeMock._commandCallback();
+            await vscodeMock.commands._commands.get('promqueen.runPipeline')();
             console.log("Command finished successfully.");
         } catch (e) {
             console.error("Command failed:", e);
         }
     } else {
-        console.error("Command not registered!");
+        console.error("promqueen.runPipeline command not registered!");
     }
 }
 

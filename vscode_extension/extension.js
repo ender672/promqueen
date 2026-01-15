@@ -27,23 +27,36 @@ function activate(context) {
         try {
             vscode.window.showInformationMessage('PromQueen: Starting pipeline...');
 
+            let isFirstEdit = true;
+            const applyEdit = async (text) => {
+                const activeEditor = vscode.window.activeTextEditor;
+                // Use editor.edit if possible for undo control
+                if (activeEditor && activeEditor.document === document) {
+                    await activeEditor.edit(editBuilder => {
+                        const lastLine = document.lineAt(document.lineCount - 1);
+                        const position = lastLine.range.end;
+                        editBuilder.insert(position, text);
+                    }, {
+                        undoStopBefore: isFirstEdit,
+                        undoStopAfter: false
+                    });
+                } else {
+                    // Fallback to WorkspaceEdit
+                    const edit = new vscode.WorkspaceEdit();
+                    const lastLine = document.lineAt(document.lineCount - 1);
+                    const position = lastLine.range.end;
+                    edit.insert(document.uri, position, text);
+                    await vscode.workspace.applyEdit(edit);
+                }
+                isFirstEdit = false;
+            };
+
             // 1. Precompletion Lint
             let text = document.getText();
-            // We pass __dirname as baseDir for config resolution in lint scripts, similar to how they are run.
-            // In run_pipeline.js (located in root), it passes __dirname (root).
-            // Here extension.js is in vscode_extension/.
-            // But we can pass the projectRoot as the baseDir if that's what's expected for config files.
-            // run_pipeline.js passes __dirname which is where run_pipeline.js is (root).
-            // So we should pass the root of the repo, which is likely projectRoot.
             const preOutput = precompletionLint(text, projectRoot);
 
             if (preOutput) {
-                const edit = new vscode.WorkspaceEdit();
-                const lastLine = document.lineAt(document.lineCount - 1);
-                const position = lastLine.range.end;
-                edit.insert(document.uri, position, preOutput);
-                await vscode.workspace.applyEdit(edit);
-
+                await applyEdit(preOutput);
                 // Update local text after edit
                 text = document.getText();
             }
@@ -63,11 +76,7 @@ function activate(context) {
             let editQueue = Promise.resolve();
             const queueEdit = (chunk) => {
                 editQueue = editQueue.then(async () => {
-                    const edit = new vscode.WorkspaceEdit();
-                    const lastLine = document.lineAt(document.lineCount - 1);
-                    const position = lastLine.range.end;
-                    edit.insert(document.uri, position, chunk);
-                    await vscode.workspace.applyEdit(edit);
+                    await applyEdit(chunk);
                 });
             };
 
@@ -97,11 +106,23 @@ function activate(context) {
             const postOutput = postCompletionLint(finalText, projectRoot);
 
             if (postOutput) {
-                const edit = new vscode.WorkspaceEdit();
-                const lastLine = document.lineAt(document.lineCount - 1);
-                const position = lastLine.range.end;
-                edit.insert(document.uri, position, postOutput);
-                await vscode.workspace.applyEdit(edit);
+                await applyEdit(postOutput);
+            }
+
+            // Seal the undo group if we did anything
+            if (!isFirstEdit) {
+                const activeEditor = vscode.window.activeTextEditor;
+                // Only verify active editor matches, otherwise we don't care about sealing as fallback was used
+                if (activeEditor && activeEditor.document === document) {
+                    await activeEditor.edit(editBuilder => {
+                        const lastLine = document.lineAt(document.lineCount - 1);
+                        const position = lastLine.range.end;
+                        editBuilder.insert(position, "");
+                    }, {
+                        undoStopBefore: false,
+                        undoStopAfter: true
+                    });
+                }
             }
 
             vscode.window.showInformationMessage('PromQueen: Pipeline finished.');
