@@ -7,7 +7,8 @@ const documentMock = {
     uri: { fsPath: path.resolve(__dirname, '../../test_file.txt') },
     getText: () => "---\nfoo: bar\n---\nUser: Hello\n",
     lineCount: 2,
-    lineAt: (index) => ({ range: { end: { line: index, character: 0 } } })
+    lineAt: (index) => ({ range: { end: { line: index, character: 0 } } }),
+    positionAt: (offset) => ({ line: 0, character: offset })
 };
 
 const editorMock = {
@@ -23,6 +24,13 @@ const editorMock = {
     }
 };
 
+class MockRange {
+    constructor(start, end) {
+        this.start = start;
+        this.end = end;
+    }
+}
+
 class WorkspaceEditMock {
     constructor() {
         this.edits = [];
@@ -31,10 +39,15 @@ class WorkspaceEditMock {
         this.edits.push({ type: 'insert', uri, position, text });
         console.log(`[WorkspaceEdit] Insert at ${JSON.stringify(position)}: ${JSON.stringify(text)}`);
     }
+    delete(uri, range) {
+        this.edits.push({ type: 'delete', uri, range });
+        console.log(`[WorkspaceEdit] Delete at range: ${JSON.stringify(range)}`);
+    }
 }
 
 const vscodeMock = {
     WorkspaceEdit: WorkspaceEditMock,
+    Range: MockRange,
     window: {
         activeTextEditor: editorMock,
         showErrorMessage: (msg) => console.error('[VSCode Error]', msg),
@@ -53,6 +66,9 @@ const vscodeMock = {
             // Expose callback to run it
             vscodeMock._commandCallback = callback;
             return { dispose: () => { } };
+        },
+        executeCommand: async (command) => {
+            console.log(`[VSCode] Executing command: ${command}`);
         }
     }
 };

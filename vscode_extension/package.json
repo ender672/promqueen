@@ -18,6 +18,10 @@
             {
                 "command": "promqueen.runPipeline",
                 "title": "PromQueen: Run Pipeline"
+            },
+            {
+                "command": "promqueen.regenerateLastMessage",
+                "title": "PromQueen: Regenerate Last Message"
             }
         ]
     },

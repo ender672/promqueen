@@ -111,8 +111,100 @@ function activate(context) {
             console.error(err);
         }
     });
-
     context.subscriptions.push(disposable);
+
+    let docDisposable = vscode.commands.registerCommand('promqueen.regenerateLastMessage', async function () {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showErrorMessage('PromQueen: No active text editor.');
+            return;
+        }
+
+        const document = editor.document;
+        const text = document.getText();
+
+        // Find the last message delimiter
+        // The delimiter is \n\n@
+        const delimiter = '\n\n@';
+
+        let lastIndex = text.lastIndexOf(delimiter);
+        let startIndex;
+
+        if (lastIndex !== -1) {
+            // Check if the last "message" is just an empty role (e.g. from postcompletionlint)
+            // extraction: \n\n@role\n...
+            const remainingText = text.substring(lastIndex + delimiter.length); // text after \n\n@
+
+            // It should look like "roleName\n" or "roleName" with optional whitespace
+            // Let's see if there is any content.
+            // We can split by newline. The first line is the role name.
+            const firstNewLine = remainingText.indexOf('\n');
+            let hasContent = false;
+
+            if (firstNewLine === -1) {
+                // No newline, so it's just "@roleName" (maybe space). 
+                // Effectively empty content.
+                hasContent = false;
+            } else {
+                const contentAfterRole = remainingText.substring(firstNewLine + 1);
+                if (contentAfterRole.trim().length > 0) {
+                    hasContent = true;
+                }
+            }
+
+            if (!hasContent) {
+                // The last message is empty (just a role). 
+                // We want to remove this AND the previous message.
+                // So we need to find the delimiter BEFORE this one.
+                const prevIndex = text.lastIndexOf(delimiter, lastIndex - 1);
+                if (prevIndex !== -1) {
+                    startIndex = prevIndex;
+                } else {
+                    // No previous delimiter, check YAML
+                    const yamlEnd = text.indexOf('\n---\n');
+                    if (yamlEnd !== -1) {
+                        startIndex = yamlEnd + 5;
+                    } else {
+                        startIndex = 0;
+                    }
+                }
+            } else {
+                // Last message has content, so just delete it.
+                startIndex = lastIndex;
+            }
+        } else {
+            // No delimiter found, check if it's the first message (after YAML)
+            // YAML ends with `\n---\n` or starts the file.
+            // We can just look for the end of the YAML frontmatter.
+            const yamlEnd = text.indexOf('\n---\n');
+            if (yamlEnd !== -1) {
+                // Start deleting after the YAML block
+                startIndex = yamlEnd + 5; // +5 for \n---\n
+            } else {
+                // No YAML block? Just delete everything? 
+                // Or maybe we shouldn't touch it.
+                // Let's assume standard format and maybe just delete from beginning if no YAML?
+                // Safer to do nothing if format isn't recognized or maybe just user prompt starts at 0.
+                // If there's no previous message, maybe we just clear the document except for YAML?
+                startIndex = text.length; // Do nothing effectively
+            }
+        }
+
+        if (startIndex < text.length) {
+            const startPos = document.positionAt(startIndex);
+            const endPos = document.positionAt(text.length);
+            const range = new vscode.Range(startPos, endPos);
+
+            const edit = new vscode.WorkspaceEdit();
+            edit.delete(document.uri, range);
+            await vscode.workspace.applyEdit(edit);
+        }
+
+        // Trigger the pipeline
+        await vscode.commands.executeCommand('promqueen.runPipeline');
+    });
+
+    context.subscriptions.push(docDisposable);
 }
 
 function deactivate() { }
