@@ -23,6 +23,26 @@
                 "command": "promqueen.regenerateLastMessage",
                 "title": "PromQueen: Regenerate Last Message"
             }
+        ],
+        "languages": [
+            {
+                "id": "promqueen-pqueen",
+                "aliases": [
+                    "PromQueen Prompt",
+                    "pqueen"
+                ],
+                "extensions": [
+                    ".pqueen"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "promqueen-pqueen",
+                "scopeName": "source.pqueen",
+                "path": "./syntaxes/pqueen.tmLanguage.json"
+            }
         ]
     },
     "scripts": {

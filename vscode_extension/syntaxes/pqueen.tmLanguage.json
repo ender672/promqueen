@@ -1,0 +1,51 @@
+{
+    "scopeName": "source.pqueen",
+    "patterns": [
+        {
+            "include": "#frontmatter"
+        },
+        {
+            "include": "#role"
+        },
+        {
+            "include": "#comment"
+        }
+    ],
+    "repository": {
+        "frontmatter": {
+            "begin": "^---$",
+            "end": "^---$",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.comment.pqueen"
+                }
+            },
+            "endCaptures": {
+                "0": {
+                    "name": "punctuation.definition.comment.pqueen"
+                }
+            },
+            "patterns": [
+                {
+                    "match": "^([\\w_]+):\\s*(.*)$",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.other.definition.pqueen"
+                        },
+                        "2": {
+                            "name": "string.unquoted.pqueen"
+                        }
+                    }
+                }
+            ]
+        },
+        "role": {
+            "match": "^(@.+)$",
+            "name": "entity.name.function.pqueen"
+        },
+        "comment": {
+            "match": "^#.*$",
+            "name": "comment.line.number-sign.pqueen"
+        }
+    }
+}
