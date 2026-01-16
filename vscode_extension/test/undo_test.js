@@ -1,6 +1,9 @@
 const Module = require('module');
 const path = require('path');
 
+const verbose = process.env.VERBOSE === 'true';
+const log = (...args) => { if (verbose) console.log(...args); };
+
 // --- Mock VS Code ---
 const documentMock = {
     uri: { fsPath: path.resolve(__dirname, '../../test_file.txt') },
@@ -21,13 +24,13 @@ const documentMock = {
 const editorMock = {
     document: documentMock,
     edit: async (callback, options) => {
-        console.log(`[MockEditor] Edit called with options: ${JSON.stringify(options)}`);
+        log(`[MockEditor] Edit called with options: ${JSON.stringify(options)}`);
         const editBuilder = {
             insert: (pos, text) => {
-                console.log(`[MockEditor] Insert: "${text}"`);
+                log(`[MockEditor] Insert: "${text}"`);
             },
             delete: (range) => {
-                console.log(`[MockEditor] Delete range`);
+                log(`[MockEditor] Delete range`);
             }
         };
         await callback(editBuilder);
@@ -40,11 +43,11 @@ const vscodeMock = {
     window: {
         activeTextEditor: editorMock,
         showErrorMessage: (msg) => console.error('[VSCode Error]', msg),
-        showInformationMessage: (msg) => console.log('[VSCode Info]', msg)
+        showInformationMessage: (msg) => log('[VSCode Info]', msg)
     },
     workspace: {
         getWorkspaceFolder: () => ({ uri: { fsPath: path.resolve(__dirname, '../../') } }),
-        applyEdit: async (edit) => { console.log('[VSCode] applyEdit called (fallback)'); return true; }
+        applyEdit: async (edit) => { log('[VSCode] applyEdit called (fallback)'); return true; }
     },
     commands: {
         _commands: new Map(),
@@ -53,14 +56,14 @@ const vscodeMock = {
             return { dispose: () => { } };
         },
         executeCommand: async (command, ...args) => {
-            console.log(`[VSCode] executeCommand: ${command} args: ${JSON.stringify(args)}`);
+            log(`[VSCode] executeCommand: ${command} args: ${JSON.stringify(args)}`);
             if (vscodeMock.commands._commands.has(command)) {
                 await vscodeMock.commands._commands.get(command)(...args);
             }
         }
     },
     WorkspaceEdit: class {
-        delete(uri, range) { console.log('[WorkspaceEdit] delete'); }
+        delete(uri, range) { log('[WorkspaceEdit] delete'); }
     }
 };
 

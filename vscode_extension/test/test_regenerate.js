@@ -2,6 +2,9 @@ const Module = require('module');
 const path = require('path');
 const assert = require('assert');
 
+const verbose = process.env.VERBOSE === 'true';
+const log = (...args) => { if (verbose) console.log(...args); };
+
 // --- Mock VS Code ---
 class MockWorkspaceEdit {
     constructor() {
@@ -9,11 +12,11 @@ class MockWorkspaceEdit {
     }
     delete(uri, range) {
         this.edits.push({ type: 'delete', uri, range });
-        console.log(`[WorkspaceEdit] Delete at range: Start(${range.start.line}, ${range.start.character}) - End(${range.end.line}, ${range.end.character})`);
+        log(`[WorkspaceEdit] Delete at range: Start(${range.start.line}, ${range.start.character}) - End(${range.end.line}, ${range.end.character})`);
     }
     insert(uri, position, text) {
         this.edits.push({ type: 'insert', uri, position, text });
-        // console.log(`[WorkspaceEdit] Insert at ${JSON.stringify(position)}: ${JSON.stringify(text)}`);
+        // log(`[WorkspaceEdit] Insert at ${JSON.stringify(position)}: ${JSON.stringify(text)}`);
     }
 }
 
@@ -55,16 +58,16 @@ const documentMock = {
 const editorMock = {
     document: documentMock,
     edit: async (callback, options) => {
-        console.log(`[MockEditor] Edit called with options: ${JSON.stringify(options)}`);
+        log(`[MockEditor] Edit called with options: ${JSON.stringify(options)}`);
         const editBuilder = {
             delete: (range) => {
-                console.log(`[MockEditor] Delete range: ${range.start.line}:${range.start.character} - ${range.end.line}:${range.end.character}`);
+                log(`[MockEditor] Delete range: ${range.start.line}:${range.start.character} - ${range.end.line}:${range.end.character}`);
                 // Store for verification
                 vscodeMock._lastEdit = { type: 'delete', range };
-                console.log(`VERIFICATION: Delete edit FOUND. Range: ${range.start.character} to ${range.end.character}`);
+                log(`VERIFICATION: Delete edit FOUND. Range: ${range.start.character} to ${range.end.character}`);
             },
             insert: (position, text) => {
-                console.log(`[MockEditor] Insert at ${position.line}:${position.character}: ${text}`);
+                log(`[MockEditor] Insert at ${position.line}:${position.character}: ${text}`);
             }
         };
         await callback(editBuilder);
@@ -78,31 +81,31 @@ const vscodeMock = {
     window: {
         activeTextEditor: editorMock,
         showErrorMessage: (msg) => console.error('[VSCode Error]', msg),
-        showInformationMessage: (msg) => console.log('[VSCode Info]', msg)
+        showInformationMessage: (msg) => log('[VSCode Info]', msg)
     },
     workspace: {
         getWorkspaceFolder: () => ({ uri: { fsPath: path.resolve(__dirname, '../../') } }),
         applyEdit: async (edit) => {
-            console.log(`[VSCode] Applying ${edit.edits.length} edits`);
+            log(`[VSCode] Applying ${edit.edits.length} edits`);
             // Check if we have the delete edit we expect
             const deleteEdit = edit.edits.find(e => e.type === 'delete');
             if (deleteEdit) {
                 vscodeMock._lastEdit = deleteEdit; // Store for verification outside
-                console.log(`VERIFICATION: Delete edit FOUND. Range: ${deleteEdit.range.start.character} to ${deleteEdit.range.end.character}`);
+                log(`VERIFICATION: Delete edit FOUND. Range: ${deleteEdit.range.start.character} to ${deleteEdit.range.end.character}`);
             }
             return true;
         }
     },
     commands: {
         registerCommand: (command, callback) => {
-            console.log(`[VSCode] Registered command: ${command}`);
+            log(`[VSCode] Registered command: ${command}`);
             vscodeMock.commands[command] = callback;
             return { dispose: () => { } };
         },
         executeCommand: async (command) => {
-            console.log(`[VSCode] Executing command: ${command}`);
+            log(`[VSCode] Executing command: ${command}`);
             if (command === 'promqueen.runPipeline') {
-                console.log("VERIFICATION: Pipeline triggered CORRECTLY.");
+                log("VERIFICATION: Pipeline triggered CORRECTLY.");
                 // We don't need to actually run the pipeline for this test, just verify it was called
             }
         }
