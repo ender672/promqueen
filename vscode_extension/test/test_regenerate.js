@@ -123,14 +123,14 @@ Module.prototype.require = function (request) {
 
 // --- Run Test ---
 async function runTest() {
-    console.log("=== Starting Regenerate Command Test ===");
+    log("=== Starting Regenerate Command Test ===");
 
     // Load extension
-    const extension = require('../extension.js');
+    const extension = require('../dist/extension.js');
     extension.activate({ subscriptions: [] });
 
     // Execute the command - Test Case 1: Normal last message
-    console.log("--- Test Case 1: Normal last message ---");
+    log("--- Test Case 1: Normal last message ---");
     if (vscodeMock.commands['promqueen.regenerateLastMessage']) {
         await vscodeMock.commands['promqueen.regenerateLastMessage']();
 
@@ -157,7 +157,7 @@ async function runTest() {
                 console.error(`FAIL: Expected end ${expectedEnd}, got ${range.end.character}`);
                 process.exit(1);
             }
-            console.log("PASS: Deletion range matches content-only deletion.");
+            log("PASS: Deletion range matches content-only deletion.");
         } else {
             console.error("FAIL: No delete edit found.");
             process.exit(1);
@@ -169,7 +169,7 @@ async function runTest() {
     }
 
     // --- Test Case 2: Trailing Empty Role ---
-    console.log("--- Test Case 2: Trailing Empty Role ---");
+    log("--- Test Case 2: Trailing Empty Role ---");
     // Setup new document text
     // ... @user\nMessage\n\n@assistant\n (empty role)
     const textCase2 = `---
@@ -216,7 +216,7 @@ Do something
             console.error(`FAIL: Case 2 Expected end ${expectedEnd2}, got ${range.end.character}`);
             process.exit(1);
         }
-        console.log("PASS: Case 2 Deletion range matches content-only deletion (preserving previous role).");
+        log("PASS: Case 2 Deletion range matches content-only deletion (preserving previous role).");
     } else {
         console.error("FAIL: Case 2 No delete edit found.");
         process.exit(1);

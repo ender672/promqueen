@@ -86,11 +86,11 @@ global.fetch = async (url) => ({
 });
 
 async function runTest() {
-    console.log("=== Starting Undo Group Test ===");
-    const extension = require('../extension.js');
+    log("=== Starting Undo Group Test ===");
+    const extension = require('../dist/extension.js');
     extension.activate({ subscriptions: [] });
 
-    console.log(">>> Running regenerateLastMessage...");
+    log(">>> Running regenerateLastMessage...");
     await vscodeMock.commands.executeCommand('promqueen.regenerateLastMessage');
 }
 

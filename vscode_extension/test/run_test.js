@@ -105,7 +105,7 @@ global.fetch = async (url, options) => {
 
 // --- Run Test ---
 async function runTest() {
-    console.log("=== Starting Test ===");
+    log("=== Starting Test ===");
 
     // Load extension
     const extension = require('../dist/extension.js');
@@ -115,7 +115,7 @@ async function runTest() {
         log("Executing promqueen.runPipeline...");
         try {
             await vscodeMock.commands._commands.get('promqueen.runPipeline')();
-            console.log("Command finished successfully.");
+            log("Command finished successfully.");
         } catch (e) {
             console.error("Command failed:", e);
         }
