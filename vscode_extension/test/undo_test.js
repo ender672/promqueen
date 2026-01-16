@@ -49,6 +49,12 @@ const vscodeMock = {
         getWorkspaceFolder: () => ({ uri: { fsPath: path.resolve(__dirname, '../../') } }),
         applyEdit: async (edit) => { log('[VSCode] applyEdit called (fallback)'); return true; }
     },
+    languages: {
+        registerHoverProvider: (selector, provider) => {
+            log(`[VSCode] Registered hover provider for ${selector}`);
+            return { dispose: () => { } };
+        }
+    },
     commands: {
         _commands: new Map(),
         registerCommand: (command, callback) => {

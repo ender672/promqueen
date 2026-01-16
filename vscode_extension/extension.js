@@ -6,6 +6,7 @@ const { applyTemplate } = require('../lib/applytemplate-core.js');
 const { rpToPrompt } = require('../rptoprompt.js');
 const { sendPrompt } = require('../lib/sendprompt-core.js');
 const { postCompletionLint } = require('../postcompletionlint.js');
+const { ImageHoverProvider } = require('./providers/ImageHoverProvider');
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -133,6 +134,10 @@ function activate(context) {
         }
     });
     context.subscriptions.push(disposable);
+
+    context.subscriptions.push(
+        vscode.languages.registerHoverProvider('promqueen-pqueen', new ImageHoverProvider())
+    );
 
     let docDisposable = vscode.commands.registerCommand('promqueen.regenerateLastMessage', async function () {
         const editor = vscode.window.activeTextEditor;

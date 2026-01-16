@@ -64,6 +64,12 @@ const vscodeMock = {
             return true;
         }
     },
+    languages: {
+        registerHoverProvider: (selector, provider) => {
+            log(`[VSCode] Registered hover provider for ${selector}`);
+            return { dispose: () => { } };
+        }
+    },
     commands: {
         _commands: new Map(),
         registerCommand: (command, callback) => {
