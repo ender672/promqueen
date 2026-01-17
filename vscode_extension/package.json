@@ -9,9 +9,7 @@
     "categories": [
         "Other"
     ],
-    "activationEvents": [
-        "onCommand:promqueen.runPipeline"
-    ],
+    "activationEvents": [],
     "main": "./dist/extension.js",
     "contributes": {
         "commands": [
@@ -61,7 +59,7 @@
         "check-types": "tsc --noEmit",
         "lint": "eslint src --ext ts",
         "test": "node ./dist/extension.js || node ./test/run_test.js",
-        "build": "esbuild ./extension.js --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node"
+        "build": "esbuild ./extension.js --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify --sourcemap"
     },
     "devDependencies": {
         "@types/mocha": "^10.0.1",
