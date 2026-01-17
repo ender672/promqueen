@@ -1,62 +1,10 @@
 const Module = require('module');
 const assert = require('assert');
 
-// --- Mock VS Code ---
-class MockCompletionItem {
-    constructor(label, kind) {
-        this.label = label;
-        this.kind = kind;
-    }
-}
+const { setupVscodeMock, MockDocument } = require('./mocks');
 
-const vscodeMock = {
-    CompletionItem: MockCompletionItem,
-    CompletionItemKind: {
-        Keyword: 13
-    }
-};
+const vscodeMock = setupVscodeMock();
 
-// Intercept require
-const originalRequire = Module.prototype.require;
-Module.prototype.require = function (request) {
-    if (request === 'vscode') return vscodeMock;
-    return originalRequire.apply(this, arguments);
-};
-
-// --- Helper: Mock Document ---
-class MockDocument {
-    constructor(text) {
-        this.text = text;
-    }
-
-    getText() {
-        return this.text;
-    }
-
-    lineAt(position) {
-        const lines = this.text.split('\n');
-        // Handle out of bounds gracefully or just assume valid for tests
-        const lineText = lines[position.line] || "";
-        return {
-            text: lineText,
-            range: {
-                start: { line: position.line, character: 0 },
-                end: { line: position.line, character: lineText.length }
-            }
-        };
-    }
-
-    offsetAt(position) {
-        const lines = this.text.split('\n');
-        let offset = 0;
-        for (let i = 0; i < position.line; i++) {
-            // Add line length + 1 for newline
-            offset += lines[i].length + 1;
-        }
-        offset += position.character;
-        return offset;
-    }
-}
 
 // --- Run Test ---
 const { CompletionProvider } = require('../providers/CompletionProvider');

@@ -3,83 +3,23 @@ const path = require('path');
 
 
 
-// --- Mock VS Code ---
-const documentMock = {
-    uri: { fsPath: path.resolve(__dirname, '../../test_file.txt') },
-    getText: () => "---\nfoo: bar\n---\nUser: Hello\n\n@Assistant\nOld response",
-    lineCount: 8,
-    lineAt: (index) => ({ range: { end: { line: index, character: 0 } } }),
-    positionAt: (offset) => ({ line: 0, character: offset }),
-    lastIndexOf: (search, position) => {
-        const text = "---\nfoo: bar\n---\nUser: Hello\n\n@Assistant\nOld response";
-        return text.lastIndexOf(search, position);
-    },
-    indexOf: (search, position) => {
-        const text = "---\nfoo: bar\n---\nUser: Hello\n\n@Assistant\nOld response";
-        return text.indexOf(search, position);
-    }
-};
+const { setupVscodeMock, MockDocument } = require('./mocks');
 
-const editorMock = {
-    document: documentMock,
+const vscodeMock = setupVscodeMock();
+
+// Helper to set up active document
+vscodeMock.window.activeTextEditor = {
+    document: new MockDocument("---\nfoo: bar\n---\nUser: Hello\n\n@Assistant\nOld response"),
     edit: async (callback, options) => {
-
         const editBuilder = {
-            insert: (pos, text) => {
-
-            },
-            delete: (range) => {
-
-            }
+            insert: (pos, text) => { },
+            delete: (range) => { }
         };
         await callback(editBuilder);
         return true;
     }
 };
 
-const vscodeMock = {
-    Range: class { constructor(s, e) { this.start = s; this.end = e; } },
-    window: {
-        activeTextEditor: editorMock,
-        showErrorMessage: (msg) => console.error('[VSCode Error]', msg),
-        showInformationMessage: (msg) => { }
-    },
-    workspace: {
-        getWorkspaceFolder: () => ({ uri: { fsPath: path.resolve(__dirname, '../../') } }),
-        applyEdit: async (edit) => { return true; }
-    },
-    languages: {
-        registerHoverProvider: (selector, provider) => {
-
-            return { dispose: () => { } };
-        },
-        registerCompletionItemProvider: (selector, provider) => {
-            return { dispose: () => { } };
-        }
-    },
-    commands: {
-        _commands: new Map(),
-        registerCommand: (command, callback) => {
-            vscodeMock.commands._commands.set(command, callback);
-            return { dispose: () => { } };
-        },
-        executeCommand: async (command, ...args) => {
-
-            if (vscodeMock.commands._commands.has(command)) {
-                await vscodeMock.commands._commands.get(command)(...args);
-            }
-        }
-    },
-    WorkspaceEdit: class {
-        delete(uri, range) { }
-    }
-};
-
-const originalRequire = Module.prototype.require;
-Module.prototype.require = function (request) {
-    if (request === 'vscode') return vscodeMock;
-    return originalRequire.apply(this, arguments);
-};
 
 // --- Mock Fetch ---
 global.fetch = async (url) => ({

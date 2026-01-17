@@ -4,27 +4,7 @@ const assert = require('assert');
 
 
 
-// --- Mock VS Code ---
-class MockWorkspaceEdit {
-    constructor() {
-        this.edits = [];
-    }
-    delete(uri, range) {
-        this.edits.push({ type: 'delete', uri, range });
-
-    }
-    insert(uri, position, text) {
-        this.edits.push({ type: 'insert', uri, position, text });
-        // log(`[WorkspaceEdit] Insert at ${JSON.stringify(position)}: ${JSON.stringify(text)}`);
-    }
-}
-
-class MockRange {
-    constructor(start, end) {
-        this.start = start;
-        this.end = end;
-    }
-}
+const { setupVscodeMock, MockDocument } = require('./mocks');
 
 const documentText = `---
 roleplay_user: user
@@ -36,98 +16,37 @@ Hello
 @assistant
 Hi there!`;
 
-const documentMock = {
-    uri: { fsPath: path.resolve(__dirname, '../../test_file.txt') },
-    getText: () => documentText,
-    lineCount: 8,
-    lineAt: (index) => ({ range: { end: { line: index, character: 0 } } }),
-    positionAt: (offset) => {
-        // Simple mock positionAt for our specific text
-        // Text length is roughly:
-        // --- (3) + \n (1) + roleplay_user: user (19) + \n (1) + --- (3) + \n (1) = 28
-        // \n (1) + @user (5) + \n (1) + Hello (5) = 12
-        // \n\n (2) + @assistant (10) + \n (1) + Hi there! (9) = 22
-        // Total ~ 62 chars
+const vscodeMock = setupVscodeMock();
 
-        // We really only care about it returning *something* consistent
-        return { line: 0, character: offset };
-    }
-};
+// Configure specific mock behaviors for this test
+vscodeMock._lastEdit = null;
 
-const editorMock = {
-    document: documentMock,
+// Custom Editor Mock to track edits
+vscodeMock.window.activeTextEditor = {
+    document: new MockDocument(documentText),
     edit: async (callback, options) => {
-
         const editBuilder = {
             delete: (range) => {
-
-                // Store for verification
                 vscodeMock._lastEdit = { type: 'delete', range };
-
             },
-            insert: (position, text) => {
-
-            }
+            insert: (position, text) => { }
         };
         await callback(editBuilder);
         return true;
     }
 };
 
-const vscodeMock = {
-    WorkspaceEdit: MockWorkspaceEdit,
-    Range: MockRange,
-    window: {
-        activeTextEditor: editorMock,
-        showErrorMessage: (msg) => console.error('[VSCode Error]', msg),
-        showInformationMessage: (msg) => { }
-    },
-    workspace: {
-        getWorkspaceFolder: () => ({ uri: { fsPath: path.resolve(__dirname, '../../') } }),
-        applyEdit: async (edit) => {
-
-            // Check if we have the delete edit we expect
-            const deleteEdit = edit.edits.find(e => e.type === 'delete');
-            if (deleteEdit) {
-                vscodeMock._lastEdit = deleteEdit; // Store for verification outside
-
-            }
-            return true;
-        }
-    },
-    languages: {
-        registerHoverProvider: (selector, provider) => {
-
-            return { dispose: () => { } };
-        },
-        registerCompletionItemProvider: (selector, provider) => {
-            return { dispose: () => { } };
-        }
-    },
-    commands: {
-        registerCommand: (command, callback) => {
-
-            vscodeMock.commands[command] = callback;
-            return { dispose: () => { } };
-        },
-        executeCommand: async (command) => {
-
-            if (command === 'promqueen.runPipeline') {
-
-                // We don't need to actually run the pipeline for this test, just verify it was called
-            }
-        }
+// Custom Workspace behavior
+vscodeMock.workspace.applyEdit = async (edit) => {
+    const deleteEdit = edit.edits.find(e => e.type === 'delete');
+    if (deleteEdit) {
+        vscodeMock._lastEdit = deleteEdit;
     }
+    return true;
 };
 
-// Intercept require to serve mock vscode
-const originalRequire = Module.prototype.require;
-Module.prototype.require = function (request) {
-    if (request === 'vscode') {
-        return vscodeMock;
-    }
-    return originalRequire.apply(this, arguments);
-};
+// No need to intercept require here as setupVscodeMock does it
+
 
 // --- Run Test ---
 async function runTest() {
@@ -137,10 +56,15 @@ async function runTest() {
     const extension = require('../dist/extension.js');
     extension.activate({ subscriptions: [] });
 
+    // Mock runPipeline to prevent actual execution and network requests
+    vscodeMock.commands._commands.set('promqueen.runPipeline', async () => { });
+
+    const documentMock = vscodeMock.window.activeTextEditor.document; // Reference for later use
+
     // Execute the command - Test Case 1: Normal last message
 
-    if (vscodeMock.commands['promqueen.regenerateLastMessage']) {
-        await vscodeMock.commands['promqueen.regenerateLastMessage']();
+    if (vscodeMock.commands._commands.has('promqueen.regenerateLastMessage')) {
+        await vscodeMock.commands.executeCommand('promqueen.regenerateLastMessage');
 
         // Assertions for Case 1
         // text: ...\n\n@assistant\nHi there!
@@ -157,12 +81,15 @@ async function runTest() {
 
         if (vscodeMock._lastEdit) {
             const range = vscodeMock._lastEdit.range;
-            if (range.start.character !== expectedStart) {
-                console.error(`FAIL: Expected start ${expectedStart}, got ${range.start.character}`);
+            const startOffset = documentMock.offsetAt(range.start);
+            const endOffset = documentMock.offsetAt(range.end);
+
+            if (startOffset !== expectedStart) {
+                console.error(`FAIL: Expected start ${expectedStart}, got ${startOffset} (char: ${range.start.character})`);
                 process.exit(1);
             }
-            if (range.end.character !== expectedEnd) {
-                console.error(`FAIL: Expected end ${expectedEnd}, got ${range.end.character}`);
+            if (endOffset !== expectedEnd) {
+                console.error(`FAIL: Expected end ${expectedEnd}, got ${endOffset} (char: ${range.end.character})`);
                 process.exit(1);
             }
 
@@ -196,12 +123,20 @@ Do something
     // START deletion after `@user\n`.
     // END deletion at `text.length` (deletes user message AND empty assistant role).
 
-    // override getText for second pass
-    documentMock.getText = () => textCase2;
+    // override getText for second pass (this updates the document in place by creating a new one or updating text)
+    // Wait, documentMock is a reference to the OLD document object if we did const documentMock = ...
+    // But vscodeMock.window.activeTextEditor.document needs to be updated or documentMock updated.
+    // Shared mock MockDocument stores text in this.text.
+    // So we can just update this.text? No, no setter.
+    // We should create a new document.
+    vscodeMock.window.activeTextEditor.document = new MockDocument(textCase2);
+    // update our reference
+    const documentMock2 = vscodeMock.window.activeTextEditor.document;
+
     // Reset edits
     vscodeMock._lastEdit = null;
 
-    await vscodeMock.commands['promqueen.regenerateLastMessage']();
+    await vscodeMock.commands.executeCommand('promqueen.regenerateLastMessage');
 
     // Assertions for Case 2
     const lastDelim2 = textCase2.lastIndexOf('\n\n@', textCase2.length - 15); // Skip the last one (@assistant)
@@ -216,12 +151,15 @@ Do something
 
     if (vscodeMock._lastEdit) {
         const range = vscodeMock._lastEdit.range;
-        if (range.start.character !== expectedStart2) {
-            console.error(`FAIL: Case 2 Expected start ${expectedStart2}, got ${range.start.character}`);
+        const startOffset2 = documentMock2.offsetAt(range.start);
+        const endOffset2 = documentMock2.offsetAt(range.end);
+
+        if (startOffset2 !== expectedStart2) {
+            console.error(`FAIL: Case 2 Expected start ${expectedStart2}, got ${startOffset2}`);
             process.exit(1);
         }
-        if (range.end.character !== expectedEnd2) {
-            console.error(`FAIL: Case 2 Expected end ${expectedEnd2}, got ${range.end.character}`);
+        if (endOffset2 !== expectedEnd2) {
+            console.error(`FAIL: Case 2 Expected end ${expectedEnd2}, got ${endOffset2}`);
             process.exit(1);
         }
 

@@ -4,97 +4,23 @@ const fs = require('fs');
 
 
 
-// --- Mock VS Code ---
-const documentMock = {
-    uri: { fsPath: path.resolve(__dirname, '../../test_file.txt') },
-    getText: () => "---\nfoo: bar\n---\nUser: Hello\n",
-    lineCount: 2,
-    lineAt: (index) => ({ range: { end: { line: index, character: 0 } } }),
-    positionAt: (offset) => ({ line: 0, character: offset })
-};
+const { setupVscodeMock, MockDocument } = require('./mocks');
 
-const editorMock = {
-    document: documentMock,
-    edit: async (callback, options) => {
+const vscodeMock = setupVscodeMock();
 
+// Helper to set up active document
+vscodeMock.window.activeTextEditor = {
+    document: new MockDocument("---\nfoo: bar\n---\nUser: Hello\n"),
+    edit: async (callback) => {
         const editBuilder = {
-            insert: (pos, text) => {
-
-            }
+            insert: (pos, text) => { },
+            delete: (range) => { }
         };
         await callback(editBuilder);
         return true;
     }
 };
 
-class MockRange {
-    constructor(start, end) {
-        this.start = start;
-        this.end = end;
-    }
-}
-
-class WorkspaceEditMock {
-    constructor() {
-        this.edits = [];
-    }
-    insert(uri, position, text) {
-        this.edits.push({ type: 'insert', uri, position, text });
-
-    }
-    delete(uri, range) {
-        this.edits.push({ type: 'delete', uri, range });
-
-    }
-}
-
-const vscodeMock = {
-    WorkspaceEdit: WorkspaceEditMock,
-    Range: MockRange,
-    window: {
-        activeTextEditor: editorMock,
-        showErrorMessage: (msg) => console.error('[VSCode Error]', msg),
-        showInformationMessage: (msg) => { }
-    },
-    workspace: {
-        getWorkspaceFolder: () => ({ uri: { fsPath: path.resolve(__dirname, '../../') } }),
-        applyEdit: async (edit) => {
-
-            return true;
-        }
-    },
-    languages: {
-        registerHoverProvider: (selector, provider) => {
-            return { dispose: () => { } };
-        },
-        registerCompletionItemProvider: (selector, provider, ...triggerCharacters) => {
-            return { dispose: () => { } };
-        }
-    },
-    commands: {
-        _commands: new Map(),
-        registerCommand: (command, callback) => {
-
-            vscodeMock.commands._commands.set(command, callback);
-            return { dispose: () => { } };
-        },
-        executeCommand: async (command) => {
-
-            if (vscodeMock.commands._commands.has(command)) {
-                await vscodeMock.commands._commands.get(command)();
-            }
-        }
-    }
-};
-
-// Intercept require to serve mock vscode
-const originalRequire = Module.prototype.require;
-Module.prototype.require = function (request) {
-    if (request === 'vscode') {
-        return vscodeMock;
-    }
-    return originalRequire.apply(this, arguments);
-};
 
 // --- Mock Fetch for SendPrompt ---
 global.fetch = async (url, options) => {
@@ -121,7 +47,7 @@ async function runTest() {
     if (vscodeMock.commands._commands.has('promqueen.runPipeline')) {
 
         try {
-            await vscodeMock.commands._commands.get('promqueen.runPipeline')();
+            await vscodeMock.commands.executeCommand('promqueen.runPipeline');
 
         } catch (e) {
             console.error("Command failed:", e);

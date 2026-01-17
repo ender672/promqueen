@@ -5,19 +5,14 @@ const assert = require('assert');
 
 
 
-// --- Mock VS Code ---
-const documentMock = {
-    uri: { fsPath: path.resolve(__dirname, '../../test_file.txt') },
-    getText: () => "---\nfoo: bar\n---\nUser: Hello\n",
-    lineCount: 2,
-    lineAt: (index) => ({ range: { end: { line: index, character: 0 } } }),
-    positionAt: (offset) => ({ line: 0, character: offset })
-};
+const { setupVscodeMock, MockDocument } = require('./mocks');
 
-const editorMock = {
-    document: documentMock,
-    edit: async (callback, options) => {
+const vscodeMock = setupVscodeMock();
 
+// Helper to set up active document
+vscodeMock.window.activeTextEditor = {
+    document: new MockDocument("---\nfoo: bar\n---\nUser: Hello\n"),
+    edit: async (callback) => {
         const editBuilder = {
             insert: (pos, text) => { }
         };
@@ -26,51 +21,6 @@ const editorMock = {
     }
 };
 
-const vscodeMock = {
-    window: {
-        activeTextEditor: editorMock,
-        showErrorMessage: (msg) => console.error('[VSCode Error]', msg),
-        showInformationMessage: (msg) => { },
-        showTextDocument: async (doc, options) => {
-
-            return true;
-        }
-    },
-    workspace: {
-        getWorkspaceFolder: () => ({ uri: { fsPath: path.resolve(__dirname, '../../') } }),
-        openTextDocument: async (options) => {
-
-            return options; // return options as the doc object for verification
-        }
-    },
-    commands: {
-        _commands: new Map(),
-        registerCommand: (command, callback) => {
-
-            vscodeMock.commands._commands.set(command, callback);
-            return { dispose: () => { } };
-        },
-        executeCommand: async (command) => {
-
-            if (vscodeMock.commands._commands.has(command)) {
-                await vscodeMock.commands._commands.get(command)();
-            }
-        }
-    },
-    languages: {
-        registerHoverProvider: () => ({ dispose: () => { } }),
-        registerCompletionItemProvider: () => ({ dispose: () => { } })
-    }
-};
-
-// Intercept require to serve mock vscode
-const originalRequire = Module.prototype.require;
-Module.prototype.require = function (request) {
-    if (request === 'vscode') {
-        return vscodeMock;
-    }
-    return originalRequire.apply(this, arguments);
-};
 
 // --- Mock Fetch (for rptoprompt dependencies if any) ---
 // rptoprompt might use fetch but usually it's mostly logic.
@@ -89,7 +39,7 @@ async function runTest() {
     if (vscodeMock.commands._commands.has('promqueen.previewPrompt')) {
 
         try {
-            await vscodeMock.commands._commands.get('promqueen.previewPrompt')();
+            await vscodeMock.commands.executeCommand('promqueen.previewPrompt');
 
         } catch (e) {
             console.error("Command failed:", e);
