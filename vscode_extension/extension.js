@@ -141,7 +141,7 @@ function activate(context) {
     );
 
     context.subscriptions.push(
-        vscode.languages.registerCompletionItemProvider('promqueen-pqueen', new CompletionProvider(), '@')
+        vscode.languages.registerCompletionItemProvider('promqueen-pqueen', new CompletionProvider(), '@', '[')
     );
 
     let previewDisposable = vscode.commands.registerCommand('promqueen.previewPrompt', async function () {

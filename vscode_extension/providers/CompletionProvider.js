@@ -1,4 +1,6 @@
 const vscode = require('vscode');
+const path = require('path');
+const pqutils = require('../../lib/pqutils.js');
 
 class CompletionProvider {
     /**
@@ -8,21 +10,81 @@ class CompletionProvider {
      * @param {vscode.CompletionContext} context 
      */
     provideCompletionItems(document, position, token, context) {
-        // limit to lines that start with @
-        // The trigger character is @, but the user might have continued typing.
-        // We check if the line up to cursor starts with @
         const linePrefix = document.lineAt(position).text.substr(0, position.character);
-        // trimStart to allow indentation?
-        // User request: "starts a line with @"
-        // Usually implies ^@ or ^\s*@.
-        // But the previous conversation and file format implies ^@ (no indentation for roles).
-        if (!linePrefix.startsWith('@')) {
-            return undefined;
+
+        // Decorator suggestions: Check if we are inside a decorator block
+        // Matches: @RoleName [PartialDecorator
+        if (/^@.+ \[[^\]]*$/.test(linePrefix)) {
+            return this.provideDecoratorSuggestions(document);
         }
 
+        // Role suggestions: Check if line starts with @
+        if (linePrefix.startsWith('@')) {
+            return this.provideRoleSuggestions(document, position);
+        }
+
+        return undefined;
+    }
+
+    provideDecoratorSuggestions(document) {
+        const text = document.getText();
+        let config = {};
+
+        try {
+            const parsed = pqutils.parseConfigAndMessages(text);
+
+            let projectRoot;
+            const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+            if (workspaceFolder) {
+                projectRoot = workspaceFolder.uri.fsPath;
+            } else {
+                projectRoot = path.dirname(document.uri.fsPath);
+            }
+
+            config = pqutils.resolveConfig(parsed.config, projectRoot);
+        } catch (e) {
+            // If config parsing fails, we can't suggest decorators defined in config
+            return [];
+        }
+
+        // Get decorators from config
+        const decoratorsMap = config.roleplay_prompt_decorators || {};
+        const availableDecorators = Object.keys(decoratorsMap);
+
+        if (availableDecorators.length === 0) {
+            return [];
+        }
+
+        // Find last usage of each decorator
+        const lastUsedMap = new Map();
+        // Regex to match [decoratorname]
+        const decoratorUsageRegex = /\[([\w\s-]+)\]/g;
+
+        let match;
+        while ((match = decoratorUsageRegex.exec(text)) !== null) {
+            const decorator = match[1];
+            // Update to latest index (works because we scan from start to end)
+            lastUsedMap.set(decorator, match.index);
+        }
+
+        // Sort decorators: Last used (highest index) first. Never used last.
+        availableDecorators.sort((a, b) => {
+            const indexA = lastUsedMap.has(a) ? lastUsedMap.get(a) : -1;
+            const indexB = lastUsedMap.has(b) ? lastUsedMap.get(b) : -1;
+            return indexB - indexA;
+        });
+
+        return availableDecorators.map((decorator, index) => {
+            const item = new vscode.CompletionItem(decorator, vscode.CompletionItemKind.Value);
+            item.detail = decoratorsMap[decorator]; // Show the expansion as detail
+            item.sortText = index.toString().padStart(5, '0');
+            return item;
+        });
+    }
+
+    provideRoleSuggestions(document, position) {
         const text = document.getText();
         // Regex to find all roles in the document
-        // Assumes role definition is "^@name"
         const roleRegex = /^@(.+)$/gm;
 
         const allMatches = [];
@@ -72,20 +134,10 @@ class CompletionProvider {
 
         // Map to CompletionItems
         return suggestions.map((role, index) => {
-            // We provide the name without '@' because the user has already typed '@' 
-            // and we want to complete the name part.
-            // VS Code typically handles the replacement range.
-            // However, since @ is a trigger char, we must ensure we don't duplicate it.
-            // If the user typed "@", and we suggest "system", inserting "system" results in "@system".
-
             const item = new vscode.CompletionItem(role, vscode.CompletionItemKind.Keyword);
-
             // "000", "001", etc. to enforce order
             item.sortText = index.toString().padStart(5, '0');
-
-            // Optional: add a detail text
             item.detail = "Role Name (History)";
-
             return item;
         });
     }

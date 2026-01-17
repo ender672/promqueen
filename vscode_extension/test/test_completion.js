@@ -85,6 +85,44 @@ User prompt 2
     const items2 = provider.provideCompletionItems(docNoTrigger, posNoTrigger, null, null);
 
     assert.strictEqual(items2, undefined, "Should not provide items if line doesn't start with @");
+
+    // Test Case 3: Decorator Suggestions
+    const textwithDecorators = `---
+roleplay_prompt_decorators:
+  happy: (shouting happily)
+  sad: (crying)
+  neutral: (plain)
+---
+
+@char [happy]
+Message 1
+
+@char [sad]
+Message 2
+
+@char [`;
+
+    // Last used order: sad (most recent), happy (before that). neutral (never).
+    // Expected suggestion order: sad, happy, neutral.
+
+    const docDec = new MockDocument(textwithDecorators);
+    // Cursor at the end of the last line: "@char ["
+    const linesDec = textwithDecorators.split('\n');
+    const lastLineDecIdx = linesDec.length - 1;
+    const posDec = { line: lastLineDecIdx, character: 7 }; // "@char [" is 7 chars
+
+    const items3 = provider.provideCompletionItems(docDec, posDec, null, null);
+
+    assert(items3, "Should return items for decorators");
+    assert.strictEqual(items3.length, 3, "Should suggest all 3 decorators");
+
+    // Check order
+    assert.strictEqual(items3[0].label, 'sad', "Most recent 'sad' should be first");
+    assert.strictEqual(items3[1].label, 'happy', "Less recent 'happy' should be second");
+    assert.strictEqual(items3[2].label, 'neutral', "Unused 'neutral' should be last");
+
+    // Check detail
+    assert.strictEqual(items3[0].detail, '(crying)', "Should show expansion in detail");
 }
 
 try {
