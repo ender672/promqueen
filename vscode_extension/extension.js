@@ -139,6 +139,50 @@ function activate(context) {
         vscode.languages.registerHoverProvider('promqueen-pqueen', new ImageHoverProvider())
     );
 
+    let previewDisposable = vscode.commands.registerCommand('promqueen.previewPrompt', async function () {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showErrorMessage('PromQueen: No active text editor.');
+            return;
+        }
+
+        const document = editor.document;
+        const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+        const projectRoot = workspaceFolder ? workspaceFolder.uri.fsPath : path.dirname(document.uri.fsPath);
+        const templateLoaderPath = path.dirname(document.uri.fsPath);
+
+        try {
+            // 1. Precompletion Lint
+            let text = document.getText();
+            const preOutput = precompletionLint(text, projectRoot);
+
+            if (preOutput) {
+                text += preOutput;
+            }
+
+            // 2. Apply Template
+            const templated = await applyTemplate(text, {
+                messageTemplateLoaderPath: templateLoaderPath,
+                data: {}
+            }, null);
+
+            // 3. Rp To Prompt
+            const prompt = await rpToPrompt(templated, projectRoot);
+
+            const doc = await vscode.workspace.openTextDocument({
+                content: prompt,
+                language: 'markdown'
+            });
+            await vscode.window.showTextDocument(doc, { preview: false });
+
+        } catch (err) {
+            vscode.window.showErrorMessage(`PromQueen Error: ${err.message}`);
+            console.error(err);
+        }
+    });
+
+    context.subscriptions.push(previewDisposable);
+
     let docDisposable = vscode.commands.registerCommand('promqueen.regenerateLastMessage', async function () {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {

@@ -20,6 +20,10 @@
                 "title": "PromQueen: Run Pipeline"
             },
             {
+                "command": "promqueen.previewPrompt",
+                "title": "PromQueen: Preview Prompt"
+            },
+            {
                 "command": "promqueen.regenerateLastMessage",
                 "title": "PromQueen: Regenerate Last Message"
             }
