@@ -1,0 +1,11 @@
+---
+profile: deepseek-v3-beta
+roleplay_prompt_decorators:
+  Angry: '[Sound angry.]'
+  Nice: '[Be nice.]'
+dot_config_loading: false
+---
+@user
+What is the last digit of Pi?
+
+@assistant [Angry]

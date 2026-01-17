@@ -83,6 +83,18 @@ async function rpToPrompt(prompt, basePath = process.cwd()) {
 
   addRoles(messages, user);
 
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+    // If we have decorators but no name, it means we have a standard role (like assistant)
+    // with decorators. We need to inject these as instructions.
+    if (msg.decorators && msg.decorators.length > 0 && !msg.name) {
+      const instruction = msg.decorators.join('\n');
+      messages.splice(i, 0, { role: 'user', content: instruction });
+      delete msg.decorators;
+      i++; // Skip the message we just inserted (since we spliced at current index)
+    }
+  }
+
   // if last message is empty, the user is indicating which character to impersonate
   // if last message ends with a space, it's also an impersonation request but with a prefix
   let userRequestedCharacter = null;
