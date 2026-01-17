@@ -1,8 +1,7 @@
 const Module = require('module');
 const path = require('path');
 
-const verbose = process.env.VERBOSE === 'true';
-const log = (...args) => { if (verbose) console.log(...args); };
+
 
 // --- Mock VS Code ---
 const documentMock = {
@@ -24,13 +23,13 @@ const documentMock = {
 const editorMock = {
     document: documentMock,
     edit: async (callback, options) => {
-        log(`[MockEditor] Edit called with options: ${JSON.stringify(options)}`);
+
         const editBuilder = {
             insert: (pos, text) => {
-                log(`[MockEditor] Insert: "${text}"`);
+
             },
             delete: (range) => {
-                log(`[MockEditor] Delete range`);
+
             }
         };
         await callback(editBuilder);
@@ -43,15 +42,15 @@ const vscodeMock = {
     window: {
         activeTextEditor: editorMock,
         showErrorMessage: (msg) => console.error('[VSCode Error]', msg),
-        showInformationMessage: (msg) => log('[VSCode Info]', msg)
+        showInformationMessage: (msg) => { }
     },
     workspace: {
         getWorkspaceFolder: () => ({ uri: { fsPath: path.resolve(__dirname, '../../') } }),
-        applyEdit: async (edit) => { log('[VSCode] applyEdit called (fallback)'); return true; }
+        applyEdit: async (edit) => { return true; }
     },
     languages: {
         registerHoverProvider: (selector, provider) => {
-            log(`[VSCode] Registered hover provider for ${selector}`);
+
             return { dispose: () => { } };
         }
     },
@@ -62,14 +61,14 @@ const vscodeMock = {
             return { dispose: () => { } };
         },
         executeCommand: async (command, ...args) => {
-            log(`[VSCode] executeCommand: ${command} args: ${JSON.stringify(args)}`);
+
             if (vscodeMock.commands._commands.has(command)) {
                 await vscodeMock.commands._commands.get(command)(...args);
             }
         }
     },
     WorkspaceEdit: class {
-        delete(uri, range) { log('[WorkspaceEdit] delete'); }
+        delete(uri, range) { }
     }
 };
 
@@ -92,11 +91,11 @@ global.fetch = async (url) => ({
 });
 
 async function runTest() {
-    log("=== Starting Undo Group Test ===");
+
     const extension = require('../dist/extension.js');
     extension.activate({ subscriptions: [] });
 
-    log(">>> Running regenerateLastMessage...");
+
     await vscodeMock.commands.executeCommand('promqueen.regenerateLastMessage');
 }
 

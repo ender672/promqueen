@@ -3,8 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const assert = require('assert');
 
-const verbose = true;
-const log = (...args) => { if (verbose) console.log(...args); };
+
 
 // --- Mock VS Code ---
 const documentMock = {
@@ -18,7 +17,7 @@ const documentMock = {
 const editorMock = {
     document: documentMock,
     edit: async (callback, options) => {
-        log(`[MockEditor] Edit called`);
+
         const editBuilder = {
             insert: (pos, text) => { }
         };
@@ -31,29 +30,28 @@ const vscodeMock = {
     window: {
         activeTextEditor: editorMock,
         showErrorMessage: (msg) => console.error('[VSCode Error]', msg),
-        showInformationMessage: (msg) => log('[VSCode Info]', msg),
+        showInformationMessage: (msg) => { },
         showTextDocument: async (doc, options) => {
-            log(`[VSCode] showTextDocument called with options: ${JSON.stringify(options)}`);
-            log(`[VSCode] Document Content Preview:\n${doc.content}`);
+
             return true;
         }
     },
     workspace: {
         getWorkspaceFolder: () => ({ uri: { fsPath: path.resolve(__dirname, '../../') } }),
         openTextDocument: async (options) => {
-            log(`[VSCode] openTextDocument called with options: ${JSON.stringify(options)}`);
+
             return options; // return options as the doc object for verification
         }
     },
     commands: {
         _commands: new Map(),
         registerCommand: (command, callback) => {
-            log(`[VSCode] Registered command: ${command}`);
+
             vscodeMock.commands._commands.set(command, callback);
             return { dispose: () => { } };
         },
         executeCommand: async (command) => {
-            log(`[VSCode] Executing command: ${command}`);
+
             if (vscodeMock.commands._commands.has(command)) {
                 await vscodeMock.commands._commands.get(command)();
             }
@@ -81,17 +79,17 @@ Module.prototype.require = function (request) {
 
 // --- Run Test ---
 async function runTest() {
-    log("=== Starting Preview Command Test ===");
+
 
     // Load extension
     const extension = require('../dist/extension.js');
     extension.activate({ subscriptions: [] });
 
     if (vscodeMock.commands._commands.has('promqueen.previewPrompt')) {
-        log("Executing promqueen.previewPrompt...");
+
         try {
             await vscodeMock.commands._commands.get('promqueen.previewPrompt')();
-            log("Command executed.");
+
         } catch (e) {
             console.error("Command failed:", e);
             process.exit(1);

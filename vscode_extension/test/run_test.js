@@ -2,8 +2,7 @@ const Module = require('module');
 const path = require('path');
 const fs = require('fs');
 
-const verbose = process.env.VERBOSE === 'true';
-const log = (...args) => { if (verbose) console.log(...args); };
+
 
 // --- Mock VS Code ---
 const documentMock = {
@@ -17,10 +16,10 @@ const documentMock = {
 const editorMock = {
     document: documentMock,
     edit: async (callback, options) => {
-        log(`[MockEditor] Edit called with options: ${JSON.stringify(options)}`);
+
         const editBuilder = {
             insert: (pos, text) => {
-                log(`[MockEditor] Insert: ${JSON.stringify(text)}`);
+
             }
         };
         await callback(editBuilder);
@@ -41,11 +40,11 @@ class WorkspaceEditMock {
     }
     insert(uri, position, text) {
         this.edits.push({ type: 'insert', uri, position, text });
-        log(`[WorkspaceEdit] Insert at ${JSON.stringify(position)}: ${JSON.stringify(text)}`);
+
     }
     delete(uri, range) {
         this.edits.push({ type: 'delete', uri, range });
-        log(`[WorkspaceEdit] Delete at range: ${JSON.stringify(range)}`);
+
     }
 }
 
@@ -55,30 +54,30 @@ const vscodeMock = {
     window: {
         activeTextEditor: editorMock,
         showErrorMessage: (msg) => console.error('[VSCode Error]', msg),
-        showInformationMessage: (msg) => log('[VSCode Info]', msg)
+        showInformationMessage: (msg) => { }
     },
     workspace: {
         getWorkspaceFolder: () => ({ uri: { fsPath: path.resolve(__dirname, '../../') } }),
         applyEdit: async (edit) => {
-            log(`[VSCode] Applying ${edit.edits.length} edits`);
+
             return true;
         }
     },
     languages: {
         registerHoverProvider: (selector, provider) => {
-            log(`[VSCode] Registered hover provider for ${selector}`);
+
             return { dispose: () => { } };
         }
     },
     commands: {
         _commands: new Map(),
         registerCommand: (command, callback) => {
-            log(`[VSCode] Registered command: ${command}`);
+
             vscodeMock.commands._commands.set(command, callback);
             return { dispose: () => { } };
         },
         executeCommand: async (command) => {
-            log(`[VSCode] Executing command: ${command}`);
+
             if (vscodeMock.commands._commands.has(command)) {
                 await vscodeMock.commands._commands.get(command)();
             }
@@ -97,7 +96,7 @@ Module.prototype.require = function (request) {
 
 // --- Mock Fetch for SendPrompt ---
 global.fetch = async (url, options) => {
-    log(`[MockFetch] Request to ${url}`);
+
     return {
         ok: true,
         headers: { get: () => 'text/event-stream' },
@@ -111,17 +110,17 @@ global.fetch = async (url, options) => {
 
 // --- Run Test ---
 async function runTest() {
-    log("=== Starting Test ===");
+
 
     // Load extension
     const extension = require('../dist/extension.js');
     extension.activate({ subscriptions: [] });
 
     if (vscodeMock.commands._commands.has('promqueen.runPipeline')) {
-        log("Executing promqueen.runPipeline...");
+
         try {
             await vscodeMock.commands._commands.get('promqueen.runPipeline')();
-            log("Command finished successfully.");
+
         } catch (e) {
             console.error("Command failed:", e);
         }

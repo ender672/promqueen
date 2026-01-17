@@ -2,8 +2,7 @@ const Module = require('module');
 const path = require('path');
 const assert = require('assert');
 
-const verbose = process.env.VERBOSE === 'true';
-const log = (...args) => { if (verbose) console.log(...args); };
+
 
 // --- Mock VS Code ---
 class MockWorkspaceEdit {
@@ -12,7 +11,7 @@ class MockWorkspaceEdit {
     }
     delete(uri, range) {
         this.edits.push({ type: 'delete', uri, range });
-        log(`[WorkspaceEdit] Delete at range: Start(${range.start.line}, ${range.start.character}) - End(${range.end.line}, ${range.end.character})`);
+
     }
     insert(uri, position, text) {
         this.edits.push({ type: 'insert', uri, position, text });
@@ -58,16 +57,16 @@ const documentMock = {
 const editorMock = {
     document: documentMock,
     edit: async (callback, options) => {
-        log(`[MockEditor] Edit called with options: ${JSON.stringify(options)}`);
+
         const editBuilder = {
             delete: (range) => {
-                log(`[MockEditor] Delete range: ${range.start.line}:${range.start.character} - ${range.end.line}:${range.end.character}`);
+
                 // Store for verification
                 vscodeMock._lastEdit = { type: 'delete', range };
-                log(`VERIFICATION: Delete edit FOUND. Range: ${range.start.character} to ${range.end.character}`);
+
             },
             insert: (position, text) => {
-                log(`[MockEditor] Insert at ${position.line}:${position.character}: ${text}`);
+
             }
         };
         await callback(editBuilder);
@@ -81,37 +80,37 @@ const vscodeMock = {
     window: {
         activeTextEditor: editorMock,
         showErrorMessage: (msg) => console.error('[VSCode Error]', msg),
-        showInformationMessage: (msg) => log('[VSCode Info]', msg)
+        showInformationMessage: (msg) => { }
     },
     workspace: {
         getWorkspaceFolder: () => ({ uri: { fsPath: path.resolve(__dirname, '../../') } }),
         applyEdit: async (edit) => {
-            log(`[VSCode] Applying ${edit.edits.length} edits`);
+
             // Check if we have the delete edit we expect
             const deleteEdit = edit.edits.find(e => e.type === 'delete');
             if (deleteEdit) {
                 vscodeMock._lastEdit = deleteEdit; // Store for verification outside
-                log(`VERIFICATION: Delete edit FOUND. Range: ${deleteEdit.range.start.character} to ${deleteEdit.range.end.character}`);
+
             }
             return true;
         }
     },
     languages: {
         registerHoverProvider: (selector, provider) => {
-            log(`[VSCode] Registered hover provider for ${selector}`);
+
             return { dispose: () => { } };
         }
     },
     commands: {
         registerCommand: (command, callback) => {
-            log(`[VSCode] Registered command: ${command}`);
+
             vscodeMock.commands[command] = callback;
             return { dispose: () => { } };
         },
         executeCommand: async (command) => {
-            log(`[VSCode] Executing command: ${command}`);
+
             if (command === 'promqueen.runPipeline') {
-                log("VERIFICATION: Pipeline triggered CORRECTLY.");
+
                 // We don't need to actually run the pipeline for this test, just verify it was called
             }
         }
@@ -129,14 +128,14 @@ Module.prototype.require = function (request) {
 
 // --- Run Test ---
 async function runTest() {
-    log("=== Starting Regenerate Command Test ===");
+
 
     // Load extension
     const extension = require('../dist/extension.js');
     extension.activate({ subscriptions: [] });
 
     // Execute the command - Test Case 1: Normal last message
-    log("--- Test Case 1: Normal last message ---");
+
     if (vscodeMock.commands['promqueen.regenerateLastMessage']) {
         await vscodeMock.commands['promqueen.regenerateLastMessage']();
 
@@ -163,7 +162,7 @@ async function runTest() {
                 console.error(`FAIL: Expected end ${expectedEnd}, got ${range.end.character}`);
                 process.exit(1);
             }
-            log("PASS: Deletion range matches content-only deletion.");
+
         } else {
             console.error("FAIL: No delete edit found.");
             process.exit(1);
@@ -175,7 +174,7 @@ async function runTest() {
     }
 
     // --- Test Case 2: Trailing Empty Role ---
-    log("--- Test Case 2: Trailing Empty Role ---");
+
     // Setup new document text
     // ... @user\nMessage\n\n@assistant\n (empty role)
     const textCase2 = `---
@@ -222,7 +221,7 @@ Do something
             console.error(`FAIL: Case 2 Expected end ${expectedEnd2}, got ${range.end.character}`);
             process.exit(1);
         }
-        log("PASS: Case 2 Deletion range matches content-only deletion (preserving previous role).");
+
     } else {
         console.error("FAIL: Case 2 No delete edit found.");
         process.exit(1);
