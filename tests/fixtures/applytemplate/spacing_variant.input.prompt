@@ -1,4 +1,5 @@
 ---
+dot_config_loading: false
 roleplay_user: human
 message_template_loader_path: tests/fixtures/applytemplate
 message_template_variables:

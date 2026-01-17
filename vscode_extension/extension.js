@@ -176,7 +176,7 @@ function activate(context) {
 
             const doc = await vscode.workspace.openTextDocument({
                 content: prompt,
-                language: 'markdown'
+                language: 'promqueen-pqueen'
             });
             await vscode.window.showTextDocument(doc, { preview: false });
 

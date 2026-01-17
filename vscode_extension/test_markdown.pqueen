@@ -1,5 +1,6 @@
 ---
 config: value
+dot_config_loading: false
 ---
 @system
 # This is a comment
