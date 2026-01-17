@@ -52,10 +52,34 @@ function combineAdjacentMessagesWithSameRole(messages) {
   }, []);
 }
 
+
+function extractDecorators(message, config) {
+  if (!message.name) return;
+
+  const decoratorsMap = config.roleplay_prompt_decorators || {};
+  let cleanName = message.name;
+  let collectedDecorators = [];
+
+  for (const [key, value] of Object.entries(decoratorsMap)) {
+    const decoratorStr = `[${key}]`;
+    if (cleanName.includes(decoratorStr)) {
+      collectedDecorators.push(value);
+      cleanName = cleanName.split(decoratorStr).join(' ');
+    }
+  }
+
+  if (collectedDecorators.length > 0) {
+    message.decorators = collectedDecorators;
+    message.name = cleanName.replace(/\s+/g, ' ').trim();
+  }
+}
+
 async function rpToPrompt(prompt, basePath = process.cwd()) {
   let { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(prompt);
   const config = pqutils.resolveConfig(runtimeConfig, basePath);
   const user = config.roleplay_user;
+
+  messages.forEach(msg => extractDecorators(msg, config));
 
   addRoles(messages, user);
 
@@ -63,9 +87,14 @@ async function rpToPrompt(prompt, basePath = process.cwd()) {
   // if last message ends with a space, it's also an impersonation request but with a prefix
   let userRequestedCharacter = null;
   let hasPrefilledMessage = false;
+  let characterDecorators = [];
 
   if (messages.length && messages[messages.length - 1].name) {
     const lastMessage = messages[messages.length - 1];
+    if (lastMessage.decorators) {
+      characterDecorators = lastMessage.decorators;
+    }
+
     if (lastMessage.content === null || lastMessage.content === "") {
       userRequestedCharacter = lastMessage.name;
     } else if (typeof lastMessage.content === 'string' && lastMessage.content.endsWith(' ')) {
@@ -100,7 +129,10 @@ async function rpToPrompt(prompt, basePath = process.cwd()) {
     }
 
     if (instructionTemplate) {
-      const instruction = renderTemplate(instructionTemplate, templateVars);
+      let instruction = renderTemplate(instructionTemplate, templateVars);
+      if (characterDecorators.length > 0) {
+        instruction += '\n' + characterDecorators.join('\n');
+      }
       messages.push({ role: 'user', content: instruction });
     }
 
