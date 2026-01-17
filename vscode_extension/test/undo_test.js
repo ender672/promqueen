@@ -52,6 +52,9 @@ const vscodeMock = {
         registerHoverProvider: (selector, provider) => {
 
             return { dispose: () => { } };
+        },
+        registerCompletionItemProvider: (selector, provider) => {
+            return { dispose: () => { } };
         }
     },
     commands: {

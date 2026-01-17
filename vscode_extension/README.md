@@ -18,6 +18,14 @@ The easiest way to test changes or use the extension during development is using
     - Any changes you make to the source code can be applied by reloading the window (`Ctrl+R` / `Cmd+R` in the host window).
     - The build task is configured to run automatically before launch.
 
+### Running Tests
+
+To run the automated test suite for the entire project, including this extension, run the following command from the root of the `promqueen` repository:
+
+```bash
+node --test
+```
+
 ## Manual Installation (VSIX)
 
 If you want to install the extension permanently:

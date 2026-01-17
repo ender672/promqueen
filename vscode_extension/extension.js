@@ -7,6 +7,7 @@ const { rpToPrompt } = require('../rptoprompt.js');
 const { sendPrompt } = require('../lib/sendprompt-core.js');
 const { postCompletionLint } = require('../postcompletionlint.js');
 const { ImageHoverProvider } = require('./providers/ImageHoverProvider');
+const { CompletionProvider } = require('./providers/CompletionProvider');
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -137,6 +138,10 @@ function activate(context) {
 
     context.subscriptions.push(
         vscode.languages.registerHoverProvider('promqueen-pqueen', new ImageHoverProvider())
+    );
+
+    context.subscriptions.push(
+        vscode.languages.registerCompletionItemProvider('promqueen-pqueen', new CompletionProvider(), '@')
     );
 
     let previewDisposable = vscode.commands.registerCommand('promqueen.previewPrompt', async function () {

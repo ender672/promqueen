@@ -58,7 +58,8 @@ const vscodeMock = {
         }
     },
     languages: {
-        registerHoverProvider: () => ({ dispose: () => { } })
+        registerHoverProvider: () => ({ dispose: () => { } }),
+        registerCompletionItemProvider: () => ({ dispose: () => { } })
     }
 };
 
