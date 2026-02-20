@@ -35,7 +35,7 @@ function createChatmlPrompt(characterData) {
     return roleplayPrompt;
 }
 
-async function main() {
+function main() {
     const args = process.argv.slice(2);
     if (args.length < 1) {
         console.error("Usage: node card_reader.js <path_to_png>");
@@ -44,7 +44,7 @@ async function main() {
 
     const aiCardData = extractAiCardData(args[0]);
     const chatml = createChatmlPrompt(aiCardData);
-    await process.stdout.write(chatml + "\n");
+    process.stdout.write(chatml + "\n");
 }
 
 if (require.main === module) {

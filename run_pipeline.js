@@ -25,12 +25,12 @@ async function runPipeline(filePath) {
         }
 
         // 2. Run applytemplate -> rptoprompt -> sendprompt
-        const templated = await applyTemplate(content, {
+        const templated = applyTemplate(content, {
             messageTemplateLoaderPath: templateLoaderPath,
             data: {}
         }, null);
 
-        const prompt = await rpToPrompt(templated, process.cwd());
+        const prompt = rpToPrompt(templated, process.cwd());
 
         const fileStream = fs.createWriteStream(absolutePath, { flags: 'a' });
         // We need to wait for the stream to finish

@@ -3,7 +3,7 @@
 const chokidar = require('chokidar');
 const { runPipeline } = require('./run_pipeline.js');
 
-async function watchFiles(watchPath) {
+function watchFiles(watchPath) {
   console.log(`Initializing watcher for: ${watchPath}`);
 
   const watcher = chokidar.watch(watchPath, {
@@ -36,13 +36,13 @@ async function watchFiles(watchPath) {
   console.log('[WATCHER] Ready and waiting for changes...');
 }
 
-async function main() {
+function main() {
   const watchPath = process.argv[2];
   if (!watchPath) {
     console.error('Usage: node watcher.js <path_to_watch>');
     process.exit(1);
   }
-  await watchFiles(watchPath);
+  watchFiles(watchPath);
 }
 
 if (require.main === module) {

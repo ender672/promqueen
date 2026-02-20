@@ -29,7 +29,7 @@ function cmdLineParseDataArg(value, previous) {
 
 const { applyTemplate } = require('./lib/applytemplate-core.js');
 
-async function main() {
+function main() {
   const commander = require('commander');
   commander.program.description('Apply Jinja2 templates to a prompt file.');
   commander.program.argument('[prompt_path]', 'Path to the prompt file.');
@@ -47,7 +47,7 @@ async function main() {
     promptText = fs.readFileSync(0, 'utf-8');
   }
 
-  const output = await applyTemplate(promptText, options);
+  const output = applyTemplate(promptText, options);
 
   if (filePath && filePath !== '-') {
     fs.writeFileSync(filePath, output);
