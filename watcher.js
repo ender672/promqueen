@@ -34,6 +34,8 @@ function watchFiles(watchPath) {
   watcher.on('error', (error) => console.error(`Watcher error: ${error}`));
 
   console.log('[WATCHER] Ready and waiting for changes...');
+
+  return watcher;
 }
 
 function main() {
