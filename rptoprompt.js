@@ -74,7 +74,7 @@ function extractDecorators(message, config) {
   }
 }
 
-async function rpToPrompt(prompt, basePath = process.cwd()) {
+function rpToPrompt(prompt, basePath = process.cwd()) {
   let { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(prompt);
   const config = pqutils.resolveConfig(runtimeConfig, basePath);
   const user = config.roleplay_user;
@@ -177,7 +177,7 @@ function serializeHistory(messages) {
   return output;
 }
 
-async function main() {
+function main() {
   const [, , filePath] = process.argv;
 
   try {
@@ -190,7 +190,7 @@ async function main() {
       prompt = fs.readFileSync(0, 'utf-8');
     }
 
-    const output = await rpToPrompt(prompt, process.cwd());
+    const output = rpToPrompt(prompt, process.cwd());
     process.stdout.write(output);
   } catch (error) {
     console.error('Error reading input:', error);
