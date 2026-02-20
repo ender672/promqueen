@@ -8,7 +8,7 @@ const { rpToPrompt } = require('./rptoprompt.js');
 const { sendPrompt } = require('./sendprompt.js');
 const { postCompletionLint } = require('./postcompletionlint.js');
 
-async function runPipeline(filePath, { baseDir, cwd = process.cwd(), stderr = process.stderr } = {}) {
+async function runPipeline(filePath, { baseDir, cwd = process.cwd(), stderr = process.stderr, fileSystem = fs } = {}) {
     const absolutePath = path.resolve(filePath);
     const templateLoaderPath = path.dirname(absolutePath);
 
@@ -16,12 +16,12 @@ async function runPipeline(filePath, { baseDir, cwd = process.cwd(), stderr = pr
 
     try {
         // 1. Run precompletionlint
-        let content = fs.readFileSync(absolutePath, 'utf8');
+        let content = fileSystem.readFileSync(absolutePath, 'utf8');
         const preOutput = precompletionLint(content, baseDir);
         if (preOutput) {
-            fs.appendFileSync(absolutePath, preOutput);
+            fileSystem.appendFileSync(absolutePath, preOutput);
             // Update content for the next step
-            content = fs.readFileSync(absolutePath, 'utf8');
+            content = fileSystem.readFileSync(absolutePath, 'utf8');
         }
 
         // 2. Run applytemplate -> rptoprompt -> sendprompt
@@ -33,7 +33,7 @@ async function runPipeline(filePath, { baseDir, cwd = process.cwd(), stderr = pr
 
         const prompt = rpToPrompt(templated, cwd);
 
-        const fileStream = fs.createWriteStream(absolutePath, { flags: 'a' });
+        const fileStream = fileSystem.createWriteStream(absolutePath, { flags: 'a' });
         // We need to wait for the stream to finish
         await sendPrompt(prompt, cwd, fileStream, stderr, {});
 
@@ -42,10 +42,10 @@ async function runPipeline(filePath, { baseDir, cwd = process.cwd(), stderr = pr
         await new Promise((fulfill) => fileStream.on('finish', fulfill));
 
         // 3. Run postcompletionlint
-        content = fs.readFileSync(absolutePath, 'utf8');
+        content = fileSystem.readFileSync(absolutePath, 'utf8');
         const postOutput = postCompletionLint(content, baseDir);
         if (postOutput) {
-            fs.appendFileSync(absolutePath, postOutput);
+            fileSystem.appendFileSync(absolutePath, postOutput);
         }
 
         console.log(`[PIPELINE] Finished processing ${filePath}`);
