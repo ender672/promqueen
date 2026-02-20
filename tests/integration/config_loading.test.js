@@ -125,3 +125,100 @@ test('parseConfigOnly throws when closing --- is missing', () => {
     { message: "Invalid format: Expected YAML front matter separating '---' not found" }
   );
 });
+
+test('resolveConfig merges profile settings when profile is selected', () => {
+  const configContent = {
+    dot_config_loading: false,
+    profile: 'creative',
+    profiles: {
+      creative: {
+        api_url: 'https://creative.example.com',
+        temperature: 0.9,
+      },
+      precise: {
+        api_url: 'https://precise.example.com',
+        temperature: 0.1,
+      },
+    },
+  };
+
+  const result = resolveConfig(configContent, '/tmp');
+
+  // Profile settings should be applied
+  assert.strictEqual(result.api_url, 'https://creative.example.com');
+  assert.strictEqual(result.temperature, 0.9);
+});
+
+test('resolveConfig profile settings are overridden by configContent', () => {
+  const configContent = {
+    dot_config_loading: false,
+    profile: 'creative',
+    api_url: 'https://override.example.com',
+    profiles: {
+      creative: {
+        api_url: 'https://creative.example.com',
+        custom_setting: 'from-profile',
+      },
+    },
+  };
+
+  const result = resolveConfig(configContent, '/tmp');
+
+  // configContent (priority 5) overrides profile (priority 4)
+  assert.strictEqual(result.api_url, 'https://override.example.com');
+  // But profile settings not in configContent still come through
+  assert.strictEqual(result.custom_setting, 'from-profile');
+});
+
+test('resolveConfig profile overrides cliConfig settings', () => {
+  const configContent = {
+    dot_config_loading: false,
+    profile: 'creative',
+    profiles: {
+      creative: {
+        api_url: 'https://creative.example.com',
+      },
+    },
+  };
+  const cliConfig = {
+    api_url: 'https://cli.example.com',
+  };
+
+  const result = resolveConfig(configContent, '/tmp', cliConfig);
+
+  // Profile (priority 4) overrides cliConfig (priority 3)
+  assert.strictEqual(result.api_url, 'https://creative.example.com');
+});
+
+test('resolveConfig ignores profiles when no profile is selected', () => {
+  const configContent = {
+    dot_config_loading: false,
+    profiles: {
+      creative: {
+        api_url: 'https://creative.example.com',
+      },
+    },
+  };
+
+  const result = resolveConfig(configContent, '/tmp');
+
+  // No profile selected, so profile settings should not be applied
+  assert.strictEqual(result.api_url, undefined);
+});
+
+test('resolveConfig ignores profile when named profile does not exist', () => {
+  const configContent = {
+    dot_config_loading: false,
+    profile: 'nonexistent',
+    profiles: {
+      creative: {
+        api_url: 'https://creative.example.com',
+      },
+    },
+  };
+
+  const result = resolveConfig(configContent, '/tmp');
+
+  // Named profile doesn't exist, so no profile settings applied
+  assert.strictEqual(result.api_url, undefined);
+});
