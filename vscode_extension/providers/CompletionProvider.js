@@ -9,7 +9,7 @@ class CompletionProvider {
      * @param {vscode.CancellationToken} token 
      * @param {vscode.CompletionContext} context 
      */
-    provideCompletionItems(document, position, token, context) {
+    provideCompletionItems(document, position, _token, _context) {
         const linePrefix = document.lineAt(position).text.substr(0, position.character);
 
         // Decorator suggestions: Check if we are inside a decorator block
@@ -42,7 +42,7 @@ class CompletionProvider {
             }
 
             config = pqutils.resolveConfig(parsed.config, projectRoot);
-        } catch (e) {
+        } catch {
             // If config parsing fails, we can't suggest decorators defined in config
             return [];
         }
@@ -109,7 +109,7 @@ class CompletionProvider {
                     break;
                 }
             }
-        } catch (e) {
+        } catch {
             // ignore
         }
 

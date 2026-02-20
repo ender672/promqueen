@@ -3,9 +3,6 @@
 const fs = require('fs');
 const process = require('process');
 
-const pqutils = require('./lib/pqutils.js');
-const yaml = require('js-yaml');
-
 function cmdLineParseDataArg(value, previous) {
   const eqIndex = value.indexOf('=');
   if (eqIndex === -1) {

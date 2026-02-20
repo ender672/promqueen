@@ -64,7 +64,7 @@ async function main() {
 
     try {
         await runPipeline(filePath);
-    } catch (error) {
+    } catch {
         process.exit(1);
     }
 }

@@ -1,8 +1,3 @@
-const Module = require('module');
-const path = require('path');
-
-
-
 const { setupVscodeMock, MockDocument } = require('./mocks');
 
 const vscodeMock = setupVscodeMock();
@@ -10,10 +5,10 @@ const vscodeMock = setupVscodeMock();
 // Helper to set up active document
 vscodeMock.window.activeTextEditor = {
     document: new MockDocument("---\nfoo: bar\n---\nUser: Hello\n\n@Assistant\nOld response"),
-    edit: async (callback, options) => {
+    edit: async (callback, _options) => {
         const editBuilder = {
-            insert: (pos, text) => { },
-            delete: (range) => { }
+            insert: (_pos, _text) => { },
+            delete: (_range) => { }
         };
         await callback(editBuilder);
         return true;
@@ -22,7 +17,7 @@ vscodeMock.window.activeTextEditor = {
 
 
 // --- Mock Fetch ---
-global.fetch = async (url) => ({
+global.fetch = async (_url) => ({
     ok: true,
     headers: { get: () => 'text/event-stream' },
     body: (async function* () {

@@ -1,9 +1,8 @@
-const Module = require('module');
 const assert = require('assert');
 
 const { setupVscodeMock, MockDocument, MockMarkdownString } = require('./mocks');
 
-const vscodeMock = setupVscodeMock();
+setupVscodeMock();
 
 
 // --- Run Test ---

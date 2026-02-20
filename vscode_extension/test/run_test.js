@@ -1,9 +1,3 @@
-const Module = require('module');
-const path = require('path');
-const fs = require('fs');
-
-
-
 const { setupVscodeMock, MockDocument } = require('./mocks');
 
 const vscodeMock = setupVscodeMock();
@@ -13,8 +7,8 @@ vscodeMock.window.activeTextEditor = {
     document: new MockDocument("---\nfoo: bar\n---\nUser: Hello\n"),
     edit: async (callback) => {
         const editBuilder = {
-            insert: (pos, text) => { },
-            delete: (range) => { }
+            insert: (_pos, _text) => { },
+            delete: (_range) => { }
         };
         await callback(editBuilder);
         return true;
@@ -23,7 +17,7 @@ vscodeMock.window.activeTextEditor = {
 
 
 // --- Mock Fetch for SendPrompt ---
-global.fetch = async (url, options) => {
+global.fetch = async (_url, _options) => {
 
     return {
         ok: true,

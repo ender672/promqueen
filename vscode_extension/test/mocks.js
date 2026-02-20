@@ -1,4 +1,3 @@
-const Module = require('module');
 const path = require('path');
 
 // --- Mock Classes ---
@@ -136,21 +135,21 @@ function setupVscodeMock(customOverrides = {}) {
                 document: new MockDocument(""),
                 edit: async (cb) => {
                     const editBuilder = {
-                        delete: (range) => { },
-                        insert: (pos, text) => { }
+                        delete: (_range) => { },
+                        insert: (_pos, _text) => { }
                     };
                     await cb(editBuilder);
                     return true;
                 }
             },
             showErrorMessage: (msg) => console.error('[VSCode Error]', msg),
-            showInformationMessage: (msg) => { },
+            showInformationMessage: (_msg) => { },
             showTextDocument: async (doc) => doc
         },
 
         workspace: {
             getWorkspaceFolder: () => ({ uri: { fsPath: path.resolve(__dirname, '../../') } }),
-            applyEdit: async (edit) => true,
+            applyEdit: async (_edit) => true,
             openTextDocument: async (opts) => opts
         },
 
@@ -198,6 +197,7 @@ function setupVscodeMock(customOverrides = {}) {
     }
 
     // Intercept require
+    const Module = require('module');
     const originalRequire = Module.prototype.require;
     Module.prototype.require = function (request) {
         if (request === 'vscode') {

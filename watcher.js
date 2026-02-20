@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
 const chokidar = require('chokidar');
 const { runPipeline } = require('./run_pipeline.js');
 

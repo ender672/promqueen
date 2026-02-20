@@ -1,9 +1,8 @@
-const Module = require('module');
 const assert = require('assert');
 
 const { setupVscodeMock, MockDocument } = require('./mocks');
 
-const vscodeMock = setupVscodeMock();
+setupVscodeMock();
 
 
 // --- Run Test ---
@@ -33,14 +32,6 @@ User prompt 2
 
     // Position: We are typing "@" at the start of a new line.
     // Let's say at the end.
-    const doc1 = new MockDocument(text1);
-    const pos1 = { line: 10, character: 1 }; // Line 10 doesn't exist really, but we just need lineAt to work for the check.
-    // However, the provider checks `document.lineAt(position).text.substr(0, position.character)`.
-    // If we are typing "@", line text is likely "@". position is char 1.
-    // We need to mock lineAt to return "@" for the current line.
-
-    // We can just add a line to our mock text or handle it in MockDocument.
-    // Let's create a doc that HAS the trigger line.
     const textWithTrigger = text1 + "\n@";
     const docTrigger = new MockDocument(textWithTrigger);
     const lines = textWithTrigger.split('\n');

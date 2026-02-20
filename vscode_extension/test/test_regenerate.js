@@ -1,9 +1,3 @@
-const Module = require('module');
-const path = require('path');
-const assert = require('assert');
-
-
-
 const { setupVscodeMock, MockDocument } = require('./mocks');
 
 const documentText = `---
@@ -24,12 +18,12 @@ vscodeMock._lastEdit = null;
 // Custom Editor Mock to track edits
 vscodeMock.window.activeTextEditor = {
     document: new MockDocument(documentText),
-    edit: async (callback, options) => {
+    edit: async (callback, _options) => {
         const editBuilder = {
             delete: (range) => {
                 vscodeMock._lastEdit = { type: 'delete', range };
             },
-            insert: (position, text) => { }
+            insert: (_position, _text) => { }
         };
         await callback(editBuilder);
         return true;
@@ -139,8 +133,6 @@ Do something
     await vscodeMock.commands.executeCommand('promqueen.regenerateLastMessage');
 
     // Assertions for Case 2
-    const lastDelim2 = textCase2.lastIndexOf('\n\n@', textCase2.length - 15); // Skip the last one (@assistant)
-    // Actually our code uses lastIndexOf(delimiter, lastIndex - 1)
     const lastIndex2 = textCase2.lastIndexOf('\n\n@');
     const prevIndex2 = textCase2.lastIndexOf('\n\n@', lastIndex2 - 1);
 

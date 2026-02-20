@@ -2,10 +2,6 @@
 
 const fs = require('fs');
 const process = require('process');
-const eventsourceParser = require('eventsource-parser');
-const pqutils = require('./lib/pqutils.js');
-const console = require('console');
-const path = require('path');
 const yaml = require('js-yaml');
 
 

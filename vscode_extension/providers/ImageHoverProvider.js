@@ -1,7 +1,7 @@
 const vscode = require('vscode');
 
 class ImageHoverProvider {
-    provideHover(document, position, token) {
+    provideHover(document, position, _token) {
         const range = document.getWordRangeAtPosition(position, /!\[.*?\]\(.*?\)/);
         if (range) {
             const text = document.getText(range);

@@ -1,6 +1,5 @@
 const vscode = require('vscode');
 const path = require('path');
-const os = require('os');
 const { precompletionLint } = require('../precompletionlint.js');
 const { applyTemplate } = require('../lib/applytemplate-core.js');
 const { rpToPrompt } = require('../rptoprompt.js');

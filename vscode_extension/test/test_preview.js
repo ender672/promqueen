@@ -1,7 +1,4 @@
-const Module = require('module');
 const path = require('path');
-const fs = require('fs');
-const assert = require('assert');
 
 const { setupVscodeMock, MockDocument } = require('./mocks');
 
@@ -22,7 +19,7 @@ vscodeMock.window.activeTextEditor = {
     document: new MockDocument("---\nfoo: bar\n---\nUser: Hello\n"),
     edit: async (callback) => {
         const editBuilder = {
-            insert: (pos, text) => { }
+            insert: (_pos, _text) => { }
         };
         await callback(editBuilder);
         return true;

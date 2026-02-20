@@ -3,6 +3,9 @@ import pluginJs from "@eslint/js";
 
 export default [
     {
+        ignores: ["vscode_extension/dist/"]
+    },
+    {
         languageOptions: {
             globals: {
                 ...globals.node,
@@ -10,4 +13,9 @@ export default [
         }
     },
     pluginJs.configs.recommended,
+    {
+        rules: {
+            "no-unused-vars": ["error", { argsIgnorePattern: "^_" }]
+        }
+    },
 ];
