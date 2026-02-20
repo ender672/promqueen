@@ -50,5 +50,5 @@ if (require.main === module) {
 }
 
 module.exports = {
-  runPipeline
+  watchFiles
 };
