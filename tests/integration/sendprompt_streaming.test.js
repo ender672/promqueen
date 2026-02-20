@@ -242,3 +242,118 @@ test('sendprompt escapes @ at start of lines in non-streaming response', async (
         global.fetch = originalFetch;
     }
 });
+
+test('sendprompt escapes {{ in streaming response', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = async () => mockStreamingResponse([
+        sseChunk(JSON.stringify({ choices: [{ delta: { content: 'Use {{ variable }} for substitution' } }] })),
+        sseChunk('[DONE]')
+    ]);
+
+    try {
+        const outputStream = new StringStream();
+        const errorStream = new StringStream();
+
+        await sendPrompt(prompt, process.cwd(), outputStream, errorStream);
+
+        assert.strictEqual(outputStream.data, 'Use \\{{ variable }} for substitution');
+    } finally {
+        global.fetch = originalFetch;
+    }
+});
+
+test('sendprompt escapes {% in streaming response', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = async () => mockStreamingResponse([
+        sseChunk(JSON.stringify({ choices: [{ delta: { content: "Use {% include 'file.txt' %} for includes" } }] })),
+        sseChunk('[DONE]')
+    ]);
+
+    try {
+        const outputStream = new StringStream();
+        const errorStream = new StringStream();
+
+        await sendPrompt(prompt, process.cwd(), outputStream, errorStream);
+
+        assert.strictEqual(outputStream.data, "Use \\{% include 'file.txt' %} for includes");
+    } finally {
+        global.fetch = originalFetch;
+    }
+});
+
+test('sendprompt escapes {{ across streaming chunk boundaries', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = async () => mockStreamingResponse([
+        sseChunk(JSON.stringify({ choices: [{ delta: { content: 'hello{' } }] })),
+        sseChunk(JSON.stringify({ choices: [{ delta: { content: '{world}}' } }] })),
+        sseChunk('[DONE]')
+    ]);
+
+    try {
+        const outputStream = new StringStream();
+        const errorStream = new StringStream();
+
+        await sendPrompt(prompt, process.cwd(), outputStream, errorStream);
+
+        assert.strictEqual(outputStream.data, 'hello\\{{world}}');
+    } finally {
+        global.fetch = originalFetch;
+    }
+});
+
+test('sendprompt escapes {% across streaming chunk boundaries', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = async () => mockStreamingResponse([
+        sseChunk(JSON.stringify({ choices: [{ delta: { content: 'hello{' } }] })),
+        sseChunk(JSON.stringify({ choices: [{ delta: { content: "% include 'x' %}" } }] })),
+        sseChunk('[DONE]')
+    ]);
+
+    try {
+        const outputStream = new StringStream();
+        const errorStream = new StringStream();
+
+        await sendPrompt(prompt, process.cwd(), outputStream, errorStream);
+
+        assert.strictEqual(outputStream.data, "hello\\{% include 'x' %}");
+    } finally {
+        global.fetch = originalFetch;
+    }
+});
+
+test('sendprompt flushes lone trailing { in streaming response', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = async () => mockStreamingResponse([
+        sseChunk(JSON.stringify({ choices: [{ delta: { content: 'hello{' } }] })),
+        sseChunk('[DONE]')
+    ]);
+
+    try {
+        const outputStream = new StringStream();
+        const errorStream = new StringStream();
+
+        await sendPrompt(prompt, process.cwd(), outputStream, errorStream);
+
+        assert.strictEqual(outputStream.data, 'hello{');
+    } finally {
+        global.fetch = originalFetch;
+    }
+});
+
+test('sendprompt escapes {{ in non-streaming response', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = async () => mockJsonResponse({
+        choices: [{ message: { content: 'Use {{ var }} and {% include "f" %}' } }]
+    });
+
+    try {
+        const outputStream = new StringStream();
+        const errorStream = new StringStream();
+
+        await sendPrompt(prompt, process.cwd(), outputStream, errorStream);
+
+        assert.strictEqual(outputStream.data, 'Use \\{{ var }} and \\{% include "f" %}');
+    } finally {
+        global.fetch = originalFetch;
+    }
+});

@@ -1,0 +1,21 @@
+{
+    "url": "https://api.deepseek.com/v1/chat/completions",
+    "method": "POST",
+    "body": {
+        "model": "deepseek-chat",
+        "messages": [
+            {
+                "role": "user",
+                "content": "What is Jinja2?"
+            },
+            {
+                "role": "assistant",
+                "content": "Jinja2 uses {{ variable }} for substitution and {% include 'file' %} for includes."
+            },
+            {
+                "role": "user",
+                "content": "Thanks!\n"
+            }
+        ]
+    }
+}

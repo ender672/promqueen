@@ -58,6 +58,7 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
     if (isStreaming) {
         let isFirstEvent = true;
         let lastCharWasNewline = false;
+        let pendingBrace = false;
         for await (const event of getStream(response)) {
             if (event.data === '[DONE]') {
                 break;
@@ -77,13 +78,28 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
                 }
             }
             if (content) {
+                if (pendingBrace) {
+                    content = '{' + content;
+                    pendingBrace = false;
+                }
+                if (content.endsWith('{')) {
+                    content = content.slice(0, -1);
+                    pendingBrace = true;
+                }
+                content = content.replace(/\{\{/g, '\\{{');
+                content = content.replace(/\{%/g, '\\{%');
                 content = content.replace(/\n@/g, '\n\\@');
                 if (lastCharWasNewline && content[0] === '@') {
                     content = '\\' + content;
                 }
-                outputStream.write(content);
-                lastCharWasNewline = content.endsWith('\n');
+                if (content) {
+                    outputStream.write(content);
+                    lastCharWasNewline = content.endsWith('\n');
+                }
             }
+        }
+        if (pendingBrace) {
+            outputStream.write('{');
         }
     } else {
         const json = await response.json();
@@ -92,6 +108,8 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
             errorStream.write(costString + '\n');
         }
         let content = json.choices?.[0]?.message?.content || '';
+        content = content.replace(/\{\{/g, '\\{{');
+        content = content.replace(/\{%/g, '\\{%');
         content = content.replace(/^@/gm, '\\@');
         outputStream.write(content);
     }
@@ -105,6 +123,8 @@ async function sendPrompt(prompt, cwd, outputStream = process.stdout, errorStrea
     const promptMessages = messages.map(message => {
         let content = message.content;
         if (content) {
+            content = content.replace(/\\\{\{/g, '{{');
+            content = content.replace(/\\\{%/g, '{%');
             content = content.replace(/^\\@/gm, '@');
         }
         return {

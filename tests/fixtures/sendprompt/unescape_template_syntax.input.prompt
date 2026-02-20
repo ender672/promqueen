@@ -1,0 +1,14 @@
+---
+api_url: https://api.deepseek.com/v1/chat/completions
+api_call_props:
+  model: deepseek-chat
+dot_config_loading: false
+---
+@user
+What is Jinja2?
+
+@assistant
+Jinja2 uses \{{ variable }} for substitution and \{% include 'file' %} for includes.
+
+@user
+Thanks!
