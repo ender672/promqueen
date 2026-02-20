@@ -50,7 +50,7 @@ precompletionlint → applytemplate → rptoprompt → sendprompt → postcomple
 
 ### Key Modules
 
-- **`lib/pqutils.js`** - Config parsing with hierarchical resolution: defaults → `~/.chathistory` → CLI config → active profile → frontmatter
+- **`lib/pqutils.js`** - Config parsing with hierarchical resolution: defaults → `~/.promqueen` → CLI config → active profile → frontmatter
 - **`sendprompt.js`** - LLM API communication with streaming (eventsource-parser) and cost calculation
 - **`applytemplate.js`** - Template engine using rendertemplate for variable substitution
 - **`lib/rendertemplate.js`** - Variable substitution and file inclusion with path traversal security checks

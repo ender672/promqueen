@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { resolveConfig, parseChatHistory, parseConfigOnly } = require('../../lib/pqutils.js');
+const { resolveConfig, parseMessages, parseConfigOnly } = require('../../lib/pqutils.js');
 
 test('resolveConfig honors dot_config_loading option and only checks home dir', async (t) => {
   // Mock os.homedir
@@ -11,16 +11,16 @@ test('resolveConfig honors dot_config_loading option and only checks home dir', 
 
   // Setup directory structure
   // /tmp/fake-home/
-  //   .chathistory
+  //   .promqueen
   // /tmp/other-path/
-  //   .chathistory (should be ignored)
+  //   .promqueen (should be ignored)
   //   subdir/
 
   const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'pq-home-'));
   const otherPath = fs.mkdtempSync(path.join(os.tmpdir(), 'pq-other-'));
 
-  const homeConfig = path.join(fakeHome, '.chathistory');
-  const otherConfig = path.join(otherPath, '.chathistory');
+  const homeConfig = path.join(fakeHome, '.promqueen');
+  const otherConfig = path.join(otherPath, '.promqueen');
   const workingDir = path.join(otherPath, 'subdir');
 
   fs.mkdirSync(workingDir);
@@ -47,13 +47,13 @@ test('resolveConfig honors dot_config_loading option and only checks home dir', 
   // To test this effectively, we temporarily un-mock home or mock it to empty dir?
   // Actually, Test 1 proves it loads from home. 
   // We need to prove it does NOT load from `otherPath` even though `otherConfig` exists.
-  // In `pqutils.js`, it ONLY checks home. So if we are in `workingDir`, and `root/otherPath/.chathistory` exists,
+  // In `pqutils.js`, it ONLY checks home. So if we are in `workingDir`, and `root/otherPath/.promqueen` exists,
   // previous logic would have found it (walking up). New logic should SKIP it and go straight to `fakeHome`.
   // Since `configHome.api_url` is `https://home.llm.com`, this confirms it picked home OVER other (or ignored other).
   // Wait, resolveConfig merges? No, it loads one file? 
   // It finds ONE file. `findDotConfigFile` returns the first one found.
-  // OLD logic: walk up. Would find `otherPath/.chathistory` first (closer).
-  // NEW logic: check home. Should find `fakeHome/.chathistory`.
+  // OLD logic: walk up. Would find `otherPath/.promqueen` first (closer).
+  // NEW logic: check home. Should find `fakeHome/.promqueen`.
 
   // So Test 1 asserting 'https://home.llm.com' proves that it either:
   // a) Looked in home and found it.
@@ -74,28 +74,28 @@ test('resolveConfig honors dot_config_loading option and only checks home dir', 
 
 });
 
-test('parseChatHistory with input not starting with @ returns single unnamed message', () => {
+test('parseMessages with input not starting with @ returns single unnamed message', () => {
   const input = 'Hello, this is just plain text without any @ prefix.';
-  const result = parseChatHistory(input);
+  const result = parseMessages(input);
   assert.deepStrictEqual(result, [{ name: null, content: input }]);
 });
 
-test('parseChatHistory with multiline input not starting with @ returns single unnamed message', () => {
+test('parseMessages with multiline input not starting with @ returns single unnamed message', () => {
   const input = 'First line\nSecond line\nThird line';
-  const result = parseChatHistory(input);
+  const result = parseMessages(input);
   assert.deepStrictEqual(result, [{ name: null, content: input }]);
 });
 
-test('parseChatHistory with empty string returns empty array', () => {
-  assert.deepStrictEqual(parseChatHistory(''), []);
+test('parseMessages with empty string returns empty array', () => {
+  assert.deepStrictEqual(parseMessages(''), []);
 });
 
-test('parseChatHistory with null input returns empty array', () => {
-  assert.deepStrictEqual(parseChatHistory(null), []);
+test('parseMessages with null input returns empty array', () => {
+  assert.deepStrictEqual(parseMessages(null), []);
 });
 
-test('parseChatHistory with undefined input returns empty array', () => {
-  assert.deepStrictEqual(parseChatHistory(undefined), []);
+test('parseMessages with undefined input returns empty array', () => {
+  assert.deepStrictEqual(parseMessages(undefined), []);
 });
 
 test('parseConfigOnly throws when input does not start with ---', () => {
@@ -274,9 +274,9 @@ test('resolveConfig cliConfig merges with defaults when no other layers present'
 test('resolveConfig full priority ordering across all layers', async (t) => {
   const originalHomedir = os.homedir;
   const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'pq-priority-'));
-  const homeConfig = path.join(fakeHome, '.chathistory');
+  const homeConfig = path.join(fakeHome, '.promqueen');
 
-  // .chathistory file sets api_url and custom_a
+  // .promqueen file sets api_url and custom_a
   fs.writeFileSync(homeConfig, 'api_url: https://dotfile.example.com\ncustom_a: from-dotfile\ncustom_b: from-dotfile\n');
   os.homedir = () => fakeHome;
 
