@@ -69,3 +69,20 @@ test('createChatmlPrompt with missing optional fields', () => {
     const empty = createChatmlPrompt({});
     assert.strictEqual(empty, '');
 });
+
+test('createChatmlPrompt replaces {{char}} in the final output', () => {
+    const result = createChatmlPrompt({
+        name: 'Luna',
+        description: '{{char}} is a mysterious sorceress',
+        personality: '{{char}} is wise and enigmatic',
+        scenario: '{{char}} stands in a dark forest',
+        mes_example: '<START>\n{{char}} waves hello',
+    });
+
+    // All {{char}} occurrences should be replaced with the name
+    assert.ok(!result.includes('{{char}}'), 'should not contain {{char}} placeholder');
+    assert.ok(result.includes('Luna is a mysterious sorceress'), 'description should have name substituted');
+    assert.ok(result.includes('Luna is wise and enigmatic'), 'personality should have name substituted');
+    assert.ok(result.includes('Luna stands in a dark forest'), 'scenario should have name substituted');
+    assert.ok(result.includes('Luna waves hello'), 'mes_example should have name substituted');
+});
