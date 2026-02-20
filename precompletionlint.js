@@ -108,7 +108,7 @@ function main() {
   const resolvedPath = path.resolve(filePath);
   const fileContent = fs.readFileSync(resolvedPath, 'utf8');
 
-  const output = precompletionLint(fileContent, __dirname);
+  const output = precompletionLint(fileContent, process.cwd());
   process.stdout.write(output);
 }
 
