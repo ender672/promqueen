@@ -1,9 +1,9 @@
 const vscode = require('vscode');
 const path = require('path');
 const { precompletionLint } = require('../precompletionlint.js');
-const { applyTemplate } = require('../lib/applytemplate-core.js');
+const { applyTemplate } = require('../applytemplate.js');
 const { rpToPrompt } = require('../rptoprompt.js');
-const { sendPrompt } = require('../lib/sendprompt-core.js');
+const { sendPrompt } = require('../sendprompt.js');
 const { postCompletionLint } = require('../postcompletionlint.js');
 const { ImageHoverProvider } = require('./providers/ImageHoverProvider');
 const { CompletionProvider } = require('./providers/CompletionProvider');
