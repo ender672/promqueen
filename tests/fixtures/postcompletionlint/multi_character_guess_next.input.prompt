@@ -1,0 +1,21 @@
+---
+user: User
+dot_config_loading: false
+---
+@User
+Hey Alice, what do you think?
+
+@Alice
+I think it's a great idea!
+
+@User
+Bob, do you agree?
+
+@Bob
+Absolutely!
+
+@User
+Alice, any final thoughts?
+
+@Alice
+Let's do it!

@@ -1,0 +1,15 @@
+---
+user: User
+dot_config_loading: false
+---
+@Alice
+Welcome to the tavern, traveler!
+
+@User
+Thanks, Alice. Bob, can I get a drink?
+
+@Bob
+Sure thing, coming right up.
+
+@User
+So what's the news around here?
