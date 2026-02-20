@@ -55,12 +55,11 @@ function exportCharacterMessages(characterData) {
     });
 }
 
-// Main execution block
-if (require.main === module) {
+function main() {
     const args = process.argv.slice(2);
 
     if (args.length < 1) {
-        console.error("Usage: node extract_messages.js <path_to_png>");
+        console.error("Usage: node charcard-png-to-openings.js <path_to_png>");
         process.exit(1);
     }
 
@@ -73,4 +72,8 @@ if (require.main === module) {
         console.error("Error:", error.message);
         process.exit(1);
     }
+}
+
+if (require.main === module) {
+    main();
 }
