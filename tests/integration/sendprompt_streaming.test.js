@@ -107,6 +107,34 @@ test('sendprompt strips leading newline from first streaming chunk', async () =>
     }
 });
 
+test('sendprompt throws on API error response', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = async () => ({
+        ok: false,
+        status: 429,
+        headers: {
+            get: () => null
+        },
+        text: async () => 'Rate limit exceeded'
+    });
+
+    try {
+        const outputStream = new StringStream();
+        const errorStream = new StringStream();
+
+        await assert.rejects(
+            () => sendPrompt(prompt, process.cwd(), outputStream, errorStream),
+            (err) => {
+                assert.match(err.message, /API request failed: 429/);
+                assert.match(err.message, /Rate limit exceeded/);
+                return true;
+            }
+        );
+    } finally {
+        global.fetch = originalFetch;
+    }
+});
+
 test('sendprompt logs cost on streaming response with usage', async () => {
     const originalFetch = global.fetch;
     global.fetch = async () => mockStreamingResponse([
