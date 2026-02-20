@@ -36,7 +36,7 @@ Hello!
 
 Character names use `@Character Name` (non-standard roles get mapped to `user`/`assistant` via `roleplay_user`). Decorators like `@Character Name [decorator]` inject special instructions.
 
-### Pipeline Stages (`run_pipeline.js`)
+### Pipeline Stages (`promqueen.js`)
 
 ```
 precompletionlint → applytemplate → rptoprompt → sendprompt → postcompletionlint

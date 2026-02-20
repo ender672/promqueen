@@ -59,7 +59,7 @@ async function runPipeline(filePath, { baseDir, cwd = process.cwd(), stderr = pr
 async function main() {
     const filePath = process.argv[2];
     if (!filePath) {
-        console.error('Usage: node run_pipeline.js <file_path>');
+        console.error('Usage: node promqueen.js <file_path>');
         process.exit(1);
     }
 

@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { runPipeline } = require('../../run_pipeline.js');
+const { runPipeline } = require('../../promqueen.js');
 
 // A minimal in-memory file system that supports the operations runPipeline uses:
 // readFileSync, appendFileSync, createWriteStream

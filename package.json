@@ -2,9 +2,9 @@
   "name": "promqueen",
   "version": "0.0.1",
   "description": "",
-  "main": "run_pipeline.js",
+  "main": "promqueen.js",
   "bin": {
-    "pqueen": "run_pipeline.js",
+    "pqueen": "promqueen.js",
     "pqueen-applytemplate": "applytemplate.js",
     "pqueen-rptoprompt": "rptoprompt.js",
     "pqueen-sendprompt": "sendprompt.js",
