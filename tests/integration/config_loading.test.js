@@ -85,3 +85,15 @@ test('parseChatHistory with multiline input not starting with @ returns single u
   const result = parseChatHistory(input);
   assert.deepStrictEqual(result, [{ name: null, content: input }]);
 });
+
+test('parseChatHistory with empty string returns empty array', () => {
+  assert.deepStrictEqual(parseChatHistory(''), []);
+});
+
+test('parseChatHistory with null input returns empty array', () => {
+  assert.deepStrictEqual(parseChatHistory(null), []);
+});
+
+test('parseChatHistory with undefined input returns empty array', () => {
+  assert.deepStrictEqual(parseChatHistory(undefined), []);
+});
