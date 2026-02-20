@@ -1,0 +1,7 @@
+---
+dot_config_loading: false
+---
+@system
+Before include
+{% include 'tests/fixtures/applytemplate/nested_outer.txt' %}
+After include

@@ -1,0 +1,11 @@
+---
+dot_config_loading: false
+---
+@system
+Before include
+outer start
+inner content
+
+outer end
+
+After include

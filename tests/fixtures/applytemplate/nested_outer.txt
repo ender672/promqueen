@@ -1,0 +1,3 @@
+outer start
+{% include 'nested_inner.txt' %}
+outer end
