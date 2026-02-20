@@ -3,6 +3,7 @@
     "displayName": "PromQueen Pipeline",
     "description": "Run PromQueen pipeline in VS Code",
     "version": "0.0.1",
+    "publisher": "promqueen",
     "engines": {
         "vscode": "^1.75.0"
     },
@@ -61,7 +62,7 @@
         "vscode:prepublish": "npm run package",
         "compile": "npm run build",
         "watch": "npm run watch:esbuild",
-        "watch:esbuild": "esbuild ./extension.js --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --watch",
+        "watch:esbuild": "esbuild ./extension.js --bundle --outfile=dist/extension.js --external:vscode --external:commander --format=cjs --platform=node --watch",
         "package": "npm run build -- --minify",
         "compile-tests": "tsc -p . --outDir out",
         "watch-tests": "tsc -p . -w --outDir out",
@@ -69,12 +70,14 @@
         "check-types": "tsc --noEmit",
         "lint": "eslint src --ext ts",
         "test": "node ./dist/extension.js || node ./test/run_test.js",
-        "build": "esbuild ./extension.js --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify --sourcemap"
+        "build": "esbuild ./extension.js --bundle --outfile=dist/extension.js --external:vscode --external:commander --format=cjs --platform=node --minify --sourcemap",
+        "vsix": "vsce package"
     },
     "devDependencies": {
         "@types/mocha": "^10.0.1",
         "@types/node": "16.x",
         "@types/vscode": "^1.75.0",
+        "@vscode/vsce": "^3.2.2",
         "esbuild": "^0.24.2",
         "eventsource-parser": "^3.0.6",
         "js-yaml": "^4.1.1"

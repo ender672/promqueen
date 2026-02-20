@@ -42,11 +42,11 @@ Character names use `@Character Name` (non-standard roles get mapped to `user`/`
 precompletionlint → applytemplate → rptoprompt → sendprompt → postcompletionlint
 ```
 
-1. **precompletionlint** - Auto-suggests next speaker, adds formatting padding
+1. **precompletionlint** - Prepares the file with a speaker name and whitespace for the LLM response
 2. **applytemplate** - Jinja2-like template substitution (`{{ var }}`, `{% include %}`)
 3. **rptoprompt** - Converts `@Character Name` chat format to `@system` / `@assistant` / `@user` format that more closely aligns with what will be sent to the API.
 4. **sendprompt** - Sends request to LLM API and streams the results via SSE, tracks token costs
-5. **postcompletionlint** - Cleans up response formatting, preparing the file for the next message.
+5. **postcompletionlint** - Prepares the file with a new speaker name for the next user-entered message.
 
 ### Key Modules
 
