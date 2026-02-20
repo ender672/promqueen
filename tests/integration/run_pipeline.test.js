@@ -1,6 +1,5 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
-const path = require('path');
 const { runPipeline } = require('../../run_pipeline.js');
 
 // A minimal in-memory file system that supports the operations runPipeline uses:
@@ -9,13 +8,13 @@ function createMemoryFS(initialContent) {
     let content = initialContent;
 
     return {
-        readFileSync(filePath, encoding) {
+        readFileSync(_filePath, _encoding) {
             return content;
         },
-        appendFileSync(filePath, data) {
+        appendFileSync(_filePath, data) {
             content += data;
         },
-        createWriteStream(filePath, options) {
+        createWriteStream(_filePath, _options) {
             const listeners = {};
             return {
                 write(chunk) {
