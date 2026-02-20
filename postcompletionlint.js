@@ -69,7 +69,7 @@ function main() {
   const resolvedPath = path.resolve(filePath);
   const fileContent = fs.readFileSync(resolvedPath, 'utf8');
 
-  const output = postCompletionLint(fileContent, __dirname);
+  const output = postCompletionLint(fileContent, process.cwd());
   process.stdout.write(output);
 }
 
