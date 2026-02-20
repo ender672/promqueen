@@ -94,3 +94,12 @@ test('extractAiCardDataFromBuffer falls back to chara chunk when no ccv3 exists'
 
     assert.deepStrictEqual(result, cardData);
 });
+
+test('extractAiCardDataFromBuffer throws when no character data found', () => {
+    const png = buildPng([]);
+
+    assert.throws(
+        () => extractAiCardDataFromBuffer(png),
+        { message: 'No character data found in image metadata.' }
+    );
+});
