@@ -2,11 +2,19 @@
   "name": "promqueen",
   "version": "0.0.1",
   "description": "",
-  "main": "index.js",
+  "main": "run_pipeline.js",
   "bin": {
-    "autolint": "lint.js",
-    "rptoprompt": "rptoprompt.js",
-    "sendprompt": "sendprompt.js"
+    "pqueen": "run_pipeline.js",
+    "pqueen-applytemplate": "applytemplate.js",
+    "pqueen-rptoprompt": "rptoprompt.js",
+    "pqueen-sendprompt": "sendprompt.js",
+    "pqueen-precompletionlint": "precompletionlint.js",
+    "pqueen-postcompletionlint": "postcompletionlint.js",
+    "pqueen-watcher": "watcher.js",
+    "charcard-png-to-json": "charcard-png-to-json.js",
+    "charcard-png-to-txt": "charcard-png-to-txt.js",
+    "charcard-png-to-openings": "charcard-png-to-openings.js",
+    "charcard-png-get-field": "charcard-png-get-field.js"
   },
   "scripts": {
     "test": "node --test tests/integration/*.test.js",

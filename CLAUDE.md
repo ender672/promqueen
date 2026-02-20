@@ -51,9 +51,9 @@ precompletionlint → applytemplate → rptoprompt → sendprompt → postcomple
 ### Key Modules
 
 - **`lib/pqutils.js`** - Config parsing with hierarchical resolution: defaults → `~/.chathistory` → CLI config → active profile → frontmatter
-- **`lib/sendprompt-core.js`** - LLM API communication with streaming (eventsource-parser) and cost calculation
-- **`lib/applytemplate-core.js`** - Template engine with path traversal security checks
-- **`lib/rendertemplate.js`** - Variable substitution and file inclusion
+- **`sendprompt.js`** - LLM API communication with streaming (eventsource-parser) and cost calculation
+- **`applytemplate.js`** - Template engine using rendertemplate for variable substitution
+- **`lib/rendertemplate.js`** - Variable substitution and file inclusion with path traversal security checks
 - **`lib/cardutils.js`** - Extracts character data from PNG AI character cards
 
 ### VS Code Extension (`vscode_extension/`)
