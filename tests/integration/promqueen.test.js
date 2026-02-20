@@ -105,7 +105,8 @@ I'm fine.
             baseDir: process.cwd(),
             cwd: process.cwd(),
             stderr,
-            fileSystem: memFS
+            fileSystem: memFS,
+            quiet: true
         });
 
         const finalContent = memFS.getContent();
@@ -169,7 +170,8 @@ Tell me a joke.
             baseDir: process.cwd(),
             cwd: process.cwd(),
             stderr,
-            fileSystem: memFS
+            fileSystem: memFS,
+            quiet: true
         });
 
         const finalContent = memFS.getContent();

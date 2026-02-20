@@ -8,11 +8,11 @@ const { rpToPrompt } = require('./rptoprompt.js');
 const { sendPrompt } = require('./sendprompt.js');
 const { postCompletionLint } = require('./postcompletionlint.js');
 
-async function runPipeline(filePath, { baseDir, cwd = process.cwd(), stderr = process.stderr, fileSystem = fs } = {}) {
+async function runPipeline(filePath, { baseDir, cwd = process.cwd(), stderr = process.stderr, fileSystem = fs, quiet = false } = {}) {
     const absolutePath = path.resolve(filePath);
     const templateLoaderPath = path.dirname(absolutePath);
 
-    console.log(`[PIPELINE] Processing ${filePath}...`);
+    if (!quiet) console.log(`[PIPELINE] Processing ${filePath}...`);
 
     try {
         // 1. Run precompletionlint
@@ -48,7 +48,7 @@ async function runPipeline(filePath, { baseDir, cwd = process.cwd(), stderr = pr
             fileSystem.appendFileSync(absolutePath, postOutput);
         }
 
-        console.log(`[PIPELINE] Finished processing ${filePath}`);
+        if (!quiet) console.log(`[PIPELINE] Finished processing ${filePath}`);
 
     } catch (error) {
         console.error(`[PIPELINE] Error processing ${filePath}:`, error);
