@@ -1,3 +1,4 @@
+const assert = require('node:assert');
 const { setupVscodeMock, MockDocument } = require('./mocks');
 
 const vscodeMock = setupVscodeMock();
@@ -38,17 +39,8 @@ async function runTest() {
     const extension = require('../dist/extension.js');
     extension.activate({ subscriptions: [] });
 
-    if (vscodeMock.commands._commands.has('promqueen.runPipeline')) {
-
-        try {
-            await vscodeMock.commands.executeCommand('promqueen.runPipeline');
-
-        } catch (e) {
-            console.error("Command failed:", e);
-        }
-    } else {
-        console.error("promqueen.runPipeline command not registered!");
-    }
+    assert(vscodeMock.commands._commands.has('promqueen.runPipeline'), 'promqueen.runPipeline command not registered');
+    await vscodeMock.commands.executeCommand('promqueen.runPipeline');
 }
 
 runTest();

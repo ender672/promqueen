@@ -97,6 +97,8 @@ class MockDocument {
         return offset;
     }
 
+    async save() { return true; }
+
     getWordRangeAtPosition(position, regex) {
         const line = this.text.split('\n')[position.line];
         if (!regex || !line) return;
@@ -142,13 +144,14 @@ function setupVscodeMock(customOverrides = {}) {
                     return true;
                 }
             },
-            showErrorMessage: (msg) => console.error('[VSCode Error]', msg),
+            showErrorMessage: (msg) => { throw new Error('[VSCode Error] ' + msg); },
             showInformationMessage: (_msg) => { },
             showTextDocument: async (doc) => doc
         },
 
         workspace: {
             getWorkspaceFolder: () => ({ uri: { fsPath: path.resolve(__dirname, '../../') } }),
+            getConfiguration: () => ({ get: (_key, defaultValue) => defaultValue }),
             applyEdit: async (_edit) => true,
             openTextDocument: async (opts) => opts
         },
