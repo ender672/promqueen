@@ -1,0 +1,21 @@
+{
+    "url": "https://api.deepseek.com/v1/chat/completions",
+    "method": "POST",
+    "body": {
+        "model": "deepseek-chat",
+        "messages": [
+            {
+                "role": "user",
+                "content": "Who is the admin?"
+            },
+            {
+                "role": "assistant",
+                "content": "Here is some info:\n\n@john is admin"
+            },
+            {
+                "role": "user",
+                "content": "Thanks!\n"
+            }
+        ]
+    }
+}

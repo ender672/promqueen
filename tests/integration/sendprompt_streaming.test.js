@@ -17,6 +17,21 @@ function sseChunk(data) {
     return new TextEncoder().encode(`data: ${data}\n\n`);
 }
 
+// Helper to create a mock non-streaming JSON response
+function mockJsonResponse(jsonBody) {
+    return {
+        ok: true,
+        status: 200,
+        headers: {
+            get: (name) => {
+                if (name.toLowerCase() === 'content-type') return 'application/json';
+                return null;
+            }
+        },
+        json: async () => jsonBody
+    };
+}
+
 // Helper to create a mock streaming response
 function mockStreamingResponse(chunks) {
     const body = {
@@ -166,6 +181,63 @@ test('sendprompt logs cost on streaming response with usage', async () => {
 
         assert.strictEqual(outputStream.data, 'Hi');
         assert.match(errorStream.data, /total cost:/);
+    } finally {
+        global.fetch = originalFetch;
+    }
+});
+
+test('sendprompt escapes @ at start of lines in streaming response', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = async () => mockStreamingResponse([
+        sseChunk(JSON.stringify({ choices: [{ delta: { content: 'Here is info:\n\n@john is admin' } }] })),
+        sseChunk('[DONE]')
+    ]);
+
+    try {
+        const outputStream = new StringStream();
+        const errorStream = new StringStream();
+
+        await sendPrompt(prompt, process.cwd(), outputStream, errorStream);
+
+        assert.strictEqual(outputStream.data, 'Here is info:\n\n\\@john is admin');
+    } finally {
+        global.fetch = originalFetch;
+    }
+});
+
+test('sendprompt escapes @ at start of lines across streaming chunk boundaries', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = async () => mockStreamingResponse([
+        sseChunk(JSON.stringify({ choices: [{ delta: { content: 'Hello\n\n' } }] })),
+        sseChunk(JSON.stringify({ choices: [{ delta: { content: '@john is here' } }] })),
+        sseChunk('[DONE]')
+    ]);
+
+    try {
+        const outputStream = new StringStream();
+        const errorStream = new StringStream();
+
+        await sendPrompt(prompt, process.cwd(), outputStream, errorStream);
+
+        assert.strictEqual(outputStream.data, 'Hello\n\n\\@john is here');
+    } finally {
+        global.fetch = originalFetch;
+    }
+});
+
+test('sendprompt escapes @ at start of lines in non-streaming response', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = async () => mockJsonResponse({
+        choices: [{ message: { content: 'Here is info:\n\n@john is admin' } }]
+    });
+
+    try {
+        const outputStream = new StringStream();
+        const errorStream = new StringStream();
+
+        await sendPrompt(prompt, process.cwd(), outputStream, errorStream);
+
+        assert.strictEqual(outputStream.data, 'Here is info:\n\n\\@john is admin');
     } finally {
         global.fetch = originalFetch;
     }

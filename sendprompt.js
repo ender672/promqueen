@@ -57,6 +57,7 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
 
     if (isStreaming) {
         let isFirstEvent = true;
+        let lastCharWasNewline = false;
         for await (const event of getStream(response)) {
             if (event.data === '[DONE]') {
                 break;
@@ -76,7 +77,12 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
                 }
             }
             if (content) {
+                content = content.replace(/\n@/g, '\n\\@');
+                if (lastCharWasNewline && content[0] === '@') {
+                    content = '\\' + content;
+                }
                 outputStream.write(content);
+                lastCharWasNewline = content.endsWith('\n');
             }
         }
     } else {
@@ -85,7 +91,8 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
             const costString = usageToCostString(fullConfig.pricing, json.usage);
             errorStream.write(costString + '\n');
         }
-        const content = json.choices?.[0]?.message?.content || '';
+        let content = json.choices?.[0]?.message?.content || '';
+        content = content.replace(/^@/gm, '\\@');
         outputStream.write(content);
     }
 }
@@ -96,9 +103,13 @@ async function sendPrompt(prompt, cwd, outputStream = process.stdout, errorStrea
 
 
     const promptMessages = messages.map(message => {
+        let content = message.content;
+        if (content) {
+            content = content.replace(/^\\@/gm, '@');
+        }
         return {
             role: message.name,
-            content: message.content
+            content: content
         }
     });
 
