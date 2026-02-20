@@ -222,3 +222,97 @@ test('resolveConfig ignores profile when named profile does not exist', () => {
   // Named profile doesn't exist, so no profile settings applied
   assert.strictEqual(result.api_url, undefined);
 });
+
+test('resolveConfig cliConfig overrides DEFAULT_SETTINGS', () => {
+  const cliConfig = {
+    roleplay_user: 'narrator',
+  };
+
+  const result = resolveConfig({ dot_config_loading: false }, '/tmp', cliConfig);
+
+  // cliConfig (priority 3) overrides DEFAULT_SETTINGS (priority 1)
+  assert.strictEqual(result.roleplay_user, 'narrator');
+});
+
+test('resolveConfig configContent overrides cliConfig', () => {
+  const configContent = {
+    dot_config_loading: false,
+    api_url: 'https://runtime.example.com',
+    temperature: 0.5,
+  };
+  const cliConfig = {
+    api_url: 'https://cli.example.com',
+    temperature: 0.8,
+    model: 'gpt-4',
+  };
+
+  const result = resolveConfig(configContent, '/tmp', cliConfig);
+
+  // configContent (priority 5) overrides cliConfig (priority 3)
+  assert.strictEqual(result.api_url, 'https://runtime.example.com');
+  assert.strictEqual(result.temperature, 0.5);
+  // cliConfig settings not in configContent still come through
+  assert.strictEqual(result.model, 'gpt-4');
+});
+
+test('resolveConfig cliConfig merges with defaults when no other layers present', () => {
+  const cliConfig = {
+    api_url: 'https://cli.example.com',
+    custom_flag: true,
+  };
+
+  const result = resolveConfig({ dot_config_loading: false }, '/tmp', cliConfig);
+
+  // cliConfig values are present
+  assert.strictEqual(result.api_url, 'https://cli.example.com');
+  assert.strictEqual(result.custom_flag, true);
+  // DEFAULT_SETTINGS values still present for non-overridden keys
+  assert.strictEqual(result.roleplay_user, 'user');
+  assert.strictEqual(result.roleplay_combined_group_chat, false);
+});
+
+test('resolveConfig full priority ordering across all layers', async (t) => {
+  const originalHomedir = os.homedir;
+  const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'pq-priority-'));
+  const homeConfig = path.join(fakeHome, '.chathistory');
+
+  // .chathistory file sets api_url and custom_a
+  fs.writeFileSync(homeConfig, 'api_url: https://dotfile.example.com\ncustom_a: from-dotfile\ncustom_b: from-dotfile\n');
+  os.homedir = () => fakeHome;
+
+  t.after(() => {
+    os.homedir = originalHomedir;
+    fs.rmSync(fakeHome, { recursive: true, force: true });
+  });
+
+  const cliConfig = {
+    api_url: 'https://cli.example.com',  // overrides dotfile
+    custom_b: 'from-cli',                // overrides dotfile
+    custom_c: 'from-cli',
+  };
+  const configContent = {
+    api_url: 'https://runtime.example.com', // overrides cli and dotfile
+    profile: 'myprofile',
+    profiles: {
+      myprofile: {
+        custom_c: 'from-profile',         // overrides cli
+        custom_d: 'from-profile',
+      },
+    },
+  };
+
+  const result = resolveConfig(configContent, '/tmp', cliConfig);
+
+  // configContent (5) wins over all for api_url
+  assert.strictEqual(result.api_url, 'https://runtime.example.com');
+  // dotfile (2) value survives when not overridden by higher layers
+  assert.strictEqual(result.custom_a, 'from-dotfile');
+  // cli (3) overrides dotfile (2) for custom_b
+  assert.strictEqual(result.custom_b, 'from-cli');
+  // profile (4) overrides cli (3) for custom_c
+  assert.strictEqual(result.custom_c, 'from-profile');
+  // profile (4) provides custom_d
+  assert.strictEqual(result.custom_d, 'from-profile');
+  // DEFAULT_SETTINGS (1) provides roleplay_user since no layer overrides it
+  assert.strictEqual(result.roleplay_user, 'user');
+});
