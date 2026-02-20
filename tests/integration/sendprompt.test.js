@@ -18,11 +18,11 @@ class StringStream {
 
 // Find all input files
 const files = fs.readdirSync(fixturesDir);
-const inputFiles = files.filter(f => f.endsWith('.input.prompt'));
+const inputFiles = files.filter(f => f.endsWith('.input.pqueen'));
 
 inputFiles.forEach(inputFile => {
-  const testName = inputFile.replace('.input.prompt', '');
-  const requestExpectationFile = inputFile.replace('.input.prompt', '.request.json');
+  const testName = inputFile.replace('.input.pqueen', '');
+  const requestExpectationFile = inputFile.replace('.input.pqueen', '.request.json');
 
   test(`sendprompt processes ${testName}`, async () => {
     const inputPath = path.join(fixturesDir, inputFile);

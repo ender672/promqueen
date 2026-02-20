@@ -101,7 +101,7 @@ I'm fine.
     const stderr = { write() {} };
 
     try {
-        await runPipeline('/fake/test.prompt', {
+        await runPipeline('/fake/test.pqueen', {
             baseDir: process.cwd(),
             cwd: process.cwd(),
             stderr,
@@ -165,7 +165,7 @@ Tell me a joke.
     const stderr = { write() {} };
 
     try {
-        await runPipeline('/fake/test.prompt', {
+        await runPipeline('/fake/test.pqueen', {
             baseDir: process.cwd(),
             cwd: process.cwd(),
             stderr,

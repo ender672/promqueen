@@ -9,11 +9,11 @@ const fixturesDir = path.join(__dirname, '../fixtures/applytemplate');
 
 // Find all input files
 const files = fs.readdirSync(fixturesDir);
-const inputFiles = files.filter(f => f.endsWith('.input.prompt'));
+const inputFiles = files.filter(f => f.endsWith('.input.pqueen'));
 
 inputFiles.forEach(inputFile => {
-  const testName = inputFile.replace('.input.prompt', '');
-  const expectedOutputFile = inputFile.replace('.input.prompt', '.output.txt');
+  const testName = inputFile.replace('.input.pqueen', '');
+  const expectedOutputFile = inputFile.replace('.input.pqueen', '.output.pqueen');
 
   test(`applytemplate - ${testName}`, async () => {
     const inputPath = path.join(fixturesDir, inputFile);

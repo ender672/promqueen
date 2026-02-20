@@ -11,11 +11,11 @@ const fixturesDir = path.resolve(__dirname, '../fixtures/precompletionlint');
 
 // Find all input files
 const files = fs.readdirSync(fixturesDir);
-const inputFiles = files.filter(f => f.endsWith('.input.prompt'));
+const inputFiles = files.filter(f => f.endsWith('.input.pqueen'));
 
 inputFiles.forEach(inputFile => {
-  const testName = inputFile.replace('.input.prompt', '').replace(/_/g, ' ');
-  const expectedOutputFile = inputFile.replace('.input.prompt', '.output.txt');
+  const testName = inputFile.replace('.input.pqueen', '').replace(/_/g, ' ');
+  const expectedOutputFile = inputFile.replace('.input.pqueen', '.output.pqueen');
 
   test(`precompletionlint ${testName}`, async () => {
     const inputPath = path.join(fixturesDir, inputFile);
