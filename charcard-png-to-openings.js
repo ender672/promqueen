@@ -77,3 +77,5 @@ function main() {
 if (require.main === module) {
     main();
 }
+
+module.exports = { filenameSafeCharname, exportCharacterMessages, writeMessage };
