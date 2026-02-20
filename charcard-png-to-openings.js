@@ -21,38 +21,40 @@ function filenameSafeCharname(name) {
 }
 
 /**
- * Helper to replace placeholders and write to disk.
+ * Replace {{char}} placeholders with the character name.
  */
-function writeMessage(filePath, charName, message) {
-    // Node.js 'replaceAll' requires v15+
-    const content = message.replaceAll('{{char}}', charName);
-    fs.writeFileSync(filePath, content, 'utf8');
+function formatMessage(charName, message) {
+    return message.replaceAll('{{char}}', charName);
 }
 
 /**
- * Extracts first message and alternate greetings to text files.
+ * Extracts first message and alternate greetings as an array of
+ * { filename, content } objects — no filesystem I/O.
  */
 function exportCharacterMessages(characterData) {
     const name = (characterData.name || 'Character').trim();
     const safeName = filenameSafeCharname(name);
+    const results = [];
 
     // 1. Handle First Message
     const firstMes = characterData.first_mes;
     if (firstMes) {
-        const filename = `${safeName}-first-message.txt`;
-        writeMessage(filename, name, firstMes);
-        console.log(`Created: ${filename}`);
+        results.push({
+            filename: `${safeName}-first-message.txt`,
+            content: formatMessage(name, firstMes),
+        });
     }
 
     // 2. Handle Alternate Greetings
     const alternateGreetings = characterData.alternate_greetings || [];
-
-    // Using forEach to handle the index (enumerate equivalent)
     alternateGreetings.forEach((greeting, index) => {
-        const filename = `${safeName}-alternate-greeting-${index + 1}.txt`;
-        writeMessage(filename, name, greeting);
-        console.log(`Created: ${filename}`);
+        results.push({
+            filename: `${safeName}-alternate-greeting-${index + 1}.txt`,
+            content: formatMessage(name, greeting),
+        });
     });
+
+    return results;
 }
 
 function main() {
@@ -67,7 +69,11 @@ function main() {
 
     try {
         const aiCardData = extractAiCardData(cardFile);
-        exportCharacterMessages(aiCardData);
+        const messages = exportCharacterMessages(aiCardData);
+        for (const { filename, content } of messages) {
+            fs.writeFileSync(filename, content, 'utf8');
+            console.log(`Created: ${filename}`);
+        }
     } catch (error) {
         console.error("Error:", error.message);
         process.exit(1);
@@ -78,4 +84,4 @@ if (require.main === module) {
     main();
 }
 
-module.exports = { filenameSafeCharname, exportCharacterMessages, writeMessage };
+module.exports = { filenameSafeCharname, formatMessage, exportCharacterMessages };
