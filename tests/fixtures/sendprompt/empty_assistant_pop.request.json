@@ -1,0 +1,13 @@
+{
+    "url": "https://api.deepseek.com/v1/chat/completions",
+    "method": "POST",
+    "body": {
+        "model": "deepseek-chat",
+        "messages": [
+            {
+                "role": "user",
+                "content": "Tell me a joke."
+            }
+        ]
+    }
+}
