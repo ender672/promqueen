@@ -12,7 +12,8 @@
             {
                 "role": "assistant",
                 "content": "def factorial(n):\n",
-                "prefix": true
+                "prefix": true,
+                "partial": true
             }
         ]
     }
