@@ -8,7 +8,7 @@ const { rpToPrompt } = require('./rptoprompt.js');
 const { sendPrompt } = require('./sendprompt.js');
 const { postCompletionLint } = require('./postcompletionlint.js');
 
-async function runPipeline(filePath, { baseDir } = {}) {
+async function runPipeline(filePath, { baseDir, cwd = process.cwd(), stderr = process.stderr } = {}) {
     const absolutePath = path.resolve(filePath);
     const templateLoaderPath = path.dirname(absolutePath);
 
@@ -28,14 +28,14 @@ async function runPipeline(filePath, { baseDir } = {}) {
         const templated = applyTemplate(content, {
             messageTemplateLoaderPath: templateLoaderPath,
             data: {},
-            cwd: process.cwd()
+            cwd
         }, null);
 
-        const prompt = rpToPrompt(templated, process.cwd());
+        const prompt = rpToPrompt(templated, cwd);
 
         const fileStream = fs.createWriteStream(absolutePath, { flags: 'a' });
         // We need to wait for the stream to finish
-        await sendPrompt(prompt, process.cwd(), fileStream, process.stderr, {});
+        await sendPrompt(prompt, cwd, fileStream, stderr, {});
 
         fileStream.end();
 
