@@ -27,7 +27,8 @@ async function runPipeline(filePath) {
         // 2. Run applytemplate -> rptoprompt -> sendprompt
         const templated = applyTemplate(content, {
             messageTemplateLoaderPath: templateLoaderPath,
-            data: {}
+            data: {},
+            cwd: process.cwd()
         }, null);
 
         const prompt = rpToPrompt(templated, process.cwd());

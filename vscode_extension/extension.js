@@ -65,7 +65,8 @@ function activate(context) {
             // 2. Apply Template
             const templated = await applyTemplate(text, {
                 messageTemplateLoaderPath: templateLoaderPath,
-                data: {}
+                data: {},
+                cwd: projectRoot
             }, null);
 
             // 3. Rp To Prompt
@@ -167,7 +168,8 @@ function activate(context) {
             // 2. Apply Template
             const templated = await applyTemplate(text, {
                 messageTemplateLoaderPath: templateLoaderPath,
-                data: {}
+                data: {},
+                cwd: projectRoot
             }, null);
 
             // 3. Rp To Prompt

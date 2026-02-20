@@ -47,7 +47,7 @@ function main() {
     promptText = fs.readFileSync(0, 'utf-8');
   }
 
-  const output = applyTemplate(promptText, options);
+  const output = applyTemplate(promptText, { ...options, cwd: process.cwd() });
 
   if (filePath && filePath !== '-') {
     fs.writeFileSync(filePath, output);
