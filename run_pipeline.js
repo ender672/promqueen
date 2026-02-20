@@ -8,7 +8,7 @@ const { rpToPrompt } = require('./rptoprompt.js');
 const { sendPrompt } = require('./sendprompt.js');
 const { postCompletionLint } = require('./postcompletionlint.js');
 
-async function runPipeline(filePath) {
+async function runPipeline(filePath, { baseDir } = {}) {
     const absolutePath = path.resolve(filePath);
     const templateLoaderPath = path.dirname(absolutePath);
 
@@ -17,7 +17,7 @@ async function runPipeline(filePath) {
     try {
         // 1. Run precompletionlint
         let content = fs.readFileSync(absolutePath, 'utf8');
-        const preOutput = precompletionLint(content, __dirname);
+        const preOutput = precompletionLint(content, baseDir);
         if (preOutput) {
             fs.appendFileSync(absolutePath, preOutput);
             // Update content for the next step
@@ -43,7 +43,7 @@ async function runPipeline(filePath) {
 
         // 3. Run postcompletionlint
         content = fs.readFileSync(absolutePath, 'utf8');
-        const postOutput = postCompletionLint(content, __dirname);
+        const postOutput = postCompletionLint(content, baseDir);
         if (postOutput) {
             fs.appendFileSync(absolutePath, postOutput);
         }
@@ -64,7 +64,7 @@ async function main() {
     }
 
     try {
-        await runPipeline(filePath);
+        await runPipeline(filePath, { baseDir: __dirname });
     } catch {
         process.exit(1);
     }
