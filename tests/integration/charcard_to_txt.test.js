@@ -28,3 +28,44 @@ test('createChatmlPrompt parses mes_example with <START> delimiters', () => {
         'A sorceress\n\nEXAMPLE MESSAGES:\n\nLuna: Hello traveler\n\nLuna: Welcome to my tower'
     );
 });
+
+test('createChatmlPrompt with missing optional fields', () => {
+    // Only description, no personality, no scenario, no mes_example
+    const descOnly = createChatmlPrompt({
+        name: 'Luna',
+        description: 'A sorceress',
+    });
+    assert.strictEqual(descOnly, 'A sorceress');
+
+    // No personality
+    const noPersonality = createChatmlPrompt({
+        name: 'Luna',
+        description: 'A sorceress',
+        scenario: 'A dark forest',
+    });
+    assert.strictEqual(noPersonality, 'A sorceress\nScenario: A dark forest');
+
+    // No scenario
+    const noScenario = createChatmlPrompt({
+        name: 'Luna',
+        description: 'A sorceress',
+        personality: 'Wise',
+    });
+    assert.strictEqual(noScenario, 'A sorceress\nWise');
+
+    // No description
+    const noDescription = createChatmlPrompt({
+        name: 'Luna',
+        personality: 'Wise',
+        scenario: 'A dark forest',
+    });
+    assert.strictEqual(noDescription, 'Wise\nScenario: A dark forest');
+
+    // All optional fields missing — only name provided
+    const nameOnly = createChatmlPrompt({ name: 'Luna' });
+    assert.strictEqual(nameOnly, '');
+
+    // Empty object — name defaults to 'Character'
+    const empty = createChatmlPrompt({});
+    assert.strictEqual(empty, '');
+});
