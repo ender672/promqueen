@@ -127,6 +127,11 @@ function activate(context) {
                 }
             }
 
+            const autoSave = vscode.workspace.getConfiguration('promqueen').get('autoSaveAfterPipeline', true);
+            if (autoSave) {
+                await document.save();
+            }
+
             vscode.window.showInformationMessage('PromQueen: Pipeline finished.');
 
         } catch (err) {

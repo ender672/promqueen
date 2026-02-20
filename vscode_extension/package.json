@@ -39,6 +39,16 @@
                 "configuration": "./language-configuration.json"
             }
         ],
+        "configuration": {
+            "title": "PromQueen",
+            "properties": {
+                "promqueen.autoSaveAfterPipeline": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Automatically save the file after the pipeline finishes."
+                }
+            }
+        },
         "grammars": [
             {
                 "language": "promqueen-pqueen",
