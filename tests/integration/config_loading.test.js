@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { resolveConfig } = require('../../lib/pqutils.js');
+const { resolveConfig, parseChatHistory } = require('../../lib/pqutils.js');
 
 test('resolveConfig honors dot_config_loading option and only checks home dir', async (t) => {
   // Mock os.homedir
@@ -72,4 +72,16 @@ test('resolveConfig honors dot_config_loading option and only checks home dir', 
   const configDisabled = resolveConfig({ dot_config_loading: false }, workingDir);
   assert.strictEqual(configDisabled.api_url, undefined, 'Should NOT load config when dot_config_loading is false');
 
+});
+
+test('parseChatHistory with input not starting with @ returns single unnamed message', () => {
+  const input = 'Hello, this is just plain text without any @ prefix.';
+  const result = parseChatHistory(input);
+  assert.deepStrictEqual(result, [{ name: null, content: input }]);
+});
+
+test('parseChatHistory with multiline input not starting with @ returns single unnamed message', () => {
+  const input = 'First line\nSecond line\nThird line';
+  const result = parseChatHistory(input);
+  assert.deepStrictEqual(result, [{ name: null, content: input }]);
 });
