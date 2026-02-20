@@ -1,0 +1,12 @@
+---
+roleplay_user: Bob
+dot_config_loading: false
+---
+@system
+You are a helpful assistant
+
+@Bob
+Hello there Alice
+
+@Alice
+Nice to meet you Bob
