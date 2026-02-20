@@ -2,7 +2,19 @@
 
 const { extractAiCardData } = require('./lib/cardutils');
 
-if (require.main === module) {
+function getCardField(cardData, fieldName) {
+    if (fieldName in cardData) {
+        const value = cardData[fieldName];
+        if (typeof value === 'object') {
+            return JSON.stringify(value, null, 2);
+        }
+        return String(value);
+    }
+    const available = Object.keys(cardData).join(', ');
+    throw new Error(`Field '${fieldName}' not found in card data. Available fields: ${available}`);
+}
+
+function main() {
     const args = process.argv.slice(2);
 
     if (args.length < 2) {
@@ -14,19 +26,17 @@ if (require.main === module) {
     const cardFile = args[0];
     const targetField = args[1];
 
-    const aiCardData = extractAiCardData(cardFile);
-
-    if (targetField in aiCardData) {
-        const value = aiCardData[targetField];
-        
-        if (typeof value === 'object') {
-            console.log(JSON.stringify(value, null, 2));
-        } else {
-            console.log(value);
-        }
-    } else {
-        console.error(`Error: Field '${targetField}' not found in card data.`);
-        console.error("Available fields:", Object.keys(aiCardData).join(', '));
+    try {
+        const aiCardData = extractAiCardData(cardFile);
+        console.log(getCardField(aiCardData, targetField));
+    } catch (error) {
+        console.error(error.message);
         process.exit(1);
     }
 }
+
+if (require.main === module) {
+    main();
+}
+
+module.exports = { getCardField };
