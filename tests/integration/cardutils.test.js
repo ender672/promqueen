@@ -79,3 +79,18 @@ test('extractAiCardDataFromBuffer extracts ccv3 chunk', () => {
 
     assert.deepStrictEqual(result, cardData);
 });
+
+test('extractAiCardDataFromBuffer falls back to chara chunk when no ccv3 exists', () => {
+    const cardData = {
+        name: 'CharaChar',
+        description: 'A chara-only character',
+        personality: 'Bold',
+    };
+    const png = buildPng([
+        { keyword: 'chara', text: encodeCardPayload(cardData) },
+    ]);
+
+    const result = extractAiCardDataFromBuffer(png);
+
+    assert.deepStrictEqual(result, cardData);
+});
