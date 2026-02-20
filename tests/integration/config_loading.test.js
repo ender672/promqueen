@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { resolveConfig, parseChatHistory } = require('../../lib/pqutils.js');
+const { resolveConfig, parseChatHistory, parseConfigOnly } = require('../../lib/pqutils.js');
 
 test('resolveConfig honors dot_config_loading option and only checks home dir', async (t) => {
   // Mock os.homedir
@@ -96,4 +96,32 @@ test('parseChatHistory with null input returns empty array', () => {
 
 test('parseChatHistory with undefined input returns empty array', () => {
   assert.deepStrictEqual(parseChatHistory(undefined), []);
+});
+
+test('parseConfigOnly throws when input does not start with ---', () => {
+  assert.throws(
+    () => parseConfigOnly('no front matter here'),
+    { message: "Invalid input: Text must start with '---'" }
+  );
+});
+
+test('parseConfigOnly throws when input is null', () => {
+  assert.throws(
+    () => parseConfigOnly(null),
+    { message: "Invalid input: Text must start with '---'" }
+  );
+});
+
+test('parseConfigOnly throws when input is empty string', () => {
+  assert.throws(
+    () => parseConfigOnly(''),
+    { message: "Invalid input: Text must start with '---'" }
+  );
+});
+
+test('parseConfigOnly throws when closing --- is missing', () => {
+  assert.throws(
+    () => parseConfigOnly('---\nkey: value\nno closing separator'),
+    { message: "Invalid format: Expected YAML front matter separating '---' not found" }
+  );
 });
