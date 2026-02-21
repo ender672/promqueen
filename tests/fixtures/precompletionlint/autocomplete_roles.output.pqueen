@@ -1,1 +1,5 @@
-sistant
+---
+roleplay_user: User
+dot_config_loading: false
+---
+@assistant

@@ -27,6 +27,6 @@ inputFiles.forEach(inputFile => {
         const output = postCompletionLint(input, baseDir); // Expecting refactored signature
         const expectedOutput = fs.readFileSync(outputPath, 'utf8');
 
-        assert.strictEqual(output, expectedOutput, `Output for ${testName} should match expected output`);
+        assert.strictEqual(input + output, expectedOutput, `Output for ${testName} should match expected output`);
     });
 });

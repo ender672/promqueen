@@ -1,1 +1,11 @@
+---
+user: User
+dot_config_loading: false
+---
+@User
+Hello world
+
+@assistant
+Here is my response.
+
 @User

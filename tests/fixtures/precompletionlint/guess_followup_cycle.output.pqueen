@@ -1,2 +1,20 @@
+---
+roleplay_user: Jim
+dot_config_loading: false
+---
+@Jim
+Msg 1
+
+@Bob
+Msg 2
+
+@Jim
+Msg 3
+
+@Alice
+Msg 4
+
+@Jim
+Msg 5
 
 @Alice

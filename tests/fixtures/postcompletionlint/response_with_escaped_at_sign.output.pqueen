@@ -1,2 +1,13 @@
+---
+user: User
+dot_config_loading: false
+---
+@User
+Hello world
+
+@assistant
+Here is some info about users:
+
+\@john_doe is the admin
 
 @User

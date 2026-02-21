@@ -1,3 +1,18 @@
+---
+roleplay_user: Bob
+dot_config_loading: false
+---
+@user
+This is a user instruction
 
+@Alice
+This is an assistant message.
+
+---
+
+It has a delimiter in it that should be not cause problems with config parsing.
+
+@Bob
+This is a user response.
 
 @Alice
