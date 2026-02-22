@@ -1,0 +1,17 @@
+{
+  "character_name": "Elara Nightwhisper",
+  "character_nickname": "Elara",
+  "entries": [
+    {
+      "keys": ["forest"],
+      "content": "{{char}} knows the forest well.",
+      "enabled": true,
+      "insertion_order": 100,
+      "case_sensitive": false,
+      "use_regex": false,
+      "constant": false,
+      "selective": false,
+      "secondary_keys": []
+    }
+  ]
+}

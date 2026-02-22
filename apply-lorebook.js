@@ -4,6 +4,81 @@ const fs = require('fs');
 const process = require('process');
 const { parseConfigOnly, parseMessages } = require('./lib/pqutils');
 
+function splitCBSArgs(argsStr) {
+  const parts = [];
+  let current = '';
+  for (let i = 0; i < argsStr.length; i++) {
+    if (argsStr[i] === '\\' && i + 1 < argsStr.length && argsStr[i + 1] === ',') {
+      current += ',';
+      i++;
+    } else if (argsStr[i] === ',') {
+      parts.push(current);
+      current = '';
+    } else {
+      current += argsStr[i];
+    }
+  }
+  parts.push(current);
+  return parts;
+}
+
+function simpleHash(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+function expandCBS(text, lorebook, promptText) {
+  return text.replace(/\{\{(.*?)\}\}/g, (match, inner) => {
+    const trimmed = inner.trim();
+    const lower = trimmed.toLowerCase();
+
+    if (lower === 'char') {
+      const name = lorebook.character_nickname || lorebook.character_name;
+      return name !== undefined && name !== '' ? name : match;
+    }
+
+    if (lower === 'user') {
+      const userName = lorebook.user_name;
+      return userName !== undefined && userName !== '' ? userName : match;
+    }
+
+    if (lower.startsWith('//')) {
+      return '';
+    }
+
+    if (lower.startsWith('random:')) {
+      const argsStr = trimmed.slice('random:'.length);
+      const options = splitCBSArgs(argsStr);
+      return options[Math.floor(Math.random() * options.length)];
+    }
+
+    if (lower.startsWith('pick:')) {
+      const argsStr = trimmed.slice('pick:'.length);
+      const options = splitCBSArgs(argsStr);
+      const hash = simpleHash(promptText || '');
+      return options[hash % options.length];
+    }
+
+    if (lower.startsWith('roll:')) {
+      const arg = trimmed.slice('roll:'.length).trim();
+      const numStr = arg.replace(/^d/i, '');
+      const n = parseInt(numStr, 10);
+      if (isNaN(n) || n < 1) return match;
+      return String(Math.floor(Math.random() * n) + 1);
+    }
+
+    if (lower.startsWith('reverse:')) {
+      const arg = trimmed.slice('reverse:'.length);
+      return arg.split('').reverse().join('');
+    }
+
+    return match;
+  });
+}
+
 function applyLorebook(promptText, lorebook) {
   const entries = lorebook.entries || [];
   if (entries.length === 0) return promptText;
@@ -75,7 +150,7 @@ function applyLorebook(promptText, lorebook) {
   if (matched.length === 0) return promptText;
 
   matched.sort((a, b) => (a.insertion_order || 0) - (b.insertion_order || 0));
-  const joinedContent = matched.map(e => e.content).join('\n');
+  const joinedContent = matched.map(e => expandCBS(e.content, lorebook, promptText)).join('\n');
   const base = promptText.replace(/\n$/, '');
   return base + '\n' + joinedContent + '\n';
 }

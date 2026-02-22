@@ -1,0 +1,16 @@
+{
+  "user_name": "Alex",
+  "entries": [
+    {
+      "keys": ["forest"],
+      "content": "{{user}} is exploring the forest.",
+      "enabled": true,
+      "insertion_order": 100,
+      "case_sensitive": false,
+      "use_regex": false,
+      "constant": false,
+      "selective": false,
+      "secondary_keys": []
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "entries": [
+    {
+      "keys": ["forest"],
+      "content": "Location: {{random:deep\\,dark forest}}.",
+      "enabled": true,
+      "insertion_order": 100,
+      "case_sensitive": false,
+      "use_regex": false,
+      "constant": false,
+      "selective": false,
+      "secondary_keys": []
+    }
+  ]
+}
