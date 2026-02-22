@@ -2,10 +2,45 @@
 
 const fs = require('fs');
 const process = require('process');
+const { parseConfigOnly, parseMessages } = require('./lib/pqutils');
 
 function applyLorebook(promptText, lorebook) {
-  // TODO: apply lorebook entries to promptText
-  return promptText;
+  const entries = lorebook.entries || [];
+  if (entries.length === 0) return promptText;
+
+  const { messagesString } = parseConfigOnly(promptText);
+  const messages = parseMessages(messagesString);
+  const scannedText = messages.map(m => m.content || '').join('\n');
+
+  const matched = [];
+  for (const entry of entries) {
+    if (entry.enabled === false) continue;
+    if (!entry.content) continue;
+
+    if (entry.constant === true) {
+      matched.push(entry);
+      continue;
+    }
+
+    const keys = entry.keys || [];
+    const caseSensitive = entry.case_sensitive === true;
+    const textToSearch = caseSensitive ? scannedText : scannedText.toLowerCase();
+    const keyMatches = keys.some(key => {
+      const searchKey = caseSensitive ? key : key.toLowerCase();
+      return textToSearch.includes(searchKey);
+    });
+
+    if (keyMatches) {
+      matched.push(entry);
+    }
+  }
+
+  if (matched.length === 0) return promptText;
+
+  matched.sort((a, b) => (a.insertion_order || 0) - (b.insertion_order || 0));
+  const joinedContent = matched.map(e => e.content).join('\n');
+  const base = promptText.replace(/\n$/, '');
+  return base + '\n' + joinedContent + '\n';
 }
 
 function main() {
