@@ -67,11 +67,11 @@ Separate package with its own `node_modules`. Bundled via esbuild → `dist/exte
 ## Testing
 
 Uses Node.js built-in test runner (`node:test` + `node:assert`). Tests are fixture-driven:
-- Input files: `tests/fixtures/<feature>/*.input.prompt`
-- Expected outputs: `.request.json` (API request shape) or `.output.txt` (text output)
+- Input files: `tests/fixtures/<feature>/*.input.pqueen`
+- Expected outputs: `.request.json` (API request shape) or `.output.pqueen` (text output)
 - Tests auto-discover fixtures via `fs.readdirSync` and generate test cases per file
 
-To add a test case, create a new `.input.prompt` file and its corresponding expectation file in the appropriate fixtures directory.
+To add a test case, create a new `.input.pqueen` file and its corresponding expectation file in the appropriate fixtures directory.
 
 ## Code Style
 
