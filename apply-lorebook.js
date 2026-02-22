@@ -10,7 +10,15 @@ function applyLorebook(promptText, lorebook) {
 
   const { messagesString } = parseConfigOnly(promptText);
   const messages = parseMessages(messagesString);
-  const scannedText = messages.map(m => m.content || '').join('\n');
+
+  let scannedText;
+  if (lorebook.scan_depth !== undefined && lorebook.scan_depth !== null) {
+    const nonSystemMessages = messages.filter(m => m.name !== 'system');
+    const lastN = nonSystemMessages.slice(-lorebook.scan_depth);
+    scannedText = lastN.map(m => m.content || '').join('\n');
+  } else {
+    scannedText = messages.map(m => m.content || '').join('\n');
+  }
 
   const matched = [];
   for (const entry of entries) {
