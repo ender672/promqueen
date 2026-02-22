@@ -1,0 +1,16 @@
+{
+  "entries": [
+    {
+      "keys": ["forest"],
+      "content": "@@role user\nThe forest contains ancient magic.\nBeware of the dark paths.",
+      "extensions": {},
+      "enabled": true,
+      "insertion_order": 100,
+      "case_sensitive": false,
+      "use_regex": false,
+      "constant": false,
+      "selective": false,
+      "secondary_keys": []
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+---
+api_url: https://api.example.com/v1/chat/completions
+---
+@system
+You are a helpful assistant.
+The castle is a key location in this world.
+
+@user
+Tell me about the castle.

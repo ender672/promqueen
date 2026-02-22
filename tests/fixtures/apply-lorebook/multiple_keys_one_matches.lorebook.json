@@ -1,0 +1,16 @@
+{
+  "entries": [
+    {
+      "keys": ["forest", "mountain"],
+      "content": "This region is known for its diverse terrain and wildlife.",
+      "extensions": {},
+      "enabled": true,
+      "insertion_order": 100,
+      "case_sensitive": false,
+      "use_regex": false,
+      "constant": false,
+      "selective": false,
+      "secondary_keys": []
+    }
+  ]
+}

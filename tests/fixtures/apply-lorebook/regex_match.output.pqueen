@@ -1,0 +1,9 @@
+---
+api_url: https://api.example.com/v1/chat/completions
+---
+@system
+You are a helpful assistant.
+
+@user
+The forest was dark and mysterious.
+Forests and forges are common in this land.

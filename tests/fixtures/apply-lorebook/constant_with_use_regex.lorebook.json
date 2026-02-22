@@ -1,0 +1,16 @@
+{
+  "entries": [
+    {
+      "keys": ["forest|mountain"],
+      "content": "The natural world is full of wonder.",
+      "extensions": {},
+      "enabled": true,
+      "insertion_order": 100,
+      "case_sensitive": false,
+      "use_regex": true,
+      "constant": true,
+      "selective": false,
+      "secondary_keys": []
+    }
+  ]
+}

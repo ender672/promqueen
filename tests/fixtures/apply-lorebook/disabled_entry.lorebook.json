@@ -1,0 +1,16 @@
+{
+  "entries": [
+    {
+      "keys": ["forest"],
+      "content": "The forest is an ancient woodland filled with mystical creatures.",
+      "extensions": {},
+      "enabled": false,
+      "insertion_order": 100,
+      "case_sensitive": false,
+      "use_regex": false,
+      "constant": false,
+      "selective": false,
+      "secondary_keys": []
+    }
+  ]
+}

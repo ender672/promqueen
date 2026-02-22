@@ -1,0 +1,8 @@
+---
+api_url: https://api.example.com/v1/chat/completions
+---
+@system
+You are a helpful assistant.
+
+@user
+The knight rode through the forest.

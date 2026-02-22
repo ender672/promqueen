@@ -1,0 +1,8 @@
+---
+api_url: https://api.example.com/v1/chat/completions
+---
+@system
+You are a helpful assistant.
+
+@user
+Tell me about the forest and its creatures.

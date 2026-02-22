@@ -14,7 +14,8 @@
     "charcard-png-to-json": "charcard-png-to-json.js",
     "charcard-png-to-txt": "charcard-png-to-txt.js",
     "charcard-png-to-openings": "charcard-png-to-openings.js",
-    "charcard-png-get-field": "charcard-png-get-field.js"
+    "charcard-png-get-field": "charcard-png-get-field.js",
+    "pqueen-apply-lorebook": "apply-lorebook.js"
   },
   "scripts": {
     "test": "node --test tests/integration/*.test.js",

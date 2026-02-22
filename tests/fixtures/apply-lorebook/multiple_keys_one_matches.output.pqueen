@@ -1,0 +1,9 @@
+---
+api_url: https://api.example.com/v1/chat/completions
+---
+@system
+You are a helpful assistant.
+
+@user
+The forest path was dark and winding.
+This region is known for its diverse terrain and wildlife.

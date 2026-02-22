@@ -1,0 +1,10 @@
+---
+api_url: https://api.example.com/v1/chat/completions
+---
+@system
+You are a helpful assistant.
+
+@user
+The knight entered the castle courtyard.
+Knights are sworn protectors of the realm.
+The castle is a fortified stronghold built centuries ago.

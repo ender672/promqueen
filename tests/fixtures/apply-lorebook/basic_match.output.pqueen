@@ -1,0 +1,9 @@
+---
+api_url: https://api.example.com/v1/chat/completions
+---
+@system
+You are a helpful assistant.
+
+@user
+Tell me about the forest and its creatures.
+The forest is an ancient woodland filled with mystical creatures.

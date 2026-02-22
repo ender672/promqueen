@@ -1,0 +1,39 @@
+const { test } = require('node:test');
+const assert = require('node:assert');
+const path = require('path');
+const fs = require('fs');
+const { applyLorebook } = require('../../apply-lorebook.js');
+
+const fixturesDir = path.join(__dirname, '../fixtures/apply-lorebook');
+
+// Find all input files
+const files = fs.readdirSync(fixturesDir);
+const inputFiles = files.filter(f => f.endsWith('.input.pqueen'));
+
+inputFiles.forEach(inputFile => {
+  const testName = inputFile.replace('.input.pqueen', '');
+  const lorebookFile = inputFile.replace('.input.pqueen', '.lorebook.json');
+  const expectedOutputFile = inputFile.replace('.input.pqueen', '.output.pqueen');
+
+  test(`apply-lorebook - ${testName}`, async () => {
+    const inputPath = path.join(fixturesDir, inputFile);
+    const lorebookPath = path.join(fixturesDir, lorebookFile);
+    const outputPath = path.join(fixturesDir, expectedOutputFile);
+
+    if (!fs.existsSync(lorebookPath)) {
+      throw new Error(`Expected lorebook file not found: ${lorebookPath}`);
+    }
+
+    if (!fs.existsSync(outputPath)) {
+      throw new Error(`Expected output file not found: ${outputPath}`);
+    }
+
+    const prompt = fs.readFileSync(inputPath, 'utf8');
+    const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
+
+    const output = applyLorebook(prompt, lorebook);
+    const expectedOutput = fs.readFileSync(outputPath, 'utf8');
+
+    assert.strictEqual(output, expectedOutput, `Output for ${testName} should match expected output`);
+  });
+});

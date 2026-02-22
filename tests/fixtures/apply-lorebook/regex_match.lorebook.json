@@ -1,0 +1,16 @@
+{
+  "entries": [
+    {
+      "keys": ["for(est|ge)"],
+      "content": "Forests and forges are common in this land.",
+      "extensions": {},
+      "enabled": true,
+      "insertion_order": 100,
+      "case_sensitive": false,
+      "use_regex": true,
+      "constant": false,
+      "selective": false,
+      "secondary_keys": []
+    }
+  ]
+}

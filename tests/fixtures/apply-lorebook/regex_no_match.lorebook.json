@@ -1,0 +1,16 @@
+{
+  "entries": [
+    {
+      "keys": ["^dragon"],
+      "content": "Dragons are ancient beings of immense power.",
+      "extensions": {},
+      "enabled": true,
+      "insertion_order": 100,
+      "case_sensitive": false,
+      "use_regex": true,
+      "constant": false,
+      "selective": false,
+      "secondary_keys": []
+    }
+  ]
+}

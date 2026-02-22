@@ -1,0 +1,9 @@
+---
+api_url: https://api.example.com/v1/chat/completions
+---
+@system
+You are a helpful assistant.
+
+@user
+I walked through the forest today.
+The forest is home to many woodland creatures.

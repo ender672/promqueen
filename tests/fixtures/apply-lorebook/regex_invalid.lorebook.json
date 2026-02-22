@@ -1,0 +1,16 @@
+{
+  "entries": [
+    {
+      "keys": ["[invalid"],
+      "content": "This should never be injected.",
+      "extensions": {},
+      "enabled": true,
+      "insertion_order": 100,
+      "case_sensitive": false,
+      "use_regex": true,
+      "constant": false,
+      "selective": false,
+      "secondary_keys": []
+    }
+  ]
+}
