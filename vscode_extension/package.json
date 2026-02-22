@@ -70,6 +70,7 @@
         "check-types": "tsc --noEmit",
         "lint": "eslint src --ext ts",
         "test": "node ./dist/extension.js || node ./test/run_test.js",
+        "clean": "rm -rf dist out",
         "build": "esbuild ./extension.js --bundle --outfile=dist/extension.js --external:vscode --external:commander --format=cjs --platform=node --minify --sourcemap",
         "vsix": "vsce package"
     },
