@@ -46,6 +46,19 @@ function applyLorebook(promptText, lorebook) {
       });
     }
 
+    // When selective is true and use_regex is false, require a secondary key match too
+    if (keyMatches && entry.selective === true && !useRegex) {
+      const secondaryKeys = entry.secondary_keys || [];
+      if (secondaryKeys.length > 0) {
+        const textForSecondary = caseSensitive ? scannedText : scannedText.toLowerCase();
+        const secondaryMatch = secondaryKeys.some(key => {
+          const searchKey = caseSensitive ? key : key.toLowerCase();
+          return textForSecondary.includes(searchKey);
+        });
+        if (!secondaryMatch) keyMatches = false;
+      }
+    }
+
     if (keyMatches) {
       matched.push(entry);
     }
