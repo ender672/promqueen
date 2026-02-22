@@ -1,8 +1,0 @@
----
-api_url: https://api.example.com/v1/chat/completions
----
-@system
-You are a brave knight in a fantasy world.
-
-@user
-Tell me about the castle.
