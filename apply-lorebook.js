@@ -17,18 +17,34 @@ function applyLorebook(promptText, lorebook) {
     if (entry.enabled === false) continue;
     if (!entry.content) continue;
 
-    if (entry.constant === true) {
+    // When use_regex is true, constant is ignored (per V3 spec)
+    if (entry.constant === true && !entry.use_regex) {
       matched.push(entry);
       continue;
     }
 
     const keys = entry.keys || [];
     const caseSensitive = entry.case_sensitive === true;
-    const textToSearch = caseSensitive ? scannedText : scannedText.toLowerCase();
-    const keyMatches = keys.some(key => {
-      const searchKey = caseSensitive ? key : key.toLowerCase();
-      return textToSearch.includes(searchKey);
-    });
+    const useRegex = entry.use_regex === true;
+
+    let keyMatches;
+    if (useRegex) {
+      const flags = caseSensitive ? '' : 'i';
+      keyMatches = keys.some(key => {
+        try {
+          const re = new RegExp(key, flags);
+          return re.test(scannedText);
+        } catch {
+          return false;
+        }
+      });
+    } else {
+      const textToSearch = caseSensitive ? scannedText : scannedText.toLowerCase();
+      keyMatches = keys.some(key => {
+        const searchKey = caseSensitive ? key : key.toLowerCase();
+        return textToSearch.includes(searchKey);
+      });
+    }
 
     if (keyMatches) {
       matched.push(entry);
