@@ -26,7 +26,7 @@ function createChatmlPrompt(characterData) {
         if (mesExampleAry.length > 0) {
             roleplayPrompt += "\n\nEXAMPLE MESSAGES:";
             for (const x of mesExampleAry) {
-                roleplayPrompt += `\n\n${name}: ${x}`;
+                roleplayPrompt += `\n\n${x}`;
             }
         }
     }
