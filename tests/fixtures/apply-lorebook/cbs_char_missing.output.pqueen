@@ -1,5 +1,6 @@
 ---
 api_url: https://api.example.com/v1/chat/completions
+dot_config_loading: false
 ---
 @system
 You are a helpful assistant.

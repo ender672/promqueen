@@ -1,5 +1,7 @@
 ---
 api_url: https://api.example.com/v1/chat/completions
+message_template_variables:
+  char: Elara
 ---
 @system
 You are a helpful assistant.

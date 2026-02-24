@@ -1,5 +1,6 @@
 ---
 api_url: https://api.example.com/v1/chat/completions
+roleplay_user: Alex
 ---
 @system
 You are a helpful assistant.

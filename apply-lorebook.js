@@ -2,7 +2,8 @@
 
 const fs = require('fs');
 const process = require('process');
-const { parseConfigOnly, parseMessages } = require('./lib/pqutils');
+const { parseConfigOnly, parseMessages, resolveConfig } = require('./lib/pqutils');
+const { buildTemplateContext } = require('./lib/rendertemplate');
 
 function splitCBSArgs(argsStr) {
   const parts = [];
@@ -30,18 +31,18 @@ function simpleHash(str) {
   return Math.abs(hash);
 }
 
-function expandCBS(text, lorebook, promptText) {
+function expandCBS(text, templateContext, promptText) {
   return text.replace(/\{\{(.*?)\}\}/g, (match, inner) => {
     const trimmed = inner.trim();
     const lower = trimmed.toLowerCase();
 
     if (lower === 'char') {
-      const name = lorebook.character_nickname || lorebook.character_name;
+      const name = templateContext.char;
       return name !== undefined && name !== '' ? name : match;
     }
 
     if (lower === 'user') {
-      const userName = lorebook.user_name;
+      const userName = templateContext.user;
       return userName !== undefined && userName !== '' ? userName : match;
     }
 
@@ -83,8 +84,10 @@ function applyLorebook(promptText, lorebook) {
   const entries = lorebook.entries || [];
   if (entries.length === 0) return promptText;
 
-  const { messagesString } = parseConfigOnly(promptText);
+  const { config, messagesString } = parseConfigOnly(promptText);
   const messages = parseMessages(messagesString);
+  const resolvedConfig = resolveConfig(config);
+  const templateContext = buildTemplateContext(resolvedConfig, messages);
 
   let scannedText;
   if (lorebook.scan_depth !== undefined && lorebook.scan_depth !== null) {
@@ -150,7 +153,7 @@ function applyLorebook(promptText, lorebook) {
   if (matched.length === 0) return promptText;
 
   matched.sort((a, b) => (a.insertion_order || 0) - (b.insertion_order || 0));
-  const joinedContent = matched.map(e => expandCBS(e.content, lorebook, promptText)).join('\n');
+  const joinedContent = matched.map(e => expandCBS(e.content, templateContext, promptText)).join('\n');
   const base = promptText.replace(/\n$/, '');
   return base + '\n' + joinedContent + '\n';
 }
