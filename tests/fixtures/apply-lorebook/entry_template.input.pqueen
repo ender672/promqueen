@@ -5,5 +5,4 @@ api_url: https://api.example.com/v1/chat/completions
 You are a helpful assistant.
 
 @user
-What is the weather like today?
-[OOC: The world is set in a medieval fantasy era.]
+Tell me about the forest and its creatures.

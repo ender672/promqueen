@@ -153,7 +153,11 @@ function applyLorebook(promptText, lorebook) {
   if (matched.length === 0) return promptText;
 
   matched.sort((a, b) => (a.insertion_order || 0) - (b.insertion_order || 0));
-  const joinedContent = matched.map(e => expandCBS(e.content, templateContext, promptText)).join('\n');
+  const entryTemplate = lorebook.entry_template || '[OOC: {{content}}]';
+  const joinedContent = matched.map(e => {
+    const expanded = expandCBS(e.content, templateContext, promptText);
+    return entryTemplate.replace('{{content}}', expanded);
+  }).join('\n');
   const base = promptText.replace(/\n$/, '');
   return base + '\n' + joinedContent + '\n';
 }
