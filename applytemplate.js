@@ -5,7 +5,7 @@ const process = require('process');
 const pqutils = require('./lib/pqutils.js');
 const yaml = require('js-yaml');
 const path = require('path');
-const { renderTemplate } = require('./lib/rendertemplate.js');
+const { renderTemplate, buildTemplateContext } = require('./lib/rendertemplate.js');
 
 function applyTemplate(promptText, options) {
     const cwd = options.cwd || process.cwd();
@@ -15,21 +15,8 @@ function applyTemplate(promptText, options) {
 
     const fullMessageTemplateContext = {
         ...options.data,
-        ...resolvedConfig.message_template_variables,
+        ...buildTemplateContext(resolvedConfig, messages),
     };
-
-    if (fullMessageTemplateContext.user === undefined && resolvedConfig.roleplay_user) {
-        fullMessageTemplateContext.user = resolvedConfig.roleplay_user;
-    }
-
-    if (fullMessageTemplateContext.char === undefined) {
-        const skipNames = [...pqutils.PROMPT_ROLES, fullMessageTemplateContext.user];
-        const firstCharMsg = messages.find(m => !skipNames.includes(m.name));
-
-        if (firstCharMsg) {
-            fullMessageTemplateContext.char = firstCharMsg.name;
-        }
-    }
 
     let renderedMessages = [];
     for (let message of messages) {
