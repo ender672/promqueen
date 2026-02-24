@@ -25,7 +25,7 @@ test('createChatmlPrompt parses mes_example with <START> delimiters', () => {
 
     assert.strictEqual(
         result,
-        'A sorceress\n\nEXAMPLE MESSAGES:\n\nLuna: Hello traveler\n\nLuna: Welcome to my tower'
+        'A sorceress\n\nEXAMPLE MESSAGES:\n\nHello traveler\n\nWelcome to my tower'
     );
 });
 
