@@ -29,6 +29,10 @@
             {
                 "command": "promqueen.runPrecompletionLint",
                 "title": "PromQueen: Run Precompletion Lint"
+            },
+            {
+                "command": "promqueen.previewTemplate",
+                "title": "PromQueen: Preview Template"
             }
         ],
         "languages": [

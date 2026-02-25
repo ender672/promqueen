@@ -202,6 +202,39 @@ function activate(context) {
 
     context.subscriptions.push(previewDisposable);
 
+    let previewTemplateDisposable = vscode.commands.registerCommand('promqueen.previewTemplate', async function () {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showErrorMessage('PromQueen: No active text editor.');
+            return;
+        }
+
+        const document = editor.document;
+        const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+        const projectRoot = workspaceFolder ? workspaceFolder.uri.fsPath : path.dirname(document.uri.fsPath);
+        const templateLoaderPath = path.dirname(document.uri.fsPath);
+
+        try {
+            const text = getDocumentText(document);
+            const result = await applyTemplate(text, {
+                messageTemplateLoaderPath: templateLoaderPath,
+                data: {},
+                cwd: projectRoot
+            }, null);
+
+            const doc = await vscode.workspace.openTextDocument({
+                content: result,
+                language: 'promqueen-pqueen'
+            });
+            await vscode.window.showTextDocument(doc, { preview: false });
+
+        } catch (err) {
+            vscode.window.showErrorMessage(`PromQueen Error: ${err.message}`);
+            console.error(err);
+        }
+    });
+    context.subscriptions.push(previewTemplateDisposable);
+
     let preLintDisposable = vscode.commands.registerCommand('promqueen.runPrecompletionLint', async function () {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
