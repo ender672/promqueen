@@ -33,7 +33,7 @@ async function runPipeline(filePath, { baseDir, cwd = process.cwd(), stderr = pr
         }, null);
 
         // 2b. Run apply-lorebook (if lorebook configured)
-        const lorebookPath = resolveLorebookPath(templated);
+        const lorebookPath = resolveLorebookPath(templated, templateLoaderPath);
         let withLorebook = templated;
         if (lorebookPath) {
             const lorebook = JSON.parse(fileSystem.readFileSync(lorebookPath, 'utf8'));

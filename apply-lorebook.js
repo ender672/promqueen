@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const fs = require('fs');
+const path = require('path');
 const process = require('process');
 const { parseConfigOnly, parseMessages, resolveConfig } = require('./lib/pqutils');
 const { buildTemplateContext } = require('./lib/rendertemplate');
@@ -162,10 +163,14 @@ function applyLorebook(promptText, lorebook) {
   return base + '\n' + joinedContent + '\n';
 }
 
-function resolveLorebookPath(promptText) {
+function resolveLorebookPath(promptText, basePath) {
   const { config } = parseConfigOnly(promptText);
   const resolvedConfig = resolveConfig(config);
-  return resolvedConfig.lorebook;
+  const lorebookPath = resolvedConfig.lorebook;
+  if (!lorebookPath) return undefined;
+  if (path.isAbsolute(lorebookPath)) return lorebookPath;
+  if (!basePath) return lorebookPath;
+  return path.resolve(basePath, lorebookPath);
 }
 
 function main() {
@@ -186,7 +191,8 @@ function main() {
     promptText = fs.readFileSync(0, 'utf-8');
   }
 
-  const lorebookPath = options.lorebook || resolveLorebookPath(promptText);
+  const basePath = filePath && filePath !== '-' ? path.dirname(path.resolve(filePath)) : process.cwd();
+  const lorebookPath = options.lorebook || resolveLorebookPath(promptText, basePath);
   if (!lorebookPath) {
     console.error('No lorebook path provided. Use --lorebook or set lorebook in frontmatter config.');
     process.exit(1);

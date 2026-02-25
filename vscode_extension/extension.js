@@ -72,7 +72,7 @@ function activate(context) {
             }, null);
 
             // 3. Apply Lorebook
-            const lorebookPath = resolveLorebookPath(templated);
+            const lorebookPath = resolveLorebookPath(templated, templateLoaderPath);
             let withLorebook = templated;
             if (lorebookPath) {
                 const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
@@ -188,7 +188,7 @@ function activate(context) {
             }, null);
 
             // 3. Apply Lorebook
-            const lorebookPath = resolveLorebookPath(templated);
+            const lorebookPath = resolveLorebookPath(templated, templateLoaderPath);
             let withLorebook = templated;
             if (lorebookPath) {
                 const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
