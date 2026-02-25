@@ -185,9 +185,9 @@ function main() {
 
     if (filePath) {
       const resolvedPath = path.resolve(filePath);
-      prompt = fs.readFileSync(resolvedPath, 'utf8');
+      prompt = fs.readFileSync(resolvedPath, 'utf8').replace(/\r\n/g, '\n');
     } else {
-      prompt = fs.readFileSync(0, 'utf-8');
+      prompt = fs.readFileSync(0, 'utf-8').replace(/\r\n/g, '\n');
     }
 
     const output = rpToPrompt(prompt, process.cwd());

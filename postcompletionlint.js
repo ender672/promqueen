@@ -67,7 +67,7 @@ function main() {
   }
 
   const resolvedPath = path.resolve(filePath);
-  const fileContent = fs.readFileSync(resolvedPath, 'utf8');
+  const fileContent = fs.readFileSync(resolvedPath, 'utf8').replace(/\r\n/g, '\n');
 
   const output = postCompletionLint(fileContent, process.cwd());
   process.stdout.write(output);

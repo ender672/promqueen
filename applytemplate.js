@@ -77,9 +77,9 @@ function main() {
 
   let promptText;
   if (filePath && filePath !== '-') {
-    promptText = fs.readFileSync(filePath, 'utf8');
+    promptText = fs.readFileSync(filePath, 'utf8').replace(/\r\n/g, '\n');
   } else {
-    promptText = fs.readFileSync(0, 'utf-8');
+    promptText = fs.readFileSync(0, 'utf-8').replace(/\r\n/g, '\n');
   }
 
   const output = applyTemplate(promptText, { ...options, cwd: process.cwd() });

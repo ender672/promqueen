@@ -176,7 +176,7 @@ async function main() {
   let cliConfig = {};
   if (options.config) {
     try {
-      const configContent = fs.readFileSync(options.config, 'utf8');
+      const configContent = fs.readFileSync(options.config, 'utf8').replace(/\r\n/g, '\n');
       cliConfig = yaml.load(configContent) || {};
     } catch (e) {
       console.error(`Error loading config file: ${e.message}`);
@@ -186,9 +186,9 @@ async function main() {
 
   let prompt = options.expression;
   if (filePath && filePath !== '-') {
-    prompt = fs.readFileSync(filePath, 'utf8');
+    prompt = fs.readFileSync(filePath, 'utf8').replace(/\r\n/g, '\n');
   } else if (!prompt) {
-    prompt = fs.readFileSync(0, 'utf-8');
+    prompt = fs.readFileSync(0, 'utf-8').replace(/\r\n/g, '\n');
   }
   await sendPrompt(prompt, process.cwd(), process.stdout, process.stderr, cliConfig);
 }
