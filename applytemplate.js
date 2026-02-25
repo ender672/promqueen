@@ -83,12 +83,7 @@ function main() {
   }
 
   const output = applyTemplate(promptText, { ...options, cwd: process.cwd() });
-
-  if (filePath && filePath !== '-') {
-    fs.writeFileSync(filePath, output);
-  } else {
-    process.stdout.write(output);
-  }
+  process.stdout.write(output);
 }
 
 if (require.main === module) {
