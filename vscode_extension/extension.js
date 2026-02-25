@@ -10,6 +10,27 @@ const { postCompletionLint } = require('../postcompletionlint.js');
 const { ImageHoverProvider } = require('./providers/ImageHoverProvider');
 const { CompletionProvider } = require('./providers/CompletionProvider');
 
+function getDocumentText(document) {
+    return document.getText().replace(/\r\n/g, '\n');
+}
+
+async function preparePrompt(text, templateLoaderPath, projectRoot) {
+    const templated = await applyTemplate(text, {
+        messageTemplateLoaderPath: templateLoaderPath,
+        data: {},
+        cwd: projectRoot
+    }, null);
+
+    const lorebookPath = resolveLorebookPath(templated, templateLoaderPath);
+    let withLorebook = templated;
+    if (lorebookPath) {
+        const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
+        withLorebook = applyLorebook(templated, lorebook);
+    }
+
+    return rpToPrompt(withLorebook, projectRoot);
+}
+
 /**
  * @param {vscode.ExtensionContext} context
  */
@@ -55,34 +76,18 @@ function activate(context) {
             };
 
             // 1. Precompletion Lint
-            let text = document.getText().replace(/\r\n/g, '\n');
+            let text = getDocumentText(document);
             const preOutput = precompletionLint(text, projectRoot);
 
             if (preOutput) {
                 await applyEdit(preOutput);
-                // Update local text after edit
-                text = document.getText().replace(/\r\n/g, '\n');
+                text = getDocumentText(document);
             }
 
-            // 2. Apply Template
-            const templated = await applyTemplate(text, {
-                messageTemplateLoaderPath: templateLoaderPath,
-                data: {},
-                cwd: projectRoot
-            }, null);
+            // 2. Apply Template → Lorebook → Rp To Prompt
+            const prompt = await preparePrompt(text, templateLoaderPath, projectRoot);
 
-            // 3. Apply Lorebook
-            const lorebookPath = resolveLorebookPath(templated, templateLoaderPath);
-            let withLorebook = templated;
-            if (lorebookPath) {
-                const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
-                withLorebook = applyLorebook(templated, lorebook);
-            }
-
-            // 4. Rp To Prompt
-            const prompt = await rpToPrompt(withLorebook, projectRoot);
-
-            // 5. Send Prompt (Streaming)
+            // 3. Send Prompt (Streaming)
 
             // Helper to sequentially queue edits
             let editQueue = Promise.resolve();
@@ -112,9 +117,9 @@ function activate(context) {
             // Wait for all edits to finish
             await editQueue;
 
-            // 6. Postcompletion Lint
+            // 4. Postcompletion Lint
             // We need fresh text from document
-            const finalText = document.getText().replace(/\r\n/g, '\n');
+            const finalText = getDocumentText(document);
             const postOutput = postCompletionLint(finalText, projectRoot);
 
             if (postOutput) {
@@ -173,30 +178,15 @@ function activate(context) {
 
         try {
             // 1. Precompletion Lint
-            let text = document.getText().replace(/\r\n/g, '\n');
+            let text = getDocumentText(document);
             const preOutput = precompletionLint(text, projectRoot);
 
             if (preOutput) {
                 text += preOutput;
             }
 
-            // 2. Apply Template
-            const templated = await applyTemplate(text, {
-                messageTemplateLoaderPath: templateLoaderPath,
-                data: {},
-                cwd: projectRoot
-            }, null);
-
-            // 3. Apply Lorebook
-            const lorebookPath = resolveLorebookPath(templated, templateLoaderPath);
-            let withLorebook = templated;
-            if (lorebookPath) {
-                const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
-                withLorebook = applyLorebook(templated, lorebook);
-            }
-
-            // 4. Rp To Prompt
-            const prompt = await rpToPrompt(withLorebook, projectRoot);
+            // 2. Apply Template → Lorebook → Rp To Prompt
+            const prompt = await preparePrompt(text, templateLoaderPath, projectRoot);
 
             const doc = await vscode.workspace.openTextDocument({
                 content: prompt,
