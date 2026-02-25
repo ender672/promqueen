@@ -114,6 +114,21 @@ Message 2
 
     // Check detail
     assert.strictEqual(items3[0].detail, '(crying)', "Should show expansion in detail");
+
+    // Test Case 4: CRLF line endings
+    const textCRLF = "\r\n@system\r\nSystem prompt\r\n\r\n@user\r\nUser prompt 1\r\n\r\n@assistant\r\nAssistant response\r\n\r\n@user\r\nUser prompt 2\r\n";
+    const textCRLFWithTrigger = textCRLF + "\r\n@";
+    const docCRLF = new MockDocument(textCRLFWithTrigger);
+    const linesCRLF = textCRLFWithTrigger.split('\n');
+    const lastLineCRLFIdx = linesCRLF.length - 1;
+    const posCRLF = { line: lastLineCRLFIdx, character: 1 };
+
+    const items4 = provider.provideCompletionItems(docCRLF, posCRLF, null, null);
+
+    assert(items4, "Case 4 (CRLF): Should return items");
+    assert.strictEqual(items4.length, 2, "Case 4 (CRLF): Should have 2 unique roles (filtered 'user')");
+    assert.strictEqual(items4[0].label, 'assistant', "Case 4 (CRLF): 1st suggestion should be 'assistant'");
+    assert.strictEqual(items4[1].label, 'system', "Case 4 (CRLF): 2nd suggestion should be 'system'");
 }
 
 try {

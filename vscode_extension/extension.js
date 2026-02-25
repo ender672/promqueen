@@ -55,13 +55,13 @@ function activate(context) {
             };
 
             // 1. Precompletion Lint
-            let text = document.getText();
+            let text = document.getText().replace(/\r\n/g, '\n');
             const preOutput = precompletionLint(text, projectRoot);
 
             if (preOutput) {
                 await applyEdit(preOutput);
                 // Update local text after edit
-                text = document.getText();
+                text = document.getText().replace(/\r\n/g, '\n');
             }
 
             // 2. Apply Template
@@ -114,7 +114,7 @@ function activate(context) {
 
             // 6. Postcompletion Lint
             // We need fresh text from document
-            const finalText = document.getText();
+            const finalText = document.getText().replace(/\r\n/g, '\n');
             const postOutput = postCompletionLint(finalText, projectRoot);
 
             if (postOutput) {
@@ -173,7 +173,7 @@ function activate(context) {
 
         try {
             // 1. Precompletion Lint
-            let text = document.getText();
+            let text = document.getText().replace(/\r\n/g, '\n');
             const preOutput = precompletionLint(text, projectRoot);
 
             if (preOutput) {
@@ -222,27 +222,23 @@ function activate(context) {
         const document = editor.document;
         const text = document.getText();
 
-        // Find the last message delimiter
-        // The delimiter is \n\n@
-        const delimiter = '\n\n@';
+        // Find all message delimiters (CRLF-aware: \n\n@ or \r\n\r\n@)
+        const delimMatches = [...text.matchAll(/\r?\n\r?\n@/g)];
 
-        let lastIndex = text.lastIndexOf(delimiter);
         let startIndex;
 
-        if (lastIndex !== -1) {
-            // Check if the last "message" is just an empty role (e.g. from postcompletionlint)
-            // extraction: \n\n@role\n...
-            const remainingText = text.substring(lastIndex + delimiter.length); // text after \n\n@
+        if (delimMatches.length > 0) {
+            const lastMatch = delimMatches[delimMatches.length - 1];
+            const lastIndex = lastMatch.index;
+            const lastDelimLen = lastMatch[0].length;
 
-            // It should look like "roleName\n" or "roleName" with optional whitespace
-            // Let's see if there is any content.
-            // We can split by newline. The first line is the role name.
+            // Check if the last "message" is just an empty role (e.g. from postcompletionlint)
+            const remainingText = text.substring(lastIndex + lastDelimLen); // text after delimiter's @
+
             const firstNewLine = remainingText.indexOf('\n');
             let hasContent = false;
 
             if (firstNewLine === -1) {
-                // No newline, so it's just "@roleName" (maybe space). 
-                // Effectively empty content.
                 hasContent = false;
             } else {
                 const contentAfterRole = remainingText.substring(firstNewLine + 1);
@@ -252,31 +248,23 @@ function activate(context) {
             }
 
             if (!hasContent) {
-                // The last message is empty (just a role). 
+                // The last message is empty (just a role).
                 // We want to regenerate the PREVIOUS message.
-                // So we need to find the delimiter BEFORE this one.
-                const prevIndex = text.lastIndexOf(delimiter, lastIndex - 1);
-                if (prevIndex !== -1) {
-                    // We found the previous delimiter (e.g. \n\n@Assistant)
-                    // We want to KEEP "@Assistant\n" and delete the rest.
-                    // Find the end of the role line.
-                    const roleNewline = text.indexOf('\n', prevIndex + delimiter.length);
+                if (delimMatches.length >= 2) {
+                    const prevMatch = delimMatches[delimMatches.length - 2];
+                    const prevIndex = prevMatch.index;
+                    const prevDelimLen = prevMatch[0].length;
+                    const roleNewline = text.indexOf('\n', prevIndex + prevDelimLen);
                     if (roleNewline !== -1) {
                         startIndex = roleNewline + 1;
                     } else {
-                        // Weird case: "@Assistant" at EOF?
                         startIndex = text.length;
                     }
                 } else {
                     // No previous delimiter, check YAML
-                    const yamlEnd = text.indexOf('\n---\n');
-                    if (yamlEnd !== -1) {
-                        // User prompt started after YAML?
-                        // If we can't find a delimiter, maybe we just delete content after YAML?
-                        // But we want to preserve the role if possible. 
-                        // If there is no delimiter, there might be no role header "standard" here.
-                        // Let's fallback to original behavior: delete everything after YAML.
-                        startIndex = yamlEnd + 5;
+                    const yamlMatch = text.match(/\n---\r?\n/);
+                    if (yamlMatch) {
+                        startIndex = yamlMatch.index + yamlMatch[0].length;
                     } else {
                         startIndex = 0;
                     }
@@ -284,7 +272,7 @@ function activate(context) {
             } else {
                 // Last message has content.
                 // We want to KEEP the role line.
-                const roleNewline = text.indexOf('\n', lastIndex + delimiter.length);
+                const roleNewline = text.indexOf('\n', lastIndex + lastDelimLen);
                 if (roleNewline !== -1) {
                     startIndex = roleNewline + 1;
                 } else {
@@ -294,9 +282,9 @@ function activate(context) {
         } else {
             // No delimiter found.
             // Check for YAML
-            const yamlEnd = text.indexOf('\n---\n');
-            if (yamlEnd !== -1) {
-                startIndex = yamlEnd + 5;
+            const yamlMatch = text.match(/\n---\r?\n/);
+            if (yamlMatch) {
+                startIndex = yamlMatch.index + yamlMatch[0].length;
             } else {
                 startIndex = text.length;
             }

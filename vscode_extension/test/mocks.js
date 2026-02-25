@@ -64,7 +64,7 @@ class MockDocument {
     lineAt(indexOrPos) {
         const index = typeof indexOrPos === 'object' ? indexOrPos.line : indexOrPos;
         const lines = this.text.split('\n');
-        const lineText = lines[index] || "";
+        const lineText = (lines[index] || "").replace(/\r$/, '');
         return {
             text: lineText,
             range: {
@@ -100,7 +100,7 @@ class MockDocument {
     async save() { return true; }
 
     getWordRangeAtPosition(position, regex) {
-        const line = this.text.split('\n')[position.line];
+        const line = (this.text.split('\n')[position.line] || '').replace(/\r$/, '');
         if (!regex || !line) return;
 
         const re = new RegExp(regex.source, regex.flags + (regex.flags.includes('g') ? '' : 'g'));

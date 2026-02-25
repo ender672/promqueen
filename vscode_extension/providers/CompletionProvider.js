@@ -27,7 +27,7 @@ class CompletionProvider {
     }
 
     provideDecoratorSuggestions(document) {
-        const text = document.getText();
+        const text = document.getText().replace(/\r\n/g, '\n');
         let config = {};
 
         try {
@@ -83,7 +83,7 @@ class CompletionProvider {
     }
 
     provideRoleSuggestions(document, position) {
-        const text = document.getText();
+        const text = document.getText().replace(/\r\n/g, '\n');
         // Regex to find all roles in the document
         const roleRegex = /^@(.+)$/gm;
 
@@ -98,9 +98,14 @@ class CompletionProvider {
         }
 
         // Identify the "last @ line" (previous role before cursor).
+        // Compute lineStartOffset from normalized text so offsets are consistent
         let previousRoleName = null;
         try {
-            const lineStartOffset = document.offsetAt(document.lineAt(position).range.start);
+            const lines = text.split('\n');
+            let lineStartOffset = 0;
+            for (let i = 0; i < position.line; i++) {
+                lineStartOffset += lines[i].length + 1;
+            }
 
             // Iterate backwards to find the first match before lineStartOffset
             for (let i = allMatches.length - 1; i >= 0; i--) {

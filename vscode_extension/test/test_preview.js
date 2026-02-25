@@ -55,6 +55,29 @@ async function runTest() {
         console.error("promqueen.previewPrompt command not registered!");
         process.exit(1);
     }
+
+    // --- Test Case 2: CRLF line endings ---
+
+    openTextDocumentSpy = null;
+    vscodeMock.window.activeTextEditor.document = new MockDocument("---\r\nfoo: bar\r\n---\r\nUser: Hello\r\n");
+
+    try {
+        await vscodeMock.commands.executeCommand('promqueen.previewPrompt');
+
+        if (!openTextDocumentSpy) {
+            console.error("FAILED: Case 2 (CRLF) openTextDocument was not called");
+            process.exit(1);
+        }
+
+        if (openTextDocumentSpy.language !== 'promqueen-pqueen') {
+            console.error(`FAILED: Case 2 (CRLF) Expected language 'promqueen-pqueen', got '${openTextDocumentSpy.language}'`);
+            process.exit(1);
+        }
+
+    } catch (e) {
+        console.error("Case 2 (CRLF) Command failed:", e);
+        process.exit(1);
+    }
 }
 
 runTest();

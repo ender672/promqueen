@@ -159,6 +159,44 @@ Do something
         console.error("FAIL: Case 2 No delete edit found.");
         process.exit(1);
     }
+
+    // --- Test Case 3: CRLF line endings ---
+
+    const textCase3 = "---\r\nroleplay_user: user\r\n---\r\n\r\n@user\r\nHello\r\n\r\n@assistant\r\nHi there!";
+
+    vscodeMock.window.activeTextEditor.document = new MockDocument(textCase3);
+    const documentMock3 = vscodeMock.window.activeTextEditor.document;
+
+    vscodeMock._lastEdit = null;
+
+    await vscodeMock.commands.executeCommand('promqueen.regenerateLastMessage');
+
+    // The CRLF delimiter \r\n\r\n@ before @assistant is at the same logical position.
+    // We expect deletion to START after "@assistant\r\n"
+    const delimMatches3 = [...textCase3.matchAll(/\r?\n\r?\n@/g)];
+    const lastMatch3 = delimMatches3[delimMatches3.length - 1];
+    const roleNewline3 = textCase3.indexOf('\n', lastMatch3.index + lastMatch3[0].length);
+    const expectedStart3 = roleNewline3 + 1;
+    const expectedEnd3 = textCase3.length;
+
+    if (vscodeMock._lastEdit) {
+        const range = vscodeMock._lastEdit.range;
+        const startOffset3 = documentMock3.offsetAt(range.start);
+        const endOffset3 = documentMock3.offsetAt(range.end);
+
+        if (startOffset3 !== expectedStart3) {
+            console.error(`FAIL: Case 3 (CRLF) Expected start ${expectedStart3}, got ${startOffset3}`);
+            process.exit(1);
+        }
+        if (endOffset3 !== expectedEnd3) {
+            console.error(`FAIL: Case 3 (CRLF) Expected end ${expectedEnd3}, got ${endOffset3}`);
+            process.exit(1);
+        }
+
+    } else {
+        console.error("FAIL: Case 3 (CRLF) No delete edit found.");
+        process.exit(1);
+    }
 }
 
 runTest();
