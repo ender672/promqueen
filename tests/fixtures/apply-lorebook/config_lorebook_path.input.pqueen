@@ -6,6 +6,12 @@ lorebook: tests/fixtures/apply-lorebook/config_lorebook_path.lorebook.json
 You are a helpful assistant.
 
 @user
+Hello.
+
+@assistant
+Hello! How can I help you today?
+
+@user
 Tell me about the ocean and its depths.
 
 @assistant

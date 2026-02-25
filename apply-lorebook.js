@@ -90,13 +90,19 @@ function applyLorebook(promptText, lorebook) {
   const resolvedConfig = resolveConfig(config);
   const templateContext = buildTemplateContext(resolvedConfig, messages);
 
+  // Skip the system prompt and initial user message when scanning for keywords
+  let scanMessages = messages.filter((m, i) => {
+    if (i === 0 && m.name === 'system') return false;
+    if (i === 1 && m.name === 'user') return false;
+    return true;
+  });
+
   let scannedText;
   if (lorebook.scan_depth !== undefined && lorebook.scan_depth !== null) {
-    const nonSystemMessages = messages.filter(m => m.name !== 'system');
-    const lastN = nonSystemMessages.slice(-lorebook.scan_depth);
+    const lastN = scanMessages.slice(-lorebook.scan_depth);
     scannedText = lastN.map(m => m.content || '').join('\n');
   } else {
-    scannedText = messages.map(m => m.content || '').join('\n');
+    scannedText = scanMessages.map(m => m.content || '').join('\n');
   }
 
   const matched = [];

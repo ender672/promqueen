@@ -7,6 +7,12 @@ message_template_variables:
 You are a helpful assistant.
 
 @user
+Hello.
+
+@assistant
+Hello! How can I help you today?
+
+@user
 Tell me about the forest.
 
 [OOC: Elara knows the forest well.]

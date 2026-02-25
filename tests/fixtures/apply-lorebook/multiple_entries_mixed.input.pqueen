@@ -5,6 +5,12 @@ api_url: https://api.example.com/v1/chat/completions
 You are a helpful assistant.
 
 @user
+Hello.
+
+@assistant
+Hello! How can I help you today?
+
+@user
 The knight entered the castle courtyard.
 
 @assistant

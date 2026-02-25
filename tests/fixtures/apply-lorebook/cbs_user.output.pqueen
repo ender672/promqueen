@@ -6,6 +6,12 @@ roleplay_user: Alex
 You are a helpful assistant.
 
 @user
+Hello.
+
+@assistant
+Hello! How can I help you today?
+
+@user
 Tell me about the forest.
 
 [OOC: Alex is exploring the forest.]
