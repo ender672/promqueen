@@ -7,6 +7,7 @@ const { applyTemplate } = require('./applytemplate.js');
 const { rpToPrompt } = require('./rptoprompt.js');
 const { sendPrompt } = require('./sendprompt.js');
 const { postCompletionLint } = require('./postcompletionlint.js');
+const { applyLorebook, resolveLorebookPath } = require('./apply-lorebook.js');
 
 async function runPipeline(filePath, { baseDir, cwd = process.cwd(), stderr = process.stderr, fileSystem = fs, quiet = false } = {}) {
     const absolutePath = path.resolve(filePath);
@@ -31,7 +32,15 @@ async function runPipeline(filePath, { baseDir, cwd = process.cwd(), stderr = pr
             cwd
         }, null);
 
-        const prompt = rpToPrompt(templated, cwd);
+        // 2b. Run apply-lorebook (if lorebook configured)
+        const lorebookPath = resolveLorebookPath(templated);
+        let withLorebook = templated;
+        if (lorebookPath) {
+            const lorebook = JSON.parse(fileSystem.readFileSync(lorebookPath, 'utf8'));
+            withLorebook = applyLorebook(templated, lorebook);
+        }
+
+        const prompt = rpToPrompt(withLorebook, cwd);
 
         const fileStream = fileSystem.createWriteStream(absolutePath, { flags: 'a' });
         // We need to wait for the stream to finish
