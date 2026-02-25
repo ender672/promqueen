@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
-const { applyLorebook } = require('../../apply-lorebook.js');
+const { applyLorebook, resolveLorebookPath } = require('../../apply-lorebook.js');
 
 const fixturesDir = path.join(__dirname, '../fixtures/apply-lorebook');
 
@@ -36,4 +36,27 @@ inputFiles.forEach(inputFile => {
 
     assert.strictEqual(output, expectedOutput, `Output for ${testName} should match expected output`);
   });
+});
+
+test('apply-lorebook - resolveLorebookPath extracts lorebook from frontmatter config', async () => {
+  const inputPath = path.join(fixturesDir, 'config_lorebook_path.input.pqueen');
+  const promptText = fs.readFileSync(inputPath, 'utf8');
+
+  const lorebookPath = resolveLorebookPath(promptText);
+  assert.strictEqual(lorebookPath, 'tests/fixtures/apply-lorebook/config_lorebook_path.lorebook.json');
+
+  const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
+  const output = applyLorebook(promptText, lorebook);
+
+  const expectedOutputPath = path.join(fixturesDir, 'config_lorebook_path.output.pqueen');
+  const expectedOutput = fs.readFileSync(expectedOutputPath, 'utf8');
+  assert.strictEqual(output, expectedOutput);
+});
+
+test('apply-lorebook - resolveLorebookPath returns undefined when no lorebook in config', async () => {
+  const inputPath = path.join(fixturesDir, 'basic_match.input.pqueen');
+  const promptText = fs.readFileSync(inputPath, 'utf8');
+
+  const lorebookPath = resolveLorebookPath(promptText);
+  assert.strictEqual(lorebookPath, undefined);
 });

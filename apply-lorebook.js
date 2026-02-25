@@ -162,12 +162,18 @@ function applyLorebook(promptText, lorebook) {
   return base + '\n' + joinedContent + '\n';
 }
 
+function resolveLorebookPath(promptText) {
+  const { config } = parseConfigOnly(promptText);
+  const resolvedConfig = resolveConfig(config);
+  return resolvedConfig.lorebook;
+}
+
 function main() {
   const commander = require('commander');
 
   commander.program.description('Apply a lorebook to a prompt file.');
   commander.program.argument('[prompt_path]', 'Path to the prompt file.');
-  commander.program.requiredOption('-l, --lorebook <path>', 'Path to the lorebook JSON file.');
+  commander.program.option('-l, --lorebook <path>', 'Path to the lorebook JSON file.');
   commander.program.parse(process.argv);
 
   const [filePath] = commander.program.args;
@@ -180,7 +186,13 @@ function main() {
     promptText = fs.readFileSync(0, 'utf-8');
   }
 
-  const lorebook = JSON.parse(fs.readFileSync(options.lorebook, 'utf8'));
+  const lorebookPath = options.lorebook || resolveLorebookPath(promptText);
+  if (!lorebookPath) {
+    console.error('No lorebook path provided. Use --lorebook or set lorebook in frontmatter config.');
+    process.exit(1);
+  }
+
+  const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
   const output = applyLorebook(promptText, lorebook);
   process.stdout.write(output);
 }
@@ -189,4 +201,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { applyLorebook };
+module.exports = { applyLorebook, resolveLorebookPath };
