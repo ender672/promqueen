@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const process = require('process');
-const { parseConfigOnly, parseMessages, resolveConfig } = require('./lib/pqutils');
+const { parseConfigOnly, parseMessages, serializeMessages, resolveConfig } = require('./lib/pqutils');
 const { buildTemplateContext } = require('./lib/rendertemplate');
 
 function splitCBSArgs(argsStr) {
@@ -159,8 +159,18 @@ function applyLorebook(promptText, lorebook) {
     const expanded = expandCBS(e.content, templateContext, promptText);
     return entryTemplate.replace('{{content}}', expanded);
   }).join('\n');
-  const base = promptText.replace(/\n$/, '');
-  return base + '\n' + joinedContent + '\n';
+
+  // Append lore to the second-to-last speaker's message
+  const frontmatter = promptText.slice(0, promptText.length - messagesString.length);
+  if (messages.length >= 2) {
+    const target = messages[messages.length - 2];
+    target.content = (target.content || '') + '\n' + joinedContent;
+  } else {
+    const target = messages[messages.length - 1];
+    const base = (target.content || '').replace(/\n$/, '');
+    target.content = base + '\n' + joinedContent + '\n';
+  }
+  return frontmatter + serializeMessages(messages);
 }
 
 function resolveLorebookPath(promptText, basePath) {
