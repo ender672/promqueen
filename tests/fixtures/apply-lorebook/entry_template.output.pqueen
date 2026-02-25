@@ -6,6 +6,7 @@ You are a helpful assistant.
 
 @user
 Tell me about the forest and its creatures.
+
 <lore>The forest is an ancient woodland filled with mystical creatures.</lore>
 
 @assistant

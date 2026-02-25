@@ -164,7 +164,7 @@ function applyLorebook(promptText, lorebook) {
   const frontmatter = promptText.slice(0, promptText.length - messagesString.length);
   if (messages.length >= 2) {
     const target = messages[messages.length - 2];
-    target.content = (target.content || '') + '\n' + joinedContent;
+    target.content = (target.content || '') + '\n\n' + joinedContent;
   } else {
     const target = messages[messages.length - 1];
     const base = (target.content || '').replace(/\n$/, '');
