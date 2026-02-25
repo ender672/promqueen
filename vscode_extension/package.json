@@ -25,6 +25,10 @@
             {
                 "command": "promqueen.regenerateLastMessage",
                 "title": "PromQueen: Regenerate Last Message"
+            },
+            {
+                "command": "promqueen.runPrecompletionLint",
+                "title": "PromQueen: Run Precompletion Lint"
             }
         ],
         "languages": [

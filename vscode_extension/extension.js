@@ -202,6 +202,40 @@ function activate(context) {
 
     context.subscriptions.push(previewDisposable);
 
+    let preLintDisposable = vscode.commands.registerCommand('promqueen.runPrecompletionLint', async function () {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showErrorMessage('PromQueen: No active text editor.');
+            return;
+        }
+
+        const document = editor.document;
+        const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+        const projectRoot = workspaceFolder ? workspaceFolder.uri.fsPath : path.dirname(document.uri.fsPath);
+
+        try {
+            const text = getDocumentText(document);
+            const preOutput = precompletionLint(text, projectRoot);
+
+            if (preOutput) {
+                await editor.edit(editBuilder => {
+                    const lastLine = document.lineAt(document.lineCount - 1);
+                    const position = lastLine.range.end;
+                    editBuilder.insert(position, preOutput);
+                });
+            }
+
+            const autoSave = vscode.workspace.getConfiguration('promqueen').get('autoSaveAfterPipeline', true);
+            if (autoSave) {
+                await document.save();
+            }
+        } catch (err) {
+            vscode.window.showErrorMessage(`PromQueen Error: ${err.message}`);
+            console.error(err);
+        }
+    });
+    context.subscriptions.push(preLintDisposable);
+
     let docDisposable = vscode.commands.registerCommand('promqueen.regenerateLastMessage', async function () {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
