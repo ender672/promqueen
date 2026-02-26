@@ -215,10 +215,15 @@ function main() {
   }
 
   const basePath = filePath && filePath !== '-' ? path.dirname(path.resolve(filePath)) : process.cwd();
-  const lorebookPath = options.lorebook || resolveLorebookPath(promptText, basePath);
+  let lorebookPath = options.lorebook || resolveLorebookPath(promptText, basePath);
   if (!lorebookPath) {
-    console.error('No lorebook path provided. Use --lorebook or set lorebook in frontmatter config.');
-    process.exit(1);
+    const defaultPath = path.resolve(basePath, 'character_book.json');
+    if (fs.existsSync(defaultPath)) {
+      lorebookPath = defaultPath;
+    } else {
+      console.error('No lorebook path provided. Use --lorebook or set lorebook in frontmatter config.');
+      process.exit(1);
+    }
   }
 
   const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
