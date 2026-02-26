@@ -1,0 +1,15 @@
+{
+  "entries": [
+    {
+      "keys": ["knight"],
+      "content": "The knight belongs to the Order of the Silver Shield.",
+      "enabled": true,
+      "insertion_order": 100,
+      "case_sensitive": false,
+      "use_regex": false,
+      "constant": false,
+      "selective": true,
+      "secondary_keys": ["quest"]
+    }
+  ]
+}

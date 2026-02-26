@@ -1,0 +1,28 @@
+---
+api_url: https://api.example.com/v1/chat/completions
+---
+@system
+You are a helpful assistant.
+
+@user
+Hello.
+
+@assistant
+The dragon soared overhead.
+
+[OOC: Dragons are ancient creatures of immense power.]
+
+@user
+The knight approached the castle.
+
+[OOC: The knight serves the Order of the Silver Shield.]
+
+@assistant
+The forest was dark and mysterious.
+
+[OOC: The forest is enchanted and ancient.]
+
+@user
+What happened next?
+
+@assistant

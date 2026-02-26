@@ -1,0 +1,16 @@
+---
+api_url: https://api.example.com/v1/chat/completions
+---
+@system
+You are a helpful assistant.
+
+@user
+Hello.
+
+@assistant
+The knight rode into battle.
+
+@user
+The quest for the holy grail continues.
+
+@assistant

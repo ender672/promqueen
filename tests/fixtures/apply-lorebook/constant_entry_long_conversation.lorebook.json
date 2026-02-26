@@ -1,0 +1,15 @@
+{
+  "entries": [
+    {
+      "keys": ["nonexistent_keyword"],
+      "content": "The world is set in a medieval fantasy era.",
+      "enabled": true,
+      "insertion_order": 100,
+      "case_sensitive": false,
+      "use_regex": false,
+      "constant": true,
+      "selective": false,
+      "secondary_keys": []
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+---
+api_url: https://api.example.com/v1/chat/completions
+---
+@system
+You are a helpful assistant.
+
+@user
+Hello.
+
+@assistant
+The knight and the dragon faced each other.
+
+[OOC: The knight serves the crown.]
+[OOC: Dragons are ancient creatures of immense power.]
+
+@user
+The forest was nearby.
+
+[OOC: The forest is enchanted.]
+
+@assistant

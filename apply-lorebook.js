@@ -90,29 +90,33 @@ function applyLorebook(promptText, lorebook) {
   const resolvedConfig = resolveConfig(config);
   const templateContext = buildTemplateContext(resolvedConfig, messages);
 
-  // Skip the system prompt and initial user message when scanning for keywords
-  let scanMessages = messages.filter((m, i) => {
-    if (i === 0 && m.name === 'system') return false;
-    if (i === 1 && m.name === 'user') return false;
-    return true;
-  });
-
-  let scannedText;
-  if (lorebook.scan_depth !== undefined && lorebook.scan_depth !== null) {
-    const lastN = scanMessages.slice(-lorebook.scan_depth);
-    scannedText = lastN.map(m => m.content || '').join('\n');
-  } else {
-    scannedText = scanMessages.map(m => m.content || '').join('\n');
+  // Scannable message indices: skip system prompt (index 0) and initial user message (index 1)
+  const scannableIndices = [];
+  for (let i = 0; i < messages.length; i++) {
+    if (i === 0 && messages[i].name === 'system') continue;
+    if (i === 1 && messages[i].name === 'user') continue;
+    scannableIndices.push(i);
   }
 
-  const matched = [];
+  // All scannable text joined (used for selective secondary key checks)
+  const allScannedText = scannableIndices.map(i => messages[i].content || '').join('\n');
+
+  // First non-system message index (insertion target for constant entries)
+  const firstNonSystemIndex = (messages.length > 0 && messages[0].name === 'system') ? 1 : 0;
+
+  // Map: message index -> array of matched entries
+  const insertions = new Map();
+
   for (const entry of entries) {
     if (entry.enabled === false) continue;
     if (!entry.content) continue;
 
     // When use_regex is true, constant is ignored (per V3 spec)
     if (entry.constant === true && !entry.use_regex) {
-      matched.push(entry);
+      if (firstNonSystemIndex < messages.length) {
+        if (!insertions.has(firstNonSystemIndex)) insertions.set(firstNonSystemIndex, []);
+        insertions.get(firstNonSystemIndex).push(entry);
+      }
       continue;
     }
 
@@ -120,62 +124,65 @@ function applyLorebook(promptText, lorebook) {
     const caseSensitive = entry.case_sensitive === true;
     const useRegex = entry.use_regex === true;
 
-    let keyMatches;
-    if (useRegex) {
-      const flags = caseSensitive ? '' : 'i';
-      keyMatches = keys.some(key => {
-        try {
-          const re = new RegExp(key, flags);
-          return re.test(scannedText);
-        } catch {
-          return false;
-        }
-      });
-    } else {
-      const textToSearch = caseSensitive ? scannedText : scannedText.toLowerCase();
-      keyMatches = keys.some(key => {
-        const searchKey = caseSensitive ? key : key.toLowerCase();
-        return textToSearch.includes(searchKey);
-      });
+    // Find the first scannable message containing a matching primary key
+    let targetIndex = -1;
+    for (const idx of scannableIndices) {
+      const msgText = messages[idx].content || '';
+      let found;
+      if (useRegex) {
+        const flags = caseSensitive ? '' : 'i';
+        found = keys.some(key => {
+          try { return new RegExp(key, flags).test(msgText); } catch { return false; }
+        });
+      } else {
+        const textToSearch = caseSensitive ? msgText : msgText.toLowerCase();
+        found = keys.some(key => {
+          const searchKey = caseSensitive ? key : key.toLowerCase();
+          return textToSearch.includes(searchKey);
+        });
+      }
+      if (found) {
+        targetIndex = idx;
+        break;
+      }
     }
 
-    // When selective is true and use_regex is false, require a secondary key match too
-    if (keyMatches && entry.selective === true && !useRegex) {
+    if (targetIndex === -1) continue;
+
+    // When selective is true and use_regex is false, require a secondary key match
+    // against all scannable text combined
+    if (entry.selective === true && !useRegex) {
       const secondaryKeys = entry.secondary_keys || [];
       if (secondaryKeys.length > 0) {
-        const textForSecondary = caseSensitive ? scannedText : scannedText.toLowerCase();
+        const textForSecondary = caseSensitive ? allScannedText : allScannedText.toLowerCase();
         const secondaryMatch = secondaryKeys.some(key => {
           const searchKey = caseSensitive ? key : key.toLowerCase();
           return textForSecondary.includes(searchKey);
         });
-        if (!secondaryMatch) keyMatches = false;
+        if (!secondaryMatch) continue;
       }
     }
 
-    if (keyMatches) {
-      matched.push(entry);
-    }
+    if (!insertions.has(targetIndex)) insertions.set(targetIndex, []);
+    insertions.get(targetIndex).push(entry);
   }
 
-  if (matched.length === 0) return promptText;
+  if (insertions.size === 0) return promptText;
 
-  matched.sort((a, b) => (a.insertion_order || 0) - (b.insertion_order || 0));
   const entryTemplate = lorebook.entry_template || '[OOC: {{content}}]';
-  const joinedContent = matched.map(e => {
-    const expanded = expandCBS(e.content, templateContext, promptText);
-    return entryTemplate.replace('{{content}}', expanded);
-  }).join('\n');
-
-  // Append lore to the second-to-last speaker's message
   const frontmatter = promptText.slice(0, promptText.length - messagesString.length);
-  if (messages.length >= 2) {
-    const target = messages[messages.length - 2];
+
+  // Insert entries into their target messages, sorted by insertion_order within each group
+  for (const [idx, entryGroup] of insertions) {
+    entryGroup.sort((a, b) => (a.insertion_order || 0) - (b.insertion_order || 0));
+    const joinedContent = entryGroup.map(e => {
+      const expanded = expandCBS(e.content, templateContext, promptText);
+      return entryTemplate.replace('{{content}}', expanded);
+    }).join('\n');
+    const target = messages[idx];
     target.content = (target.content || '') + '\n\n' + joinedContent;
-  } else {
-    const target = messages[messages.length - 1];
-    const base = (target.content || '').replace(/\n$/, '');
-    target.content = base + '\n' + joinedContent + '\n';
   }
+
   return frontmatter + serializeMessages(messages);
 }
 

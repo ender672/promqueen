@@ -1,0 +1,37 @@
+{
+  "entries": [
+    {
+      "keys": ["dragon"],
+      "content": "Dragons are ancient creatures of immense power.",
+      "enabled": true,
+      "insertion_order": 100,
+      "case_sensitive": false,
+      "use_regex": false,
+      "constant": false,
+      "selective": false,
+      "secondary_keys": []
+    },
+    {
+      "keys": ["knight"],
+      "content": "The knight serves the Order of the Silver Shield.",
+      "enabled": true,
+      "insertion_order": 100,
+      "case_sensitive": false,
+      "use_regex": false,
+      "constant": false,
+      "selective": false,
+      "secondary_keys": []
+    },
+    {
+      "keys": ["forest"],
+      "content": "The forest is enchanted and ancient.",
+      "enabled": true,
+      "insertion_order": 100,
+      "case_sensitive": false,
+      "use_regex": false,
+      "constant": false,
+      "selective": false,
+      "secondary_keys": []
+    }
+  ]
+}

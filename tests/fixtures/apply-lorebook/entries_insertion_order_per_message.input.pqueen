@@ -1,0 +1,16 @@
+---
+api_url: https://api.example.com/v1/chat/completions
+---
+@system
+You are a helpful assistant.
+
+@user
+Hello.
+
+@assistant
+The knight and the dragon faced each other.
+
+@user
+The forest was nearby.
+
+@assistant

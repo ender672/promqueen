@@ -1,0 +1,22 @@
+---
+api_url: https://api.example.com/v1/chat/completions
+---
+@system
+You are a helpful assistant.
+
+@user
+Hello.
+
+@assistant
+The dragon soared overhead.
+
+@user
+The knight approached the castle.
+
+@assistant
+The forest was dark and mysterious.
+
+@user
+What happened next?
+
+@assistant

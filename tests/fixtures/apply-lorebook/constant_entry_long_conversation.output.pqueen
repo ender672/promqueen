@@ -1,0 +1,24 @@
+---
+api_url: https://api.example.com/v1/chat/completions
+---
+@system
+You are a helpful assistant.
+
+@user
+Hello.
+
+[OOC: The world is set in a medieval fantasy era.]
+
+@assistant
+Hello! How can I help?
+
+@user
+Tell me a story.
+
+@assistant
+Once upon a time...
+
+@user
+Go on.
+
+@assistant

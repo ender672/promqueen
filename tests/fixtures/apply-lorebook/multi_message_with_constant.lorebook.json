@@ -1,0 +1,37 @@
+{
+  "entries": [
+    {
+      "keys": ["nonexistent"],
+      "content": "The world is set in a medieval fantasy era.",
+      "enabled": true,
+      "insertion_order": 50,
+      "case_sensitive": false,
+      "use_regex": false,
+      "constant": true,
+      "selective": false,
+      "secondary_keys": []
+    },
+    {
+      "keys": ["dragon"],
+      "content": "Dragons breathe fire and hoard treasure.",
+      "enabled": true,
+      "insertion_order": 100,
+      "case_sensitive": false,
+      "use_regex": false,
+      "constant": false,
+      "selective": false,
+      "secondary_keys": []
+    },
+    {
+      "keys": ["knight"],
+      "content": "The knight is loyal to the crown.",
+      "enabled": true,
+      "insertion_order": 100,
+      "case_sensitive": false,
+      "use_regex": false,
+      "constant": false,
+      "selective": false,
+      "secondary_keys": []
+    }
+  ]
+}

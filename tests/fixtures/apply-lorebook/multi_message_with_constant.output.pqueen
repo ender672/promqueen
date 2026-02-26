@@ -1,0 +1,22 @@
+---
+api_url: https://api.example.com/v1/chat/completions
+---
+@system
+You are a helpful assistant.
+
+@user
+Hello.
+
+[OOC: The world is set in a medieval fantasy era.]
+
+@assistant
+The dragon appeared in the sky.
+
+[OOC: Dragons breathe fire and hoard treasure.]
+
+@user
+The knight drew his sword.
+
+[OOC: The knight is loyal to the crown.]
+
+@assistant
