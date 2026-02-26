@@ -33,6 +33,10 @@
             {
                 "command": "promqueen.previewTemplate",
                 "title": "PromQueen: Preview Template"
+            },
+            {
+                "command": "promqueen.previewLorebook",
+                "title": "PromQueen: Preview Lorebook"
             }
         ],
         "languages": [

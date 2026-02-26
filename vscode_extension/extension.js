@@ -235,6 +235,38 @@ function activate(context) {
     });
     context.subscriptions.push(previewTemplateDisposable);
 
+    let previewLorebookDisposable = vscode.commands.registerCommand('promqueen.previewLorebook', async function () {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showErrorMessage('PromQueen: No active text editor.');
+            return;
+        }
+
+        const document = editor.document;
+        const templateLoaderPath = path.dirname(document.uri.fsPath);
+
+        try {
+            const text = getDocumentText(document);
+            const lorebookPath = resolveLorebookPath(text, templateLoaderPath);
+            let result = text;
+            if (lorebookPath) {
+                const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
+                result = applyLorebook(text, lorebook);
+            }
+
+            const doc = await vscode.workspace.openTextDocument({
+                content: result,
+                language: 'promqueen-pqueen'
+            });
+            await vscode.window.showTextDocument(doc, { preview: false });
+
+        } catch (err) {
+            vscode.window.showErrorMessage(`PromQueen Error: ${err.message}`);
+            console.error(err);
+        }
+    });
+    context.subscriptions.push(previewLorebookDisposable);
+
     let preLintDisposable = vscode.commands.registerCommand('promqueen.runPrecompletionLint', async function () {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
