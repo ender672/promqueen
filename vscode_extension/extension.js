@@ -21,7 +21,11 @@ async function preparePrompt(text, templateLoaderPath, projectRoot) {
         cwd: projectRoot
     }, null);
 
-    const lorebookPath = resolveLorebookPath(templated, templateLoaderPath);
+    let lorebookPath = resolveLorebookPath(templated, templateLoaderPath);
+    if (!lorebookPath) {
+        const defaultPath = path.resolve(templateLoaderPath, 'character_book.json');
+        if (fs.existsSync(defaultPath)) lorebookPath = defaultPath;
+    }
     let withLorebook = templated;
     if (lorebookPath) {
         const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
@@ -247,7 +251,11 @@ function activate(context) {
 
         try {
             const text = getDocumentText(document);
-            const lorebookPath = resolveLorebookPath(text, templateLoaderPath);
+            let lorebookPath = resolveLorebookPath(text, templateLoaderPath);
+            if (!lorebookPath) {
+                const defaultPath = path.resolve(templateLoaderPath, 'character_book.json');
+                if (fs.existsSync(defaultPath)) lorebookPath = defaultPath;
+            }
             let result = text;
             if (lorebookPath) {
                 const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
