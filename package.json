@@ -15,7 +15,8 @@
     "charcard-png-to-txt": "charcard-png-to-txt.js",
     "charcard-png-to-openings": "charcard-png-to-openings.js",
     "charcard-png-get-field": "charcard-png-get-field.js",
-    "pqueen-apply-lorebook": "apply-lorebook.js"
+    "pqueen-apply-lorebook": "apply-lorebook.js",
+    "pqueen-rptohtml": "rptohtml.js"
   },
   "scripts": {
     "test": "node --test tests/integration/*.test.js",
@@ -29,6 +30,8 @@
     "commander": "^14.0.2",
     "eventsource-parser": "^3.0.6",
     "js-yaml": "^4.1.1",
+    "marked": "^17.0.3",
+    "mustache": "^4.2.0",
     "png-chunk-text": "^1.0.0",
     "png-chunks-extract": "^1.0.0"
   },

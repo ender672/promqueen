@@ -1,0 +1,9 @@
+---
+roleplay_user: Bob
+dot_config_loading: false
+---
+@Bob
+Hello <!-- this is a hidden comment --> world.
+
+@Alice
+Sure thing <!-- another comment -->!

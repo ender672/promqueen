@@ -1,0 +1,28 @@
+---
+roleplay_user: Bob
+dot_config_loading: false
+---
+@system
+You are a helpful fantasy RPG assistant.
+
+@Bob
+Hello **Alice**! Can you tell me about *elves*?
+
+@Alice
+Of course! Here is some `inline code` and a [link](https://example.com).
+
+Check this:
+
+```python
+print("hello")
+```
+
+> This is a blockquote
+> with two lines.
+
+@Bob
+Cool! Here is an image:
+
+<img src="avatar.png" alt="Avatar">
+
+Thanks!

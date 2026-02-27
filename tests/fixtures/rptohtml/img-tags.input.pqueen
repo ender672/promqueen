@@ -1,0 +1,13 @@
+---
+roleplay_user: Bob
+dot_config_loading: false
+---
+@Bob
+Check out this image:
+
+<img src="cat.png" alt="A cat">
+
+Pretty cool right?
+
+@Alice
+Nice! Here is mine: <img src="dog.jpg">

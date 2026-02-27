@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<head><title>Chat</title></head>
+<body>
+{{#messages}}
+<div class="message {{#isUser}}user{{/isUser}}{{#isAssistant}}assistant{{/isAssistant}}{{#isSystem}}system{{/isSystem}}">
+  {{#name}}<div class="name">{{name}}</div>{{/name}}
+  <div class="content">{{{content}}}</div>
+</div>
+{{/messages}}
+</body>
+</html>
