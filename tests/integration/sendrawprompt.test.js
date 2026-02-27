@@ -1,0 +1,87 @@
+const { test } = require('node:test');
+const assert = require('node:assert');
+const path = require('path');
+const fs = require('fs');
+const { sendRawPrompt } = require('../../sendrawprompt.js');
+
+const fixturesDir = path.join(__dirname, '../fixtures/sendrawprompt');
+const chatTemplatePath = path.join(fixturesDir, 'chatml.jinja');
+
+// Helper class to capture output
+class StringStream {
+  constructor() {
+    this.data = '';
+  }
+  write(chunk) {
+    this.data += chunk.toString();
+  }
+}
+
+// Find all input files
+const files = fs.readdirSync(fixturesDir);
+const inputFiles = files.filter(f => f.endsWith('.input.pqueen'));
+
+inputFiles.forEach(inputFile => {
+  const testName = inputFile.replace('.input.pqueen', '');
+  const requestExpectationFile = inputFile.replace('.input.pqueen', '.request.json');
+
+  test(`sendrawprompt processes ${testName}`, async () => {
+    const inputPath = path.join(fixturesDir, inputFile);
+    const requestExpectationPath = path.join(fixturesDir, requestExpectationFile);
+
+    if (!fs.existsSync(requestExpectationPath)) {
+      throw new Error(`Request expectation file not found: ${requestExpectationPath}`);
+    }
+
+    const prompt = fs.readFileSync(inputPath, 'utf8');
+    const expectedRequest = JSON.parse(fs.readFileSync(requestExpectationPath, 'utf8'));
+
+    let capturedUrl;
+    let capturedOptions;
+
+    // Mock global.fetch
+    const originalFetch = global.fetch;
+    global.fetch = async (url, options) => {
+      capturedUrl = url;
+      capturedOptions = options;
+      return {
+        ok: true,
+        status: 200,
+        headers: {
+          get: (name) => {
+            if (name.toLowerCase() === 'content-type') return 'application/json';
+            return null;
+          }
+        },
+        json: async () => ({ choices: [] }),
+        text: async () => JSON.stringify({ choices: [] })
+      };
+    };
+
+    try {
+      const outputStream = new StringStream();
+      const errorStream = new StringStream();
+
+      const cliConfig = {
+        chat_template_path: chatTemplatePath,
+      };
+
+      await sendRawPrompt(
+        prompt,
+        process.cwd(),
+        outputStream,
+        errorStream,
+        cliConfig
+      );
+
+      assert.strictEqual(capturedUrl, expectedRequest.url, `URL for ${testName} should match`);
+      assert.strictEqual(capturedOptions.method, expectedRequest.method, `Method for ${testName} should match`);
+
+      const capturedBody = JSON.parse(capturedOptions.body);
+      assert.deepStrictEqual(capturedBody, expectedRequest.body, `Body for ${testName} should match`);
+
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+});

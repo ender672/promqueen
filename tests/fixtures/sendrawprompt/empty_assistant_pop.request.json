@@ -1,0 +1,8 @@
+{
+    "url": "http://localhost:8080/v1/completions",
+    "method": "POST",
+    "body": {
+        "model": "local-model",
+        "prompt": "<|im_start|>user\nTell me a joke.<|im_end|>\n<|im_start|>assistant\n"
+    }
+}

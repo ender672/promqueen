@@ -16,7 +16,8 @@
     "charcard-png-to-openings": "charcard-png-to-openings.js",
     "charcard-png-get-field": "charcard-png-get-field.js",
     "pqueen-apply-lorebook": "apply-lorebook.js",
-    "pqueen-rptohtml": "rptohtml.js"
+    "pqueen-rptohtml": "rptohtml.js",
+    "pqueen-sendrawprompt": "sendrawprompt.js"
   },
   "scripts": {
     "test": "node --test tests/integration/*.test.js",
@@ -33,6 +34,7 @@
     "marked": "^17.0.3",
     "mustache": "^4.2.0",
     "png-chunk-text": "^1.0.0",
+    "nunjucks": "^3.2.4",
     "png-chunks-extract": "^1.0.0"
   },
   "devDependencies": {

@@ -1,0 +1,9 @@
+{
+    "url": "http://localhost:8080/v1/completions",
+    "method": "POST",
+    "body": {
+        "model": "local-model",
+        "temperature": 0.7,
+        "prompt": "<|im_start|>user\nHello, world!<|im_end|>\n<|im_start|>assistant\n"
+    }
+}

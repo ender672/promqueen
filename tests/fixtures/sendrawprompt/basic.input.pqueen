@@ -1,0 +1,9 @@
+---
+api_url: http://localhost:8080/v1/completions
+api_call_props:
+  model: local-model
+  temperature: 0.7
+dot_config_loading: false
+---
+@user
+Hello, world!
