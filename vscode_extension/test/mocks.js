@@ -132,6 +132,8 @@ function setupVscodeMock(customOverrides = {}) {
         MarkdownString: MockMarkdownString,
         Hover: MockHover,
 
+        ViewColumn: { Beside: 2 },
+
         window: {
             activeTextEditor: customOverrides.editorMock || {
                 document: new MockDocument(""),
@@ -146,14 +148,22 @@ function setupVscodeMock(customOverrides = {}) {
             },
             showErrorMessage: (msg) => { throw new Error('[VSCode Error] ' + msg); },
             showInformationMessage: (_msg) => { },
-            showTextDocument: async (doc) => doc
+            showTextDocument: async (doc) => doc,
+            createWebviewPanel: () => ({
+                webview: { html: '' },
+                title: '',
+                reveal: () => {},
+                onDidDispose: () => ({ dispose: () => {} })
+            }),
+            onDidChangeActiveTextEditor: () => ({ dispose: () => {} })
         },
 
         workspace: {
             getWorkspaceFolder: () => ({ uri: { fsPath: path.resolve(__dirname, '../../') } }),
             getConfiguration: () => ({ get: (_key, defaultValue) => defaultValue }),
             applyEdit: async (_edit) => true,
-            openTextDocument: async (opts) => opts
+            openTextDocument: async (opts) => opts,
+            onDidChangeTextDocument: () => ({ dispose: () => {} })
         },
 
         languages: {
