@@ -133,6 +133,7 @@ function setupVscodeMock(customOverrides = {}) {
         Hover: MockHover,
 
         ViewColumn: { Beside: 2 },
+        ProgressLocation: { Notification: 15, SourceControl: 1, Window: 10 },
 
         window: {
             activeTextEditor: customOverrides.editorMock || {
@@ -147,7 +148,13 @@ function setupVscodeMock(customOverrides = {}) {
                 }
             },
             showErrorMessage: (msg) => { throw new Error('[VSCode Error] ' + msg); },
+            showWarningMessage: (_msg) => { },
             showInformationMessage: (_msg) => { },
+            withProgress: async (_options, task) => {
+                const progress = { report: () => {} };
+                const token = { onCancellationRequested: () => ({ dispose: () => {} }) };
+                return await task(progress, token);
+            },
             showTextDocument: async (doc) => doc,
             createWebviewPanel: () => ({
                 webview: { html: '' },
