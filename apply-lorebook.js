@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const process = require('process');
-const { parseConfigOnly, parseMessages, serializeMessages, resolveConfig } = require('./lib/pqutils');
+const { parseConfigOnly, parseMessages, serializeMessages, resolveConfig, PROMPT_ROLES } = require('./lib/pqutils');
 const { buildTemplateContext } = require('./lib/rendertemplate');
 
 function splitCBSArgs(argsStr) {
@@ -174,12 +174,15 @@ function applyLorebook(promptText, lorebook) {
 
   // Insert entries into their target messages, sorted by insertion_order within each group
   for (const [idx, entryGroup] of insertions) {
+    const target = messages[idx];
+    const messageContext = PROMPT_ROLES.includes(target.name)
+      ? templateContext
+      : { ...templateContext, char: target.name };
     entryGroup.sort((a, b) => (a.insertion_order || 0) - (b.insertion_order || 0));
     const joinedContent = entryGroup.map(e => {
-      const expanded = expandCBS(e.content, templateContext, promptText);
+      const expanded = expandCBS(e.content, messageContext, promptText);
       return entryTemplate.replace('{{content}}', expanded);
     }).join('\n');
-    const target = messages[idx];
     target.content = (target.content || '') + '\n\n' + joinedContent;
   }
 
