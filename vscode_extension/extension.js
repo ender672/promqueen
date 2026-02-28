@@ -16,6 +16,7 @@ const { CompletionProvider } = require('./providers/CompletionProvider');
 
 let htmlPreviewPanel = null;
 let htmlPreviewDebounceTimer = null;
+const activePipelines = new Map();
 
 function getDocumentText(document) {
     return document.getText().replace(/\r\n/g, '\n');
@@ -77,6 +78,10 @@ function activate(context) {
         const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
         const projectRoot = workspaceFolder ? workspaceFolder.uri.fsPath : path.dirname(document.uri.fsPath);
         const templateLoaderPath = path.dirname(document.uri.fsPath);
+
+        const abortController = new AbortController();
+        const documentKey = document.uri.toString();
+        activePipelines.set(documentKey, abortController);
 
         try {
             vscode.window.showInformationMessage('PromQueen: Starting pipeline...');
@@ -145,10 +150,11 @@ function activate(context) {
             const { config: sendConfig } = pqutils.parseConfigOnly(prompt);
             const resolvedSendConfig = pqutils.resolveConfig(sendConfig, projectRoot, {});
 
+            const sendOptions = { signal: abortController.signal };
             if (resolvedSendConfig.api_url && resolvedSendConfig.api_url.endsWith('/v1/completions')) {
-                await sendRawPrompt(prompt, projectRoot, outputStream, errorStream, {}, templateLoaderPath);
+                await sendRawPrompt(prompt, projectRoot, outputStream, errorStream, {}, templateLoaderPath, sendOptions);
             } else {
-                await sendPrompt(prompt, projectRoot, outputStream, errorStream, {});
+                await sendPrompt(prompt, projectRoot, outputStream, errorStream, {}, sendOptions);
             }
 
             // Wait for all edits to finish
@@ -187,11 +193,34 @@ function activate(context) {
             vscode.window.showInformationMessage('PromQueen: Pipeline finished.');
 
         } catch (err) {
-            vscode.window.showErrorMessage(`PromQueen Error: ${err.message}`);
-            console.error(err);
+            if (err.name === 'AbortError') {
+                vscode.window.showInformationMessage('PromQueen: Pipeline cancelled.');
+            } else {
+                vscode.window.showErrorMessage(`PromQueen Error: ${err.message}`);
+                console.error(err);
+            }
+        } finally {
+            activePipelines.delete(documentKey);
         }
     });
     context.subscriptions.push(disposable);
+
+    let cancelDisposable = vscode.commands.registerCommand('promqueen.cancelPipeline', function () {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showErrorMessage('PromQueen: No active text editor.');
+            return;
+        }
+        const key = editor.document.uri.toString();
+        const controller = activePipelines.get(key);
+        if (controller) {
+            controller.abort();
+            vscode.window.showInformationMessage('PromQueen: Cancelling pipeline...');
+        } else {
+            vscode.window.showInformationMessage('PromQueen: No active pipeline for this file.');
+        }
+    });
+    context.subscriptions.push(cancelDisposable);
 
     context.subscriptions.push(
         vscode.languages.registerHoverProvider('promqueen-pqueen', new ImageHoverProvider())

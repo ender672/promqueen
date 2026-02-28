@@ -144,7 +144,7 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
     }
 }
 
-async function sendRawPrompt(prompt, cwd, outputStream = process.stdout, errorStream = process.stderr, cliConfig = {}, fileBasePath = cwd) {
+async function sendRawPrompt(prompt, cwd, outputStream = process.stdout, errorStream = process.stderr, cliConfig = {}, fileBasePath = cwd, options = {}) {
     const { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(prompt);
     const config = pqutils.resolveConfig(runtimeConfig, cwd, cliConfig);
 
@@ -193,6 +193,7 @@ async function sendRawPrompt(prompt, cwd, outputStream = process.stdout, errorSt
         method: 'POST',
         headers: config.api_call_headers,
         body: JSON.stringify(body),
+        signal: options.signal,
     });
     await responseToOutput(response, config, outputStream, errorStream);
 }

@@ -39,6 +39,10 @@
                 "title": "PromQueen: Preview Lorebook"
             },
             {
+                "command": "promqueen.cancelPipeline",
+                "title": "PromQueen: Cancel Pipeline"
+            },
+            {
                 "command": "promqueen.previewHtml",
                 "title": "PromQueen: Preview HTML"
             }

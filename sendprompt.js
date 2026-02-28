@@ -115,7 +115,7 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
     }
 }
 
-async function sendPrompt(prompt, cwd, outputStream = process.stdout, errorStream = process.stderr, cliConfig = {}) {
+async function sendPrompt(prompt, cwd, outputStream = process.stdout, errorStream = process.stderr, cliConfig = {}, options = {}) {
     const { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(prompt);
     const config = pqutils.resolveConfig(runtimeConfig, cwd, cliConfig);
 
@@ -159,6 +159,7 @@ async function sendPrompt(prompt, cwd, outputStream = process.stdout, errorStrea
         method: 'POST',
         headers: config.api_call_headers,
         body: JSON.stringify(body),
+        signal: options.signal,
     });
     await responseToOutput(response, config, outputStream, errorStream);
 }
