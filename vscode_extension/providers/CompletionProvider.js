@@ -29,11 +29,11 @@ class CompletionProvider {
     provideDecoratorSuggestions(document) {
         const text = document.getText().replace(/\r\n/g, '\n');
         let config = {};
+        let projectRoot;
 
         try {
             const parsed = pqutils.parseConfigAndMessages(text);
 
-            let projectRoot;
             const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
             if (workspaceFolder) {
                 projectRoot = workspaceFolder.uri.fsPath;
@@ -48,7 +48,7 @@ class CompletionProvider {
         }
 
         // Get decorators from config
-        const decoratorsMap = config.roleplay_prompt_decorators || {};
+        const decoratorsMap = pqutils.loadDecorators(config, projectRoot);
         const availableDecorators = Object.keys(decoratorsMap);
 
         if (availableDecorators.length === 0) {

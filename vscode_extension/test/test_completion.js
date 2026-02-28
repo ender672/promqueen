@@ -79,10 +79,7 @@ User prompt 2
 
     // Test Case 3: Decorator Suggestions
     const textwithDecorators = `---
-roleplay_prompt_decorators:
-  happy: (shouting happily)
-  sad: (crying)
-  neutral: (plain)
+decorators: vscode_extension/test/fixtures/test_decorators.yaml
 ---
 
 @char [happy]

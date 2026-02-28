@@ -1,0 +1,13 @@
+---
+roleplay_user: Bob
+roleplay_impersonation_instruction: '[OOC: You are {{char}}.]'
+decorators: decorators.yaml
+dot_config_loading: false
+---
+@system
+System prompt
+
+@Bob
+Hello!
+
+@Alice [happy]

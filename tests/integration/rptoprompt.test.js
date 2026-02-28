@@ -25,7 +25,7 @@ inputFiles.forEach(inputFile => {
 
     const prompt = fs.readFileSync(inputPath, 'utf8');
 
-    const output = await rpToPrompt(prompt);
+    const output = await rpToPrompt(prompt, fixturesDir);
     const expectedOutput = fs.readFileSync(outputPath, 'utf8');
 
     assert.strictEqual(output, expectedOutput, `Output for ${testName} should match expected output`);

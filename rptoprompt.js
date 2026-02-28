@@ -53,10 +53,9 @@ function combineAdjacentMessagesWithSameRole(messages) {
 }
 
 
-function extractDecorators(message, config) {
+function extractDecorators(message, decoratorsMap) {
   if (!message.name) return;
 
-  const decoratorsMap = config.roleplay_prompt_decorators || {};
   let cleanName = message.name;
   let collectedDecorators = [];
 
@@ -79,7 +78,8 @@ function rpToPrompt(prompt, basePath = process.cwd()) {
   const config = pqutils.resolveConfig(runtimeConfig, basePath);
   const user = config.roleplay_user;
 
-  messages.forEach(msg => extractDecorators(msg, config));
+  const decoratorsMap = pqutils.loadDecorators(config, basePath);
+  messages.forEach(msg => extractDecorators(msg, decoratorsMap));
 
   addRoles(messages, user);
 
@@ -190,7 +190,8 @@ function main() {
       prompt = fs.readFileSync(0, 'utf-8').replace(/\r\n/g, '\n');
     }
 
-    const output = rpToPrompt(prompt, process.cwd());
+    const basePath = filePath ? path.dirname(path.resolve(filePath)) : process.cwd();
+    const output = rpToPrompt(prompt, basePath);
     process.stdout.write(output);
   } catch (error) {
     console.error('Error reading input:', error);
