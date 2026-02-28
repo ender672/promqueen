@@ -144,7 +144,7 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
     }
 }
 
-async function sendRawPrompt(prompt, cwd, outputStream = process.stdout, errorStream = process.stderr, cliConfig = {}) {
+async function sendRawPrompt(prompt, cwd, outputStream = process.stdout, errorStream = process.stderr, cliConfig = {}, fileBasePath = cwd) {
     const { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(prompt);
     const config = pqutils.resolveConfig(runtimeConfig, cwd, cliConfig);
 
@@ -153,7 +153,7 @@ async function sendRawPrompt(prompt, cwd, outputStream = process.stdout, errorSt
         throw new Error('chat_template_path is required for sendrawprompt (set via --chat-template, config file, or frontmatter)');
     }
 
-    const templateString = fs.readFileSync(chatTemplatePath, 'utf8');
+    const templateString = fs.readFileSync(path.resolve(fileBasePath, chatTemplatePath), 'utf8');
 
     const promptMessages = messages.map(message => {
         let content = message.content;

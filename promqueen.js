@@ -6,8 +6,10 @@ const { precompletionLint } = require('./precompletionlint.js');
 const { applyTemplate } = require('./applytemplate.js');
 const { rpToPrompt } = require('./rptoprompt.js');
 const { sendPrompt } = require('./sendprompt.js');
+const { sendRawPrompt } = require('./sendrawprompt.js');
 const { postCompletionLint } = require('./postcompletionlint.js');
 const { applyLorebook, resolveLorebookPath } = require('./apply-lorebook.js');
+const pqutils = require('./lib/pqutils.js');
 
 async function runPipeline(filePath, { baseDir, cwd = process.cwd(), stderr = process.stderr, fileSystem = fs, quiet = false } = {}) {
     const absolutePath = path.resolve(filePath);
@@ -42,9 +44,16 @@ async function runPipeline(filePath, { baseDir, cwd = process.cwd(), stderr = pr
 
         const prompt = rpToPrompt(withLorebook, cwd);
 
+        const { config: sendConfig } = pqutils.parseConfigOnly(prompt);
+        const resolvedSendConfig = pqutils.resolveConfig(sendConfig, cwd, {});
+
         const fileStream = fileSystem.createWriteStream(absolutePath, { flags: 'a' });
         // We need to wait for the stream to finish
-        await sendPrompt(prompt, cwd, fileStream, stderr, {});
+        if (resolvedSendConfig.api_url && resolvedSendConfig.api_url.endsWith('/v1/completions')) {
+            await sendRawPrompt(prompt, cwd, fileStream, stderr, {}, templateLoaderPath);
+        } else {
+            await sendPrompt(prompt, cwd, fileStream, stderr, {});
+        }
 
         fileStream.end();
 
