@@ -9,6 +9,120 @@ const { getDocumentText, preparePrompt } = require('./helpers');
 
 const activePipelines = new Map();
 
+async function executePipeline(document, progress, abortController, options) {
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+    const projectRoot = workspaceFolder ? workspaceFolder.uri.fsPath : path.dirname(document.uri.fsPath);
+    const templateLoaderPath = path.dirname(document.uri.fsPath);
+
+    let isFirstEdit = true;
+    const applyEdit = async (text) => {
+        const activeEditor = vscode.window.activeTextEditor;
+        if (activeEditor && activeEditor.document === document) {
+            await activeEditor.edit(editBuilder => {
+                const lastLine = document.lineAt(document.lineCount - 1);
+                const position = lastLine.range.end;
+                editBuilder.insert(position, text);
+            }, {
+                undoStopBefore: isFirstEdit && !options.disableUndoStopBefore,
+                undoStopAfter: false
+            });
+        } else {
+            const edit = new vscode.WorkspaceEdit();
+            const lastLine = document.lineAt(document.lineCount - 1);
+            const position = lastLine.range.end;
+            edit.insert(document.uri, position, text);
+            await vscode.workspace.applyEdit(edit);
+        }
+        isFirstEdit = false;
+    };
+
+    // 1. Precompletion Lint
+    progress.report({ message: 'Running precompletion lint...' });
+    let text = getDocumentText(document);
+    const preOutput = precompletionLint(text, projectRoot);
+
+    if (preOutput) {
+        await applyEdit(preOutput);
+        text = getDocumentText(document);
+    }
+
+    // 2. Apply Template -> Lorebook -> Rp To Prompt
+    progress.report({ message: 'Preparing prompt...' });
+    const prompt = await preparePrompt(text, templateLoaderPath, projectRoot);
+
+    // 3. Send Prompt (Streaming)
+    progress.report({ message: 'Streaming response...' });
+
+    let editQueue = Promise.resolve();
+    let editError = null;
+    const queueEdit = (chunk) => {
+        editQueue = editQueue.then(async () => {
+            if (editError) return;
+            await applyEdit(chunk);
+        }).catch(err => {
+            editError = err;
+        });
+    };
+
+    const outputStream = {
+        write: (chunk) => {
+            queueEdit(chunk);
+            return true;
+        },
+        end: () => { }
+    };
+
+    const errorStream = {
+        write: (chunk) => {
+            console.log('PromQueen Error/Log:', chunk);
+        },
+        end: () => { }
+    };
+
+    const { config: sendConfig } = pqutils.parseConfigOnly(prompt);
+    const resolvedSendConfig = pqutils.resolveConfig(sendConfig, projectRoot, {});
+
+    const sendOptions = { signal: abortController.signal };
+    if (resolvedSendConfig.api_url && resolvedSendConfig.api_url.endsWith('/v1/completions')) {
+        await sendRawPrompt(prompt, projectRoot, outputStream, errorStream, {}, templateLoaderPath, sendOptions);
+    } else {
+        await sendPrompt(prompt, projectRoot, outputStream, errorStream, {}, sendOptions);
+    }
+
+    // Wait for all edits to finish
+    await editQueue;
+    if (editError) throw editError;
+
+    // 4. Postcompletion Lint
+    progress.report({ message: 'Running postcompletion lint...' });
+    const finalText = getDocumentText(document);
+    const postOutput = postCompletionLint(finalText, projectRoot);
+
+    if (postOutput) {
+        await applyEdit(postOutput);
+    }
+
+    // Seal the undo group if we did anything
+    if (!isFirstEdit) {
+        const activeEditor = vscode.window.activeTextEditor;
+        if (activeEditor && activeEditor.document === document) {
+            await activeEditor.edit(editBuilder => {
+                const lastLine = document.lineAt(document.lineCount - 1);
+                const position = lastLine.range.end;
+                editBuilder.insert(position, "");
+            }, {
+                undoStopBefore: false,
+                undoStopAfter: true
+            });
+        }
+    }
+
+    const autoSave = vscode.workspace.getConfiguration('promqueen').get('autoSaveAfterPipeline', true);
+    if (autoSave) {
+        await document.save();
+    }
+}
+
 function registerPipelineCommands(context) {
     let disposable = vscode.commands.registerCommand('promqueen.runPipeline', async function (options = {}) {
         const editor = vscode.window.activeTextEditor;
@@ -25,10 +139,6 @@ function registerPipelineCommands(context) {
             return;
         }
 
-        const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
-        const projectRoot = workspaceFolder ? workspaceFolder.uri.fsPath : path.dirname(document.uri.fsPath);
-        const templateLoaderPath = path.dirname(document.uri.fsPath);
-
         const abortController = new AbortController();
         activePipelines.set(documentKey, abortController);
 
@@ -39,114 +149,7 @@ function registerPipelineCommands(context) {
                 cancellable: true
             }, async (progress, token) => {
                 token.onCancellationRequested(() => abortController.abort());
-
-                let isFirstEdit = true;
-                const applyEdit = async (text) => {
-                    const activeEditor = vscode.window.activeTextEditor;
-                    if (activeEditor && activeEditor.document === document) {
-                        await activeEditor.edit(editBuilder => {
-                            const lastLine = document.lineAt(document.lineCount - 1);
-                            const position = lastLine.range.end;
-                            editBuilder.insert(position, text);
-                        }, {
-                            undoStopBefore: isFirstEdit && !options.disableUndoStopBefore,
-                            undoStopAfter: false
-                        });
-                    } else {
-                        const edit = new vscode.WorkspaceEdit();
-                        const lastLine = document.lineAt(document.lineCount - 1);
-                        const position = lastLine.range.end;
-                        edit.insert(document.uri, position, text);
-                        await vscode.workspace.applyEdit(edit);
-                    }
-                    isFirstEdit = false;
-                };
-
-                // 1. Precompletion Lint
-                progress.report({ message: 'Running precompletion lint...' });
-                let text = getDocumentText(document);
-                const preOutput = precompletionLint(text, projectRoot);
-
-                if (preOutput) {
-                    await applyEdit(preOutput);
-                    text = getDocumentText(document);
-                }
-
-                // 2. Apply Template -> Lorebook -> Rp To Prompt
-                progress.report({ message: 'Preparing prompt...' });
-                const prompt = await preparePrompt(text, templateLoaderPath, projectRoot);
-
-                // 3. Send Prompt (Streaming)
-                progress.report({ message: 'Streaming response...' });
-
-                let editQueue = Promise.resolve();
-                let editError = null;
-                const queueEdit = (chunk) => {
-                    editQueue = editQueue.then(async () => {
-                        if (editError) return;
-                        await applyEdit(chunk);
-                    }).catch(err => {
-                        editError = err;
-                    });
-                };
-
-                const outputStream = {
-                    write: (chunk) => {
-                        queueEdit(chunk);
-                        return true;
-                    },
-                    end: () => { }
-                };
-
-                const errorStream = {
-                    write: (chunk) => {
-                        console.log('PromQueen Error/Log:', chunk);
-                    },
-                    end: () => { }
-                };
-
-                const { config: sendConfig } = pqutils.parseConfigOnly(prompt);
-                const resolvedSendConfig = pqutils.resolveConfig(sendConfig, projectRoot, {});
-
-                const sendOptions = { signal: abortController.signal };
-                if (resolvedSendConfig.api_url && resolvedSendConfig.api_url.endsWith('/v1/completions')) {
-                    await sendRawPrompt(prompt, projectRoot, outputStream, errorStream, {}, templateLoaderPath, sendOptions);
-                } else {
-                    await sendPrompt(prompt, projectRoot, outputStream, errorStream, {}, sendOptions);
-                }
-
-                // Wait for all edits to finish
-                await editQueue;
-                if (editError) throw editError;
-
-                // 4. Postcompletion Lint
-                progress.report({ message: 'Running postcompletion lint...' });
-                const finalText = getDocumentText(document);
-                const postOutput = postCompletionLint(finalText, projectRoot);
-
-                if (postOutput) {
-                    await applyEdit(postOutput);
-                }
-
-                // Seal the undo group if we did anything
-                if (!isFirstEdit) {
-                    const activeEditor = vscode.window.activeTextEditor;
-                    if (activeEditor && activeEditor.document === document) {
-                        await activeEditor.edit(editBuilder => {
-                            const lastLine = document.lineAt(document.lineCount - 1);
-                            const position = lastLine.range.end;
-                            editBuilder.insert(position, "");
-                        }, {
-                            undoStopBefore: false,
-                            undoStopAfter: true
-                        });
-                    }
-                }
-
-                const autoSave = vscode.workspace.getConfiguration('promqueen').get('autoSaveAfterPipeline', true);
-                if (autoSave) {
-                    await document.save();
-                }
+                await executePipeline(document, progress, abortController, options);
             });
 
             vscode.window.showInformationMessage('PromQueen: Pipeline finished.');
