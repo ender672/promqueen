@@ -44,6 +44,10 @@ If you want to install the extension permanently:
 3.  Regenerate response:
     - Run **PromQueen: Regenerate Last Message** to re-run only the last turn.
 
+## Configuration
+
+Prompts are configured via YAML frontmatter at the top of `.pqueen` files. See the [Frontmatter Settings Reference](../docs/frontmatter.md) for all available options.
+
 ## Features
 
 -   **Pipeline Execution**: Runs the full PromQueen pipeline on the current file.
