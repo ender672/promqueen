@@ -9,24 +9,24 @@ function getDocumentText(document) {
 }
 
 async function preparePrompt(text, templateLoaderPath, projectRoot) {
-    const templated = await applyTemplate(text, {
+    let lorebookPath = resolveLorebookPath(text, templateLoaderPath);
+    if (!lorebookPath) {
+        const defaultPath = path.resolve(templateLoaderPath, 'character_book.json');
+        if (fs.existsSync(defaultPath)) lorebookPath = defaultPath;
+    }
+    let withLorebook = text;
+    if (lorebookPath) {
+        const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
+        withLorebook = applyLorebook(withLorebook, lorebook);
+    }
+
+    const templated = await applyTemplate(withLorebook, {
         messageTemplateLoaderPath: templateLoaderPath,
         data: {},
         cwd: projectRoot
     }, null);
 
-    let lorebookPath = resolveLorebookPath(templated, templateLoaderPath);
-    if (!lorebookPath) {
-        const defaultPath = path.resolve(templateLoaderPath, 'character_book.json');
-        if (fs.existsSync(defaultPath)) lorebookPath = defaultPath;
-    }
-    let withLorebook = templated;
-    if (lorebookPath) {
-        const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
-        withLorebook = applyLorebook(templated, lorebook);
-    }
-
-    return rpToPrompt(withLorebook, projectRoot);
+    return rpToPrompt(templated, projectRoot);
 }
 
 module.exports = { getDocumentText, preparePrompt };

@@ -7,11 +7,36 @@ const yaml = require('js-yaml');
 const path = require('path');
 const { renderTemplate, buildTemplateContext } = require('./lib/rendertemplate.js');
 
+function getRole(name, roleplayUser) {
+    if (name === 'system') return 'system';
+    if (name === 'user' || name === roleplayUser) return 'user';
+    if (name === null) return null;
+    return 'assistant';
+}
+
+function canInclude(index, messages, roleplayUser) {
+    const role = getRole(messages[index].name, roleplayUser);
+    if (role === null) return true;
+    if (index === 0) return true;
+    if (index === 1) {
+        const r0 = getRole(messages[0].name, roleplayUser);
+        return (r0 === 'system' && (role === 'user' || role === 'assistant'))
+            || (r0 === 'user' && role === 'assistant');
+    }
+    if (index === 2) {
+        return getRole(messages[0].name, roleplayUser) === 'system'
+            && getRole(messages[1].name, roleplayUser) === 'user'
+            && role === 'assistant';
+    }
+    return false;
+}
+
 function applyTemplate(promptText, options) {
     const cwd = options.cwd || process.cwd();
     const { config, messages } = pqutils.parseConfigAndMessages(promptText);
     const resolvedConfig = pqutils.resolveConfig(config, cwd);
     const templateLoaderPath = resolvedConfig.message_template_loader_path || options.messageTemplateLoaderPath || cwd;
+    const roleplayUser = resolvedConfig.roleplay_user;
 
     const fullMessageTemplateContext = {
         ...options.data,
@@ -19,17 +44,27 @@ function applyTemplate(promptText, options) {
     };
 
     let renderedMessages = [];
-    for (let message of messages) {
+    for (let i = 0; i < messages.length; i++) {
+        const message = messages[i];
+        const namePart = message.name ? `@${message.name}\n` : '';
+
+        if (message.content === null) {
+            renderedMessages.push(namePart.trimEnd());
+            continue;
+        }
+
+        const allowIncludes = canInclude(i, messages, roleplayUser);
         // We pass a dummy file name 'root' joined to the loader path so that
         // renderTemplate's path.dirname() correctly resolves to templateLoaderPath
         const content = renderTemplate(
             message.content,
             fullMessageTemplateContext,
             path.join(templateLoaderPath, 'root'),
-            templateLoaderPath
+            templateLoaderPath,
+            { allowIncludes }
         );
-        const namePart = message.name ? `@${message.name}\n` : '';
-        renderedMessages.push(`${namePart}${content}`);
+        const escaped = content.replace(/^@/gm, '\\@');
+        renderedMessages.push(`${namePart}${escaped}`);
     }
 
     let output = '---\n';

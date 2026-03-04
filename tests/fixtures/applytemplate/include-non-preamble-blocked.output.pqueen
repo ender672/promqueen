@@ -1,0 +1,16 @@
+---
+dot_config_loading: false
+roleplay_user: Jim
+message_template_loader_path: tests/fixtures/applytemplate
+---
+@system
+System message.
+
+@Jim
+User message.
+
+@Assistant
+Assistant message.
+
+@Jim
+{% include 'simple.txt' %}

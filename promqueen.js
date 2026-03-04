@@ -27,22 +27,22 @@ async function runPipeline(filePath, { baseDir, cwd = process.cwd(), stderr = pr
             content = fileSystem.readFileSync(absolutePath, 'utf8');
         }
 
-        // 2. Run applytemplate -> rptoprompt -> sendprompt
-        const templated = applyTemplate(content, {
+        // 2. Run apply-lorebook (if lorebook configured)
+        const lorebookPath = resolveLorebookPath(content, templateLoaderPath);
+        let withLorebook = content;
+        if (lorebookPath) {
+            const lorebook = JSON.parse(fileSystem.readFileSync(lorebookPath, 'utf8'));
+            withLorebook = applyLorebook(withLorebook, lorebook);
+        }
+
+        // 2b. Run applytemplate -> rptoprompt -> sendprompt
+        const templated = applyTemplate(withLorebook, {
             messageTemplateLoaderPath: templateLoaderPath,
             data: {},
             cwd
         }, null);
 
-        // 2b. Run apply-lorebook (if lorebook configured)
-        const lorebookPath = resolveLorebookPath(templated, templateLoaderPath);
-        let withLorebook = templated;
-        if (lorebookPath) {
-            const lorebook = JSON.parse(fileSystem.readFileSync(lorebookPath, 'utf8'));
-            withLorebook = applyLorebook(templated, lorebook);
-        }
-
-        const prompt = rpToPrompt(withLorebook, cwd);
+        const prompt = rpToPrompt(templated, cwd);
 
         const { config: sendConfig } = pqutils.parseConfigOnly(prompt);
         const resolvedSendConfig = pqutils.resolveConfig(sendConfig, cwd, {});

@@ -1,0 +1,7 @@
+---
+dot_config_loading: false
+message_template_variables:
+  value: "@tagged text"
+---
+@user
+{{ value }}
