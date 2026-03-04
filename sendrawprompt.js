@@ -3,7 +3,7 @@
 const fs = require('fs');
 const process = require('process');
 const yaml = require('js-yaml');
-const nunjucks = require('nunjucks');
+const { parseTemplate, Context } = require('@ender672/minja-js/minja');
 const eventsourceParser = require('eventsource-parser');
 const pqutils = require('./lib/pqutils.js');
 const path = require('path');
@@ -48,13 +48,6 @@ function usageToCostString(pricing, usage) {
 }
 
 function applyChatTemplate(messages, templateString, config) {
-    const env = new nunjucks.Environment(null, { autoescape: false });
-
-    env.addGlobal('raise_exception', (msg) => {
-        throw new Error(msg);
-    });
-
-    // Pre-trim message content to handle Jinja2 .strip() calls that don't exist on JS strings
     const trimmedMessages = messages.map(m => ({
         ...m,
         content: typeof m.content === 'string' ? m.content.trim() : m.content
@@ -66,13 +59,14 @@ function applyChatTemplate(messages, templateString, config) {
     const bos_token = config.bos_token || '<s>';
     const eos_token = config.eos_token || '</s>';
 
-    const template = nunjucks.compile(templateString, env);
-    return template.render({
+    const root = parseTemplate(templateString);
+    const ctx = Context.make({
         messages: trimmedMessages,
         add_generation_prompt: addGenerationPrompt,
         bos_token,
         eos_token,
     });
+    return root.render(ctx);
 }
 
 async function responseToOutput(response, fullConfig, outputStream, errorStream) {

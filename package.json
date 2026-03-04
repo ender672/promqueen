@@ -27,6 +27,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@ender672/minja-js": "^0.1.1",
     "chokidar": "^3.6.0",
     "commander": "^14.0.2",
     "eventsource-parser": "^3.0.6",
@@ -34,7 +35,6 @@
     "marked": "^17.0.3",
     "mustache": "^4.2.0",
     "png-chunk-text": "^1.0.0",
-    "nunjucks": "^3.2.4",
     "png-chunks-extract": "^1.0.0"
   },
   "devDependencies": {
