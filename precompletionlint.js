@@ -8,7 +8,7 @@ const pqutils = require('./lib/pqutils.js');
 
 
 function getNameAutocomplete(history, extraNames) {
-  if (!history || history.length === 0) {
+  if (history.length === 0) {
     return null;
   }
 
