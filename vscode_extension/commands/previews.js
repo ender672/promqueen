@@ -21,18 +21,18 @@ function registerPreviewCommands(context) {
         const templateLoaderPath = path.dirname(document.uri.fsPath);
 
         try {
-            // 1. Parse and precompletion lint
+            // 1. Parse, resolve config, and precompletion lint
             let text = getDocumentText(document);
             let parsedDoc = pqutils.parseConfigAndMessages(text);
-            const preOutput = precompletionLint(parsedDoc, projectRoot);
+            const resolvedConfig = pqutils.resolveConfig(parsedDoc.config, projectRoot, {});
+            const preOutput = precompletionLint(parsedDoc.messages, resolvedConfig);
 
             if (preOutput) {
                 text += preOutput;
                 parsedDoc = pqutils.parseConfigAndMessages(text);
             }
 
-            // 2. Resolve config and prepare prompt
-            const resolvedConfig = pqutils.resolveConfig(parsedDoc.config, projectRoot, {});
+            // 2. Prepare prompt
             const apiMessages = preparePrompt(parsedDoc.messages, resolvedConfig, templateLoaderPath, projectRoot);
 
             // Serialize for display using role-based format

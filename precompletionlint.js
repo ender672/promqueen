@@ -71,9 +71,8 @@ function getFinalMessagePadding(message) {
   return '\n\n';
 }
 
-function precompletionLint({ config, messages }, baseDir) {
-  const fullConfig = pqutils.resolveConfig(config, baseDir);
-  const user = fullConfig.roleplay_user;
+function precompletionLint(messages, resolvedConfig) {
+  const user = resolvedConfig.roleplay_user;
 
   let output = '';
 
@@ -104,8 +103,9 @@ function main() {
   const resolvedPath = path.resolve(filePath);
   const fileContent = fs.readFileSync(resolvedPath, 'utf8').replace(/\r\n/g, '\n');
   const doc = pqutils.parseConfigAndMessages(fileContent);
+  const resolvedConfig = pqutils.resolveConfig(doc.config, process.cwd());
 
-  const output = precompletionLint(doc, process.cwd());
+  const output = precompletionLint(doc.messages, resolvedConfig);
   process.stdout.write(output);
 }
 

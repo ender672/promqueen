@@ -22,16 +22,16 @@ async function runPipeline(filePath, { baseDir, cwd = process.cwd(), stderr = pr
         let content = fileSystem.readFileSync(absolutePath, 'utf8');
         let doc = pqutils.parseConfigAndMessages(content);
 
-        // 2. Pre-completion lint (returns text to append)
-        const preOutput = precompletionLint(doc, baseDir);
+        // 2. Resolve config once for the entire pipeline
+        const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, {});
+
+        // 3. Pre-completion lint (returns text to append)
+        const preOutput = precompletionLint(doc.messages, resolvedConfig);
         if (preOutput) {
             fileSystem.appendFileSync(absolutePath, preOutput);
             content = fileSystem.readFileSync(absolutePath, 'utf8');
             doc = pqutils.parseConfigAndMessages(content);
         }
-
-        // 3. Resolve config once for the transform chain
-        const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, {});
 
         // 4. Ephemeral transforms (each returns new messages array)
         let apiMessages = structuredClone(doc.messages);
@@ -62,7 +62,7 @@ async function runPipeline(filePath, { baseDir, cwd = process.cwd(), stderr = pr
         // 6. Post-completion lint (re-read file with API response)
         content = fileSystem.readFileSync(absolutePath, 'utf8');
         doc = pqutils.parseConfigAndMessages(content);
-        const postOutput = postCompletionLint(doc, baseDir);
+        const postOutput = postCompletionLint(doc.messages, resolvedConfig);
         if (postOutput) {
             fileSystem.appendFileSync(absolutePath, postOutput);
         }

@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const path = require('node:path');
 const fs = require('fs');
 const { precompletionLint } = require('../../precompletionlint.js');
-const { parseConfigAndMessages } = require('../../lib/pqutils.js');
+const { parseConfigAndMessages, resolveConfig } = require('../../lib/pqutils.js');
 
 const fixturesDir = path.resolve(__dirname, '../fixtures/precompletionlint');
 
@@ -26,7 +26,8 @@ inputFiles.forEach(inputFile => {
     const input = fs.readFileSync(inputPath, 'utf8');
     const doc = parseConfigAndMessages(input);
     const baseDir = path.resolve(__dirname, '../..');
-    const output = precompletionLint(doc, baseDir);
+    const resolvedConfig = resolveConfig(doc.config, baseDir);
+    const output = precompletionLint(doc.messages, resolvedConfig);
     const expectedOutput = fs.readFileSync(outputPath, 'utf8');
 
     assert.strictEqual(input + output, expectedOutput, `Output for ${testName} should match expected output`);

@@ -36,11 +36,12 @@ async function executePipeline(document, progress, abortController, options) {
         isFirstEdit = false;
     };
 
-    // 1. Parse and precompletion lint
+    // 1. Parse, resolve config, and precompletion lint
     progress.report({ message: 'Running precompletion lint...' });
     let text = getDocumentText(document);
     let doc = pqutils.parseConfigAndMessages(text);
-    const preOutput = precompletionLint(doc, projectRoot);
+    const resolvedConfig = pqutils.resolveConfig(doc.config, projectRoot, {});
+    const preOutput = precompletionLint(doc.messages, resolvedConfig);
 
     if (preOutput) {
         await applyEdit(preOutput);
@@ -48,9 +49,8 @@ async function executePipeline(document, progress, abortController, options) {
         doc = pqutils.parseConfigAndMessages(text);
     }
 
-    // 2. Resolve config and prepare prompt
+    // 2. Prepare prompt
     progress.report({ message: 'Preparing prompt...' });
-    const resolvedConfig = pqutils.resolveConfig(doc.config, projectRoot, {});
     const apiMessages = preparePrompt(doc.messages, resolvedConfig, templateLoaderPath, projectRoot);
 
     // 3. Send Prompt (Streaming)
@@ -97,7 +97,7 @@ async function executePipeline(document, progress, abortController, options) {
     progress.report({ message: 'Running postcompletion lint...' });
     const finalText = getDocumentText(document);
     const finalDoc = pqutils.parseConfigAndMessages(finalText);
-    const postOutput = postCompletionLint(finalDoc, projectRoot);
+    const postOutput = postCompletionLint(finalDoc.messages, resolvedConfig);
 
     if (postOutput) {
         await applyEdit(postOutput);
@@ -199,7 +199,8 @@ function registerPipelineCommands(context) {
         try {
             const text = getDocumentText(document);
             const doc = pqutils.parseConfigAndMessages(text);
-            const preOutput = precompletionLint(doc, projectRoot);
+            const resolvedConfig = pqutils.resolveConfig(doc.config, projectRoot, {});
+            const preOutput = precompletionLint(doc.messages, resolvedConfig);
 
             if (preOutput) {
                 await editor.edit(editBuilder => {

@@ -35,9 +35,8 @@ function getFinalMessagePadding(message) {
   return '\n\n';
 }
 
-function postCompletionLint({ config, messages }, baseDir) {
-  const fullConfig = pqutils.resolveConfig(config, baseDir);
-  const user = fullConfig.user;
+function postCompletionLint(messages, resolvedConfig) {
+  const user = resolvedConfig.user;
 
   let output = '';
 
@@ -65,8 +64,9 @@ function main() {
   const resolvedPath = path.resolve(filePath);
   const fileContent = fs.readFileSync(resolvedPath, 'utf8').replace(/\r\n/g, '\n');
   const doc = pqutils.parseConfigAndMessages(fileContent);
+  const resolvedConfig = pqutils.resolveConfig(doc.config, process.cwd());
 
-  const output = postCompletionLint(doc, process.cwd());
+  const output = postCompletionLint(doc.messages, resolvedConfig);
   process.stdout.write(output);
 }
 
