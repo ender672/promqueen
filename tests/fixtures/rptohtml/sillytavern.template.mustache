@@ -1,1 +1,162 @@
-../../../templates/sillytavern.mustache
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat</title>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #1b1b2f;
+  color: #dcdcd2;
+  font-family: 'Noto Sans', sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.chat-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.message {
+  padding: 12px 16px;
+  border-radius: 12px;
+  max-width: 85%;
+}
+
+.message.assistant {
+  align-self: flex-start;
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.message.user {
+  align-self: flex-end;
+  background: rgba(50, 50, 80, 0.4);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.message.system {
+  align-self: center;
+  max-width: 90%;
+  font-style: italic;
+  color: #8a8a80;
+  text-align: center;
+  padding: 8px 16px;
+}
+
+.message .name {
+  font-weight: bold;
+  color: #a8a8a0;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.message .content p {
+  margin-bottom: 0.5em;
+}
+
+.message .content p:last-child {
+  margin-bottom: 0;
+}
+
+.message .content strong {
+  font-weight: bold;
+}
+
+.message .content em {
+  font-style: italic;
+}
+
+.message .content code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+}
+
+.message .content pre {
+  background: rgba(0, 0, 0, 0.4);
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+
+.message .content pre code {
+  background: none;
+  padding: 0;
+  font-size: 13px;
+}
+
+.message .content blockquote {
+  border-left: 3px solid #555;
+  padding-left: 12px;
+  color: #aaa;
+  margin: 0.5em 0;
+}
+
+.message .content a {
+  color: #7b9fcf;
+  text-decoration: underline;
+}
+
+.message .content img {
+  max-width: 100%;
+  border-radius: 6px;
+  margin: 0.5em 0;
+  display: block;
+}
+
+.quoted-text {
+  color: #e0de8e;
+}
+</style>
+</head>
+<body>
+<div class="chat-container">
+{{#messages}}
+{{^beforeFirstAssistant}}
+<div class="message {{#isUser}}user{{/isUser}}{{#isAssistant}}assistant{{/isAssistant}}{{#isSystem}}system{{/isSystem}}">
+  {{#name}}<div class="name">{{name}}</div>{{/name}}
+  <div class="content">{{{content}}}</div>
+</div>
+{{/beforeFirstAssistant}}
+{{/messages}}
+</div>
+<script>
+document.querySelectorAll('.message .content').forEach(function(el) {
+  var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  var node;
+  while ((node = walker.nextNode())) {
+    if (node.parentNode.closest('pre, code')) continue;
+    var parts = node.textContent.split(/("(?:[^"\\]|\\.)*")/g);
+    if (parts.length <= 1) continue;
+    var frag = document.createDocumentFragment();
+    parts.forEach(function(part) {
+      if (part.startsWith('"') && part.endsWith('"')) {
+        var span = document.createElement('span');
+        span.className = 'quoted-text';
+        span.textContent = part;
+        frag.appendChild(span);
+      } else {
+        frag.appendChild(document.createTextNode(part));
+      }
+    });
+    node.parentNode.replaceChild(frag, node);
+  }
+});
+</script>
+</body>
+</html>
