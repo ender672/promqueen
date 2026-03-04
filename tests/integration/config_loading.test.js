@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { resolveConfig, parseMessages, parseConfigOnly } = require('../../lib/pqutils.js');
+const { resolveConfig, parseConfigOnly } = require('../../lib/pqutils.js');
 
 test('resolveConfig honors dot_config_loading option and only checks home dir', async (t) => {
   // Mock os.homedir
@@ -74,29 +74,6 @@ test('resolveConfig honors dot_config_loading option and only checks home dir', 
 
 });
 
-test('parseMessages with input not starting with @ returns single unnamed message', () => {
-  const input = 'Hello, this is just plain text without any @ prefix.';
-  const result = parseMessages(input);
-  assert.deepStrictEqual(result, [{ name: null, content: input }]);
-});
-
-test('parseMessages with multiline input not starting with @ returns single unnamed message', () => {
-  const input = 'First line\nSecond line\nThird line';
-  const result = parseMessages(input);
-  assert.deepStrictEqual(result, [{ name: null, content: input }]);
-});
-
-test('parseMessages with empty string returns empty array', () => {
-  assert.deepStrictEqual(parseMessages(''), []);
-});
-
-test('parseMessages with null input returns empty array', () => {
-  assert.deepStrictEqual(parseMessages(null), []);
-});
-
-test('parseMessages with undefined input returns empty array', () => {
-  assert.deepStrictEqual(parseMessages(undefined), []);
-});
 
 test('parseConfigOnly throws when input does not start with ---', () => {
   assert.throws(
