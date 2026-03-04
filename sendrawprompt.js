@@ -3,7 +3,7 @@
 const fs = require('fs');
 const process = require('process');
 const yaml = require('js-yaml');
-const { parseTemplate, Context } = require('@ender672/minja-js/minja');
+const { Parser, Context } = require('@ender672/minja-js/minja');
 const eventsourceParser = require('eventsource-parser');
 const pqutils = require('./lib/pqutils.js');
 const path = require('path');
@@ -59,7 +59,7 @@ function applyChatTemplate(messages, templateString, config) {
     const bos_token = config.bos_token || '<s>';
     const eos_token = config.eos_token || '</s>';
 
-    const root = parseTemplate(templateString);
+    const root = Parser.parse(templateString);
     const ctx = Context.make({
         messages: trimmedMessages,
         add_generation_prompt: addGenerationPrompt,
