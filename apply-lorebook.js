@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const process = require('process');
-const { parseConfigOnly, parseMessages, serializeMessages, resolveConfig, PROMPT_ROLES } = require('./lib/pqutils');
+const { parseConfigAndMessages, serializeMessages, serializeDocument, resolveConfig, PROMPT_ROLES } = require('./lib/pqutils');
 const { buildTemplateContext } = require('./lib/rendertemplate');
 
 function splitCBSArgs(argsStr) {
@@ -81,28 +81,27 @@ function expandCBS(text, templateContext, promptText) {
   });
 }
 
-function applyLorebook(promptText, lorebook) {
+function applyLorebook(messages, resolvedConfig, lorebook) {
   const entries = lorebook.entries || [];
-  if (entries.length === 0) return promptText;
+  if (entries.length === 0) return messages;
 
-  const { config, messagesString } = parseConfigOnly(promptText);
-  const messages = parseMessages(messagesString);
-  const resolvedConfig = resolveConfig(config);
-  const templateContext = buildTemplateContext(resolvedConfig, messages);
+  const result = messages.map(m => ({ ...m }));
+  const templateContext = buildTemplateContext(resolvedConfig, result);
+  const hashSeed = serializeMessages(result);
 
   // Scannable message indices: skip system prompt (index 0) and initial user message (index 1)
   const scannableIndices = [];
-  for (let i = 0; i < messages.length; i++) {
-    if (i === 0 && messages[i].name === 'system') continue;
-    if (i === 1 && messages[i].name === 'user') continue;
+  for (let i = 0; i < result.length; i++) {
+    if (i === 0 && result[i].name === 'system') continue;
+    if (i === 1 && result[i].name === 'user') continue;
     scannableIndices.push(i);
   }
 
   // All scannable text joined (used for selective secondary key checks)
-  const allScannedText = scannableIndices.map(i => messages[i].content || '').join('\n');
+  const allScannedText = scannableIndices.map(i => result[i].content || '').join('\n');
 
   // First non-system message index (insertion target for constant entries)
-  const firstNonSystemIndex = (messages.length > 0 && messages[0].name === 'system') ? 1 : 0;
+  const firstNonSystemIndex = (result.length > 0 && result[0].name === 'system') ? 1 : 0;
 
   // Map: message index -> array of matched entries
   const insertions = new Map();
@@ -113,7 +112,7 @@ function applyLorebook(promptText, lorebook) {
 
     // When use_regex is true, constant is ignored (per V3 spec)
     if (entry.constant === true && !entry.use_regex) {
-      if (firstNonSystemIndex < messages.length) {
+      if (firstNonSystemIndex < result.length) {
         if (!insertions.has(firstNonSystemIndex)) insertions.set(firstNonSystemIndex, []);
         insertions.get(firstNonSystemIndex).push(entry);
       }
@@ -127,7 +126,7 @@ function applyLorebook(promptText, lorebook) {
     // Find the first scannable message containing a matching primary key
     let targetIndex = -1;
     for (const idx of scannableIndices) {
-      const msgText = messages[idx].content || '';
+      const msgText = result[idx].content || '';
       let found;
       if (useRegex) {
         const flags = caseSensitive ? '' : 'i';
@@ -167,31 +166,28 @@ function applyLorebook(promptText, lorebook) {
     insertions.get(targetIndex).push(entry);
   }
 
-  if (insertions.size === 0) return promptText;
+  if (insertions.size === 0) return messages;
 
   const entryTemplate = lorebook.entry_template || '[OOC: {{content}}]';
-  const frontmatter = promptText.slice(0, promptText.length - messagesString.length);
 
   // Insert entries into their target messages, sorted by insertion_order within each group
   for (const [idx, entryGroup] of insertions) {
-    const target = messages[idx];
+    const target = result[idx];
     const messageContext = PROMPT_ROLES.includes(target.name)
       ? templateContext
       : { ...templateContext, char: target.name };
     entryGroup.sort((a, b) => (a.insertion_order || 0) - (b.insertion_order || 0));
     const joinedContent = entryGroup.map(e => {
-      const expanded = expandCBS(e.content, messageContext, promptText);
+      const expanded = expandCBS(e.content, messageContext, hashSeed);
       return entryTemplate.replace('{{content}}', expanded);
     }).join('\n');
     target.content = (target.content || '') + '\n\n' + joinedContent;
   }
 
-  return frontmatter + serializeMessages(messages);
+  return result;
 }
 
-function resolveLorebookPath(promptText, basePath) {
-  const { config } = parseConfigOnly(promptText);
-  const resolvedConfig = resolveConfig(config);
+function resolveLorebookPath(resolvedConfig, basePath) {
   const lorebookPath = resolvedConfig.lorebook;
   if (!lorebookPath) return undefined;
   if (path.isAbsolute(lorebookPath)) return lorebookPath;
@@ -218,7 +214,10 @@ function main() {
   }
 
   const basePath = filePath && filePath !== '-' ? path.dirname(path.resolve(filePath)) : process.cwd();
-  let lorebookPath = options.lorebook || resolveLorebookPath(promptText, basePath);
+  const { config, messages } = parseConfigAndMessages(promptText);
+  const resolved = resolveConfig(config, basePath);
+
+  let lorebookPath = options.lorebook || resolveLorebookPath(resolved, basePath);
   if (!lorebookPath) {
     const defaultPath = path.resolve(basePath, 'character_book.json');
     if (fs.existsSync(defaultPath)) {
@@ -230,8 +229,8 @@ function main() {
   }
 
   const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
-  const output = applyLorebook(promptText, lorebook);
-  process.stdout.write(output);
+  const resultMessages = applyLorebook(messages, resolved, lorebook);
+  process.stdout.write(serializeDocument(config, resultMessages));
 }
 
 if (require.main === module) {

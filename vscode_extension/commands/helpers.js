@@ -3,30 +3,30 @@ const path = require('path');
 const { applyTemplate } = require('../../applytemplate.js');
 const { applyLorebook, resolveLorebookPath } = require('../../apply-lorebook.js');
 const { rpToPrompt } = require('../../rptoprompt.js');
+const pqutils = require('../../lib/pqutils.js');
 
 function getDocumentText(document) {
     return document.getText().replace(/\r\n/g, '\n');
 }
 
-async function preparePrompt(text, templateLoaderPath, projectRoot) {
-    let lorebookPath = resolveLorebookPath(text, templateLoaderPath);
+function preparePrompt(messages, resolvedConfig, templateLoaderPath, projectRoot) {
+    let lorebookPath = resolveLorebookPath(resolvedConfig, templateLoaderPath);
     if (!lorebookPath) {
         const defaultPath = path.resolve(templateLoaderPath, 'character_book.json');
         if (fs.existsSync(defaultPath)) lorebookPath = defaultPath;
     }
-    let withLorebook = text;
+    let apiMessages = structuredClone(messages);
     if (lorebookPath) {
         const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
-        withLorebook = applyLorebook(withLorebook, lorebook);
+        apiMessages = applyLorebook(apiMessages, resolvedConfig, lorebook);
     }
 
-    const templated = await applyTemplate(withLorebook, {
+    apiMessages = applyTemplate(apiMessages, resolvedConfig, {
         messageTemplateLoaderPath: templateLoaderPath,
-        data: {},
         cwd: projectRoot
-    }, null);
+    });
 
-    return rpToPrompt(templated, projectRoot);
+    return rpToPrompt(apiMessages, resolvedConfig, projectRoot);
 }
 
 module.exports = { getDocumentText, preparePrompt };

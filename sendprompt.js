@@ -115,11 +115,7 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
     }
 }
 
-async function sendPrompt(prompt, cwd, outputStream = process.stdout, errorStream = process.stderr, cliConfig = {}, options = {}) {
-    const { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(prompt);
-    const config = pqutils.resolveConfig(runtimeConfig, cwd, cliConfig);
-
-
+async function sendPrompt(messages, resolvedConfig, outputStream = process.stdout, errorStream = process.stderr, options = {}) {
     const promptMessages = messages.map(message => {
         let content = message.content;
         if (content) {
@@ -128,7 +124,7 @@ async function sendPrompt(prompt, cwd, outputStream = process.stdout, errorStrea
             content = content.replace(/^\\@/gm, '@');
         }
         return {
-            role: message.name,
+            role: message.role,
             content: content
         }
     });
@@ -144,24 +140,24 @@ async function sendPrompt(prompt, cwd, outputStream = process.stdout, errorStrea
     }
 
     const body = {
-        ...config.api_call_props,
+        ...resolvedConfig.api_call_props,
         messages: promptMessages,
     }
-    if (config.debug_log_path) {
-        const debugDir = path.resolve(config.debug_log_path);
+    if (resolvedConfig.debug_log_path) {
+        const debugDir = path.resolve(resolvedConfig.debug_log_path);
         if (!fs.existsSync(debugDir)) {
             fs.mkdirSync(debugDir, { recursive: true });
         }
         const debugPath = path.join(debugDir, 'last_request_payload.json');
         fs.writeFileSync(debugPath, JSON.stringify(body, null, 2));
     }
-    const response = await fetch(config.api_url, {
+    const response = await fetch(resolvedConfig.api_url, {
         method: 'POST',
-        headers: config.api_call_headers,
+        headers: resolvedConfig.api_call_headers,
         body: JSON.stringify(body),
         signal: options.signal,
     });
-    await responseToOutput(response, config, outputStream, errorStream);
+    await responseToOutput(response, resolvedConfig, outputStream, errorStream);
 }
 
 async function main() {
@@ -191,7 +187,16 @@ async function main() {
   } else if (!prompt) {
     prompt = fs.readFileSync(0, 'utf-8').replace(/\r\n/g, '\n');
   }
-  await sendPrompt(prompt, process.cwd(), process.stdout, process.stderr, cliConfig);
+  const { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(prompt);
+  const resolvedConfig = pqutils.resolveConfig(runtimeConfig, process.cwd(), cliConfig);
+  // Standalone usage: messages have name field, map to role
+  const nameMap = Object.fromEntries(pqutils.PROMPT_ROLES.map(r => [r, r]));
+  nameMap[resolvedConfig.roleplay_user] = 'user';
+  const messagesWithRoles = messages.map(m => ({
+    ...m,
+    role: m.role || nameMap[m.name] || 'assistant'
+  }));
+  await sendPrompt(messagesWithRoles, resolvedConfig, process.stdout, process.stderr);
 }
 
 if (require.main === module) {

@@ -4,6 +4,7 @@ const path = require('path');
 const { applyTemplate } = require('../../applytemplate.js');
 const { applyLorebook, resolveLorebookPath } = require('../../apply-lorebook.js');
 const { precompletionLint } = require('../../precompletionlint.js');
+const pqutils = require('../../lib/pqutils.js');
 const { getDocumentText, preparePrompt } = require('./helpers');
 
 function registerPreviewCommands(context) {
@@ -20,19 +21,25 @@ function registerPreviewCommands(context) {
         const templateLoaderPath = path.dirname(document.uri.fsPath);
 
         try {
-            // 1. Precompletion Lint
+            // 1. Parse and precompletion lint
             let text = getDocumentText(document);
-            const preOutput = precompletionLint(text, projectRoot);
+            let parsedDoc = pqutils.parseConfigAndMessages(text);
+            const preOutput = precompletionLint(parsedDoc, projectRoot);
 
             if (preOutput) {
                 text += preOutput;
+                parsedDoc = pqutils.parseConfigAndMessages(text);
             }
 
-            // 2. Apply Template -> Lorebook -> Rp To Prompt
-            const prompt = await preparePrompt(text, templateLoaderPath, projectRoot);
+            // 2. Resolve config and prepare prompt
+            const resolvedConfig = pqutils.resolveConfig(parsedDoc.config, projectRoot, {});
+            const apiMessages = preparePrompt(parsedDoc.messages, resolvedConfig, templateLoaderPath, projectRoot);
+
+            // Serialize for display using role-based format
+            const displayOutput = pqutils.serializeDocument(parsedDoc.config, apiMessages);
 
             const doc = await vscode.workspace.openTextDocument({
-                content: prompt,
+                content: displayOutput,
                 language: 'promqueen-pqueen'
             });
             await vscode.window.showTextDocument(doc, { preview: false });
@@ -58,11 +65,14 @@ function registerPreviewCommands(context) {
 
         try {
             const text = getDocumentText(document);
-            const result = await applyTemplate(text, {
+            const parsedDoc = pqutils.parseConfigAndMessages(text);
+            const resolvedConfig = pqutils.resolveConfig(parsedDoc.config, projectRoot, {});
+            const resultMessages = applyTemplate(parsedDoc.messages, resolvedConfig, {
                 messageTemplateLoaderPath: templateLoaderPath,
-                data: {},
                 cwd: projectRoot
-            }, null);
+            });
+
+            const result = pqutils.serializeDocument(parsedDoc.config, resultMessages);
 
             const doc = await vscode.workspace.openTextDocument({
                 content: result,
@@ -89,16 +99,21 @@ function registerPreviewCommands(context) {
 
         try {
             const text = getDocumentText(document);
-            let lorebookPath = resolveLorebookPath(text, templateLoaderPath);
+            const parsedDoc = pqutils.parseConfigAndMessages(text);
+            const resolvedConfig = pqutils.resolveConfig(parsedDoc.config);
+
+            let lorebookPath = resolveLorebookPath(resolvedConfig, templateLoaderPath);
             if (!lorebookPath) {
                 const defaultPath = path.resolve(templateLoaderPath, 'character_book.json');
                 if (fs.existsSync(defaultPath)) lorebookPath = defaultPath;
             }
-            let result = text;
+            let resultMessages = parsedDoc.messages;
             if (lorebookPath) {
                 const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
-                result = applyLorebook(text, lorebook);
+                resultMessages = applyLorebook(parsedDoc.messages, resolvedConfig, lorebook);
             }
+
+            const result = pqutils.serializeDocument(parsedDoc.config, resultMessages);
 
             const doc = await vscode.workspace.openTextDocument({
                 content: result,

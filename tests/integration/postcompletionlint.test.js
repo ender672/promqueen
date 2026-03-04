@@ -3,6 +3,7 @@ const assert = require('node:assert');
 const path = require('node:path');
 const fs = require('fs');
 const { postCompletionLint } = require('../../postcompletionlint.js');
+const { parseConfigAndMessages } = require('../../lib/pqutils.js');
 
 const fixturesDir = path.resolve(__dirname, '../fixtures/postcompletionlint');
 
@@ -23,8 +24,9 @@ inputFiles.forEach(inputFile => {
         }
 
         const input = fs.readFileSync(inputPath, 'utf8');
+        const doc = parseConfigAndMessages(input);
         const baseDir = path.resolve(__dirname, '../..');
-        const output = postCompletionLint(input, baseDir); // Expecting refactored signature
+        const output = postCompletionLint(doc, baseDir);
         const expectedOutput = fs.readFileSync(outputPath, 'utf8');
 
         assert.strictEqual(input + output, expectedOutput, `Output for ${testName} should match expected output`);

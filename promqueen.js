@@ -18,50 +18,51 @@ async function runPipeline(filePath, { baseDir, cwd = process.cwd(), stderr = pr
     if (!quiet) console.log(`[PIPELINE] Processing ${filePath}...`);
 
     try {
-        // 1. Run precompletionlint
+        // 1. Parse once
         let content = fileSystem.readFileSync(absolutePath, 'utf8');
-        const preOutput = precompletionLint(content, baseDir);
+        let doc = pqutils.parseConfigAndMessages(content);
+
+        // 2. Pre-completion lint (returns text to append)
+        const preOutput = precompletionLint(doc, baseDir);
         if (preOutput) {
             fileSystem.appendFileSync(absolutePath, preOutput);
-            // Update content for the next step
             content = fileSystem.readFileSync(absolutePath, 'utf8');
+            doc = pqutils.parseConfigAndMessages(content);
         }
 
-        // 2. Run apply-lorebook (if lorebook configured)
-        const lorebookPath = resolveLorebookPath(content, templateLoaderPath);
-        let withLorebook = content;
+        // 3. Resolve config once for the transform chain
+        const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, {});
+
+        // 4. Ephemeral transforms (each returns new messages array)
+        let apiMessages = structuredClone(doc.messages);
+
+        const lorebookPath = resolveLorebookPath(resolvedConfig, templateLoaderPath);
         if (lorebookPath) {
             const lorebook = JSON.parse(fileSystem.readFileSync(lorebookPath, 'utf8'));
-            withLorebook = applyLorebook(withLorebook, lorebook);
+            apiMessages = applyLorebook(apiMessages, resolvedConfig, lorebook);
         }
 
-        // 2b. Run applytemplate -> rptoprompt -> sendprompt
-        const templated = applyTemplate(withLorebook, {
-            messageTemplateLoaderPath: templateLoaderPath,
-            data: {},
-            cwd
-        }, null);
+        apiMessages = applyTemplate(apiMessages, resolvedConfig, {
+            messageTemplateLoaderPath: templateLoaderPath, cwd
+        });
 
-        const prompt = rpToPrompt(templated, cwd);
+        apiMessages = rpToPrompt(apiMessages, resolvedConfig, cwd);
 
-        const { config: sendConfig } = pqutils.parseConfigOnly(prompt);
-        const resolvedSendConfig = pqutils.resolveConfig(sendConfig, cwd, {});
-
+        // 5. Send to API (streams response to file)
         const fileStream = fileSystem.createWriteStream(absolutePath, { flags: 'a' });
-        // We need to wait for the stream to finish
-        if (resolvedSendConfig.api_url && resolvedSendConfig.api_url.endsWith('/v1/completions')) {
-            await sendRawPrompt(prompt, cwd, fileStream, stderr, {}, templateLoaderPath);
+        if (resolvedConfig.api_url && resolvedConfig.api_url.endsWith('/v1/completions')) {
+            await sendRawPrompt(apiMessages, resolvedConfig, fileStream, stderr, templateLoaderPath);
         } else {
-            await sendPrompt(prompt, cwd, fileStream, stderr, {});
+            await sendPrompt(apiMessages, resolvedConfig, fileStream, stderr);
         }
 
         fileStream.end();
-
         await new Promise((fulfill) => fileStream.on('finish', fulfill));
 
-        // 3. Run postcompletionlint
+        // 6. Post-completion lint (re-read file with API response)
         content = fileSystem.readFileSync(absolutePath, 'utf8');
-        const postOutput = postCompletionLint(content, baseDir);
+        doc = pqutils.parseConfigAndMessages(content);
+        const postOutput = postCompletionLint(doc, baseDir);
         if (postOutput) {
             fileSystem.appendFileSync(absolutePath, postOutput);
         }

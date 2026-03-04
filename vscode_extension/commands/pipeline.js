@@ -36,19 +36,22 @@ async function executePipeline(document, progress, abortController, options) {
         isFirstEdit = false;
     };
 
-    // 1. Precompletion Lint
+    // 1. Parse and precompletion lint
     progress.report({ message: 'Running precompletion lint...' });
     let text = getDocumentText(document);
-    const preOutput = precompletionLint(text, projectRoot);
+    let doc = pqutils.parseConfigAndMessages(text);
+    const preOutput = precompletionLint(doc, projectRoot);
 
     if (preOutput) {
         await applyEdit(preOutput);
         text = getDocumentText(document);
+        doc = pqutils.parseConfigAndMessages(text);
     }
 
-    // 2. Apply Template -> Lorebook -> Rp To Prompt
+    // 2. Resolve config and prepare prompt
     progress.report({ message: 'Preparing prompt...' });
-    const prompt = await preparePrompt(text, templateLoaderPath, projectRoot);
+    const resolvedConfig = pqutils.resolveConfig(doc.config, projectRoot, {});
+    const apiMessages = preparePrompt(doc.messages, resolvedConfig, templateLoaderPath, projectRoot);
 
     // 3. Send Prompt (Streaming)
     progress.report({ message: 'Streaming response...' });
@@ -79,14 +82,11 @@ async function executePipeline(document, progress, abortController, options) {
         end: () => { }
     };
 
-    const { config: sendConfig } = pqutils.parseConfigOnly(prompt);
-    const resolvedSendConfig = pqutils.resolveConfig(sendConfig, projectRoot, {});
-
     const sendOptions = { signal: abortController.signal };
-    if (resolvedSendConfig.api_url && resolvedSendConfig.api_url.endsWith('/v1/completions')) {
-        await sendRawPrompt(prompt, projectRoot, outputStream, errorStream, {}, templateLoaderPath, sendOptions);
+    if (resolvedConfig.api_url && resolvedConfig.api_url.endsWith('/v1/completions')) {
+        await sendRawPrompt(apiMessages, resolvedConfig, outputStream, errorStream, templateLoaderPath, sendOptions);
     } else {
-        await sendPrompt(prompt, projectRoot, outputStream, errorStream, {}, sendOptions);
+        await sendPrompt(apiMessages, resolvedConfig, outputStream, errorStream, sendOptions);
     }
 
     // Wait for all edits to finish
@@ -96,7 +96,8 @@ async function executePipeline(document, progress, abortController, options) {
     // 4. Postcompletion Lint
     progress.report({ message: 'Running postcompletion lint...' });
     const finalText = getDocumentText(document);
-    const postOutput = postCompletionLint(finalText, projectRoot);
+    const finalDoc = pqutils.parseConfigAndMessages(finalText);
+    const postOutput = postCompletionLint(finalDoc, projectRoot);
 
     if (postOutput) {
         await applyEdit(postOutput);
@@ -197,7 +198,8 @@ function registerPipelineCommands(context) {
 
         try {
             const text = getDocumentText(document);
-            const preOutput = precompletionLint(text, projectRoot);
+            const doc = pqutils.parseConfigAndMessages(text);
+            const preOutput = precompletionLint(doc, projectRoot);
 
             if (preOutput) {
                 await editor.edit(editBuilder => {

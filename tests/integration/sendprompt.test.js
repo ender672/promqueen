@@ -3,6 +3,7 @@ const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
 const { sendPrompt } = require('../../sendprompt.js');
+const { parseConfigAndMessages, resolveConfig, PROMPT_ROLES } = require('../../lib/pqutils.js');
 
 const fixturesDir = path.join(__dirname, '../fixtures/sendprompt');
 
@@ -14,6 +15,15 @@ class StringStream {
   write(chunk) {
     this.data += chunk.toString();
   }
+}
+
+function addRolesToMessages(messages, resolvedConfig) {
+  const nameMap = Object.fromEntries(PROMPT_ROLES.map(r => [r, r]));
+  nameMap[resolvedConfig.roleplay_user] = 'user';
+  return messages.map(m => ({
+    ...m,
+    role: m.role || nameMap[m.name] || 'assistant'
+  }));
 }
 
 // Find all input files
@@ -33,6 +43,9 @@ inputFiles.forEach(inputFile => {
     }
 
     const prompt = fs.readFileSync(inputPath, 'utf8');
+    const { config, messages } = parseConfigAndMessages(prompt);
+    const resolved = resolveConfig(config, process.cwd());
+    const messagesWithRoles = addRolesToMessages(messages, resolved);
     const expectedRequest = JSON.parse(fs.readFileSync(requestExpectationPath, 'utf8'));
 
     let capturedUrl;
@@ -62,8 +75,8 @@ inputFiles.forEach(inputFile => {
       const errorStream = new StringStream();
 
       await sendPrompt(
-        prompt,
-        process.cwd(),
+        messagesWithRoles,
+        resolved,
         outputStream,
         errorStream
       );
@@ -76,12 +89,7 @@ inputFiles.forEach(inputFile => {
 
       // Optional: Validate headers if expectedRequest has them
       if (expectedRequest.headers) {
-        // We might need to handle Headers object if sendprompt uses it, 
-        // but sendprompt passes a plain object or Headers object.
-        // capturedOptions.headers is what is passed to fetch.
-        // Assuming it's a plain object for now based on sendprompt.js implementation.
         for (const [key, value] of Object.entries(expectedRequest.headers)) {
-          // Case-insensitive header check could be better but strict for now
           assert.strictEqual(capturedOptions.headers[key], value, `Header ${key} for ${testName} should match`);
         }
       }

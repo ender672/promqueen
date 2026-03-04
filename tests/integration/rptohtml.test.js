@@ -3,6 +3,7 @@ const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
 const { rpToHtml } = require('../../rptohtml.js');
+const { parseConfigAndMessages, resolveConfig } = require('../../lib/pqutils.js');
 
 const fixturesDir = path.join(__dirname, '../fixtures/rptohtml');
 
@@ -29,8 +30,10 @@ inputFiles.forEach(inputFile => {
     const promptText = fs.readFileSync(inputPath, 'utf8').replace(/\r\n/g, '\n');
     const templateText = fs.readFileSync(templatePath, 'utf8');
     const expectedOutput = fs.readFileSync(outputPath, 'utf8');
+    const doc = parseConfigAndMessages(promptText);
+    const resolved = resolveConfig(doc.config);
 
-    const output = rpToHtml(promptText, templateText);
+    const output = rpToHtml(doc, resolved, templateText);
 
     assert.strictEqual(output, expectedOutput, `Output for ${testName} should match expected output`);
   });

@@ -73,12 +73,11 @@ function extractDecorators(message, decoratorsMap) {
   }
 }
 
-function rpToPrompt(prompt, basePath = process.cwd()) {
-  let { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(prompt);
-  const config = pqutils.resolveConfig(runtimeConfig, basePath);
-  const user = config.roleplay_user;
+function rpToPrompt(messages, resolvedConfig, basePath = process.cwd()) {
+  messages = messages.map(m => ({ ...m }));
+  const user = resolvedConfig.roleplay_user;
 
-  const decoratorsMap = pqutils.loadDecorators(config, basePath);
+  const decoratorsMap = pqutils.loadDecorators(resolvedConfig, basePath);
   messages.forEach(msg => extractDecorators(msg, decoratorsMap));
 
   addRoles(messages, user);
@@ -120,24 +119,24 @@ function rpToPrompt(prompt, basePath = process.cwd()) {
     user: user,
   }
 
-  if (config.roleplay_combined_group_chat) {
+  if (resolvedConfig.roleplay_combined_group_chat) {
     prefixWithNames(messages);
     namedMessagesAsRole(messages, 'assistant');
   } else if (userRequestedCharacter) {
     let prefilledMessage = null;
     if (hasPrefilledMessage) {
       prefilledMessage = messages.pop();
-    } else if (!config.roleplay_prefix_with_name) {
+    } else if (!resolvedConfig.roleplay_prefix_with_name) {
       messages.pop();
     }
 
-    if (config.roleplay_prefix_with_name) {
+    if (resolvedConfig.roleplay_prefix_with_name) {
       prefixWithNames(messages);
     }
 
-    let instructionTemplate = config.roleplay_impersonation_instruction;
-    if (config.roleplay_char_impersonation_instruction && config.roleplay_char_impersonation_instruction[userRequestedCharacter]) {
-      instructionTemplate = config.roleplay_char_impersonation_instruction[userRequestedCharacter];
+    let instructionTemplate = resolvedConfig.roleplay_impersonation_instruction;
+    if (resolvedConfig.roleplay_char_impersonation_instruction && resolvedConfig.roleplay_char_impersonation_instruction[userRequestedCharacter]) {
+      instructionTemplate = resolvedConfig.roleplay_char_impersonation_instruction[userRequestedCharacter];
     }
 
     if (instructionTemplate) {
@@ -159,22 +158,14 @@ function rpToPrompt(prompt, basePath = process.cwd()) {
 
   messages = combineAdjacentMessagesWithSameRole(messages);
 
-  let output = '---\n';
-  output += yaml.dump(runtimeConfig);
-  output += '---\n';
-  output += serializeHistory(messages);
-  return output;
+  return messages;
 }
 
 function serializeHistory(messages) {
-  let output = '';
-  for (const [index, message] of messages.entries()) {
-    if (index !== 0) {
-      output += "\n\n";
-    }
-    output += `@${message.role}\n${message.content}`;
-  }
-  return output;
+  return messages.map((message, index) => {
+    const prefix = index > 0 ? '\n\n' : '';
+    return `${prefix}@${message.role}\n${message.content}`;
+  }).join('');
 }
 
 function main() {
@@ -191,7 +182,14 @@ function main() {
     }
 
     const basePath = filePath ? path.dirname(path.resolve(filePath)) : process.cwd();
-    const output = rpToPrompt(prompt, basePath);
+    const { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(prompt);
+    const resolvedConfig = pqutils.resolveConfig(runtimeConfig, basePath);
+    const resultMessages = rpToPrompt(messages, resolvedConfig, basePath);
+
+    let output = '---\n';
+    output += yaml.dump(runtimeConfig);
+    output += '---\n';
+    output += serializeHistory(resultMessages);
     process.stdout.write(output);
   } catch (error) {
     console.error('Error reading input:', error);

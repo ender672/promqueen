@@ -4,4 +4,4 @@ message_template_variables:
   value: '@tagged text'
 ---
 @user
-\@tagged text
+@tagged text

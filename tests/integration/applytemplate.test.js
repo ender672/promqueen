@@ -3,9 +3,9 @@ const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
 const { applyTemplate } = require('../../applytemplate.js');
+const { parseConfigAndMessages, serializeDocument, resolveConfig } = require('../../lib/pqutils.js');
 
 const fixturesDir = path.join(__dirname, '../fixtures/applytemplate');
-
 
 // Find all input files
 const files = fs.readdirSync(fixturesDir);
@@ -24,8 +24,11 @@ inputFiles.forEach(inputFile => {
     }
 
     const prompt = fs.readFileSync(inputPath, 'utf8');
+    const { config, messages } = parseConfigAndMessages(prompt);
+    const resolved = resolveConfig(config);
 
-    const output = await applyTemplate(prompt, {});
+    const resultMessages = applyTemplate(messages, resolved, {});
+    const output = serializeDocument(config, resultMessages);
 
     const expectedOutput = fs.readFileSync(outputPath, 'utf8');
 

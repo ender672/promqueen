@@ -30,10 +30,8 @@ function getRoleFlags(name, userName) {
   };
 }
 
-function rpToHtml(promptText, templateText, basePath = process.cwd()) {
-  const { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(promptText);
-  const config = pqutils.resolveConfig(runtimeConfig, basePath);
-  const userName = config.roleplay_user;
+function rpToHtml({ config, messages }, resolvedConfig, templateText) {
+  const userName = resolvedConfig.roleplay_user;
 
   const processedMessages = [];
   let seenAssistant = false;
@@ -55,7 +53,7 @@ function rpToHtml(promptText, templateText, basePath = process.cwd()) {
   }
 
   const data = {
-    config,
+    config: resolvedConfig,
     messages: processedMessages,
   };
 
@@ -75,8 +73,10 @@ function main() {
 
   const promptText = fs.readFileSync(resolvedFilePath, 'utf8').replace(/\r\n/g, '\n');
   const templateText = fs.readFileSync(resolvedTemplatePath, 'utf8');
+  const doc = pqutils.parseConfigAndMessages(promptText);
+  const resolvedConfig = pqutils.resolveConfig(doc.config, path.dirname(resolvedFilePath));
 
-  const output = rpToHtml(promptText, templateText, path.dirname(resolvedFilePath));
+  const output = rpToHtml(doc, resolvedConfig, templateText);
   process.stdout.write(output);
 }
 

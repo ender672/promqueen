@@ -3,7 +3,6 @@
 const fs = require('fs');
 const process = require('process');
 const pqutils = require('./lib/pqutils.js');
-const yaml = require('js-yaml');
 const path = require('path');
 const { renderTemplate, buildTemplateContext } = require('./lib/rendertemplate.js');
 
@@ -31,26 +30,18 @@ function canInclude(index, messages, roleplayUser) {
     return false;
 }
 
-function applyTemplate(promptText, options) {
+function applyTemplate(messages, resolvedConfig, options = {}) {
     const cwd = options.cwd || process.cwd();
-    const { config, messages } = pqutils.parseConfigAndMessages(promptText);
-    const resolvedConfig = pqutils.resolveConfig(config, cwd);
     const templateLoaderPath = resolvedConfig.message_template_loader_path || options.messageTemplateLoaderPath || cwd;
     const roleplayUser = resolvedConfig.roleplay_user;
 
     const fullMessageTemplateContext = {
-        ...options.data,
         ...buildTemplateContext(resolvedConfig, messages),
     };
 
-    let renderedMessages = [];
-    for (let i = 0; i < messages.length; i++) {
-        const message = messages[i];
-        const namePart = message.name ? `@${message.name}\n` : '';
-
+    return messages.map((message, i) => {
         if (message.content === null) {
-            renderedMessages.push(namePart.trimEnd());
-            continue;
+            return { ...message };
         }
 
         const allowIncludes = canInclude(i, messages, roleplayUser);
@@ -63,16 +54,8 @@ function applyTemplate(promptText, options) {
             templateLoaderPath,
             { allowIncludes }
         );
-        const escaped = content.replace(/^@/gm, '\\@');
-        renderedMessages.push(`${namePart}${escaped}`);
-    }
-
-    let output = '---\n';
-    output += yaml.dump(config);
-    output += '---\n';
-    output += renderedMessages.join('\n\n');
-
-    return output;
+        return { ...message, content };
+    });
 }
 
 function main() {
@@ -117,8 +100,11 @@ function main() {
     promptText = fs.readFileSync(0, 'utf-8').replace(/\r\n/g, '\n');
   }
 
-  const output = applyTemplate(promptText, { ...options, cwd: process.cwd() });
-  process.stdout.write(output);
+  const cwd = process.cwd();
+  const { config, messages } = pqutils.parseConfigAndMessages(promptText);
+  const resolvedConfig = pqutils.resolveConfig(config, cwd);
+  const resultMessages = applyTemplate(messages, resolvedConfig, { ...options, cwd });
+  process.stdout.write(pqutils.serializeDocument(config, resultMessages));
 }
 
 if (require.main === module) {

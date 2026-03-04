@@ -3,6 +3,7 @@ const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
 const { sendRawPrompt } = require('../../sendrawprompt.js');
+const { parseConfigAndMessages, resolveConfig, PROMPT_ROLES } = require('../../lib/pqutils.js');
 
 const fixturesDir = path.join(__dirname, '../fixtures/sendrawprompt');
 const chatTemplatePath = path.join(fixturesDir, 'chatml.jinja');
@@ -15,6 +16,15 @@ class StringStream {
   write(chunk) {
     this.data += chunk.toString();
   }
+}
+
+function addRolesToMessages(messages, resolvedConfig) {
+  const nameMap = Object.fromEntries(PROMPT_ROLES.map(r => [r, r]));
+  nameMap[resolvedConfig.roleplay_user] = 'user';
+  return messages.map(m => ({
+    ...m,
+    role: m.role || nameMap[m.name] || 'assistant'
+  }));
 }
 
 // Find all input files
@@ -34,6 +44,9 @@ inputFiles.forEach(inputFile => {
     }
 
     const prompt = fs.readFileSync(inputPath, 'utf8');
+    const { config, messages } = parseConfigAndMessages(prompt);
+    const resolved = resolveConfig(config, process.cwd(), { chat_template_path: chatTemplatePath });
+    const messagesWithRoles = addRolesToMessages(messages, resolved);
     const expectedRequest = JSON.parse(fs.readFileSync(requestExpectationPath, 'utf8'));
 
     let capturedUrl;
@@ -62,16 +75,11 @@ inputFiles.forEach(inputFile => {
       const outputStream = new StringStream();
       const errorStream = new StringStream();
 
-      const cliConfig = {
-        chat_template_path: chatTemplatePath,
-      };
-
       await sendRawPrompt(
-        prompt,
-        process.cwd(),
+        messagesWithRoles,
+        resolved,
         outputStream,
-        errorStream,
-        cliConfig
+        errorStream
       );
 
       assert.strictEqual(capturedUrl, expectedRequest.url, `URL for ${testName} should match`);

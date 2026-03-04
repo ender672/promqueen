@@ -3,6 +3,7 @@ const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
 const { applyLorebook, resolveLorebookPath } = require('../../apply-lorebook.js');
+const { parseConfigAndMessages, serializeDocument, resolveConfig } = require('../../lib/pqutils.js');
 
 const fixturesDir = path.join(__dirname, '../fixtures/apply-lorebook');
 
@@ -29,9 +30,12 @@ inputFiles.forEach(inputFile => {
     }
 
     const prompt = fs.readFileSync(inputPath, 'utf8');
+    const { config, messages } = parseConfigAndMessages(prompt);
+    const resolved = resolveConfig(config);
     const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
 
-    const output = applyLorebook(prompt, lorebook);
+    const resultMessages = applyLorebook(messages, resolved, lorebook);
+    const output = serializeDocument(config, resultMessages);
     const expectedOutput = fs.readFileSync(outputPath, 'utf8');
 
     assert.strictEqual(output, expectedOutput, `Output for ${testName} should match expected output`);
@@ -41,12 +45,15 @@ inputFiles.forEach(inputFile => {
 test('apply-lorebook - resolveLorebookPath extracts lorebook from frontmatter config', async () => {
   const inputPath = path.join(fixturesDir, 'config_lorebook_path.input.pqueen');
   const promptText = fs.readFileSync(inputPath, 'utf8');
+  const { config, messages } = parseConfigAndMessages(promptText);
+  const resolved = resolveConfig(config);
 
-  const lorebookPath = resolveLorebookPath(promptText);
+  const lorebookPath = resolveLorebookPath(resolved);
   assert.strictEqual(lorebookPath, 'tests/fixtures/apply-lorebook/config_lorebook_path.lorebook.json');
 
   const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
-  const output = applyLorebook(promptText, lorebook);
+  const resultMessages = applyLorebook(messages, resolved, lorebook);
+  const output = serializeDocument(config, resultMessages);
 
   const expectedOutputPath = path.join(fixturesDir, 'config_lorebook_path.output.pqueen');
   const expectedOutput = fs.readFileSync(expectedOutputPath, 'utf8');
@@ -56,7 +63,9 @@ test('apply-lorebook - resolveLorebookPath extracts lorebook from frontmatter co
 test('apply-lorebook - resolveLorebookPath returns undefined when no lorebook in config', async () => {
   const inputPath = path.join(fixturesDir, 'basic_match.input.pqueen');
   const promptText = fs.readFileSync(inputPath, 'utf8');
+  const { config } = parseConfigAndMessages(promptText);
+  const resolved = resolveConfig(config);
 
-  const lorebookPath = resolveLorebookPath(promptText);
+  const lorebookPath = resolveLorebookPath(resolved);
   assert.strictEqual(lorebookPath, undefined);
 });

@@ -2,6 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const { sendRawPrompt } = require('../../sendrawprompt.js');
+const { parseConfigAndMessages, resolveConfig } = require('../../lib/pqutils.js');
 
 const fixturesDir = path.join(__dirname, '../fixtures/sendrawprompt');
 const chatTemplatePath = path.join(fixturesDir, 'chatml.jinja');
@@ -58,16 +59,16 @@ function mockStreamingResponse(chunks) {
     };
 }
 
-const prompt = `---
+const promptText = `---
 api_url: http://dummy
 dot_config_loading: false
 ---
 @user
 Hello`;
 
-const cliConfig = {
-    chat_template_path: chatTemplatePath,
-};
+const { config: promptConfig, messages: promptMessages } = parseConfigAndMessages(promptText);
+const resolved = resolveConfig(promptConfig, process.cwd(), { chat_template_path: chatTemplatePath });
+const messages = promptMessages.map(m => ({ ...m, role: m.name }));
 
 test('sendrawprompt handles streaming SSE response', async () => {
     const originalFetch = global.fetch;
@@ -82,7 +83,7 @@ test('sendrawprompt handles streaming SSE response', async () => {
         const outputStream = new StringStream();
         const errorStream = new StringStream();
 
-        await sendRawPrompt(prompt, process.cwd(), outputStream, errorStream, cliConfig);
+        await sendRawPrompt(messages, resolved, outputStream, errorStream);
 
         assert.strictEqual(outputStream.data, 'Hello world!');
     } finally {
@@ -102,7 +103,7 @@ test('sendrawprompt strips leading space from first streaming chunk', async () =
         const outputStream = new StringStream();
         const errorStream = new StringStream();
 
-        await sendRawPrompt(prompt, process.cwd(), outputStream, errorStream, cliConfig);
+        await sendRawPrompt(messages, resolved, outputStream, errorStream);
 
         assert.strictEqual(outputStream.data, 'Hello world');
     } finally {
@@ -122,7 +123,7 @@ test('sendrawprompt strips leading newline from first streaming chunk', async ()
         const outputStream = new StringStream();
         const errorStream = new StringStream();
 
-        await sendRawPrompt(prompt, process.cwd(), outputStream, errorStream, cliConfig);
+        await sendRawPrompt(messages, resolved, outputStream, errorStream);
 
         assert.strictEqual(outputStream.data, 'Hello world');
     } finally {
@@ -146,7 +147,7 @@ test('sendrawprompt throws on API error response', async () => {
         const errorStream = new StringStream();
 
         await assert.rejects(
-            () => sendRawPrompt(prompt, process.cwd(), outputStream, errorStream, cliConfig),
+            () => sendRawPrompt(messages, resolved, outputStream, errorStream),
             (err) => {
                 assert.match(err.message, /API request failed: 429/);
                 assert.match(err.message, /Rate limit exceeded/);
@@ -169,7 +170,7 @@ test('sendrawprompt escapes {{ in streaming response', async () => {
         const outputStream = new StringStream();
         const errorStream = new StringStream();
 
-        await sendRawPrompt(prompt, process.cwd(), outputStream, errorStream, cliConfig);
+        await sendRawPrompt(messages, resolved, outputStream, errorStream);
 
         assert.strictEqual(outputStream.data, 'Use \\{{ variable }} for substitution');
     } finally {
@@ -189,7 +190,7 @@ test('sendrawprompt escapes {{ across streaming chunk boundaries', async () => {
         const outputStream = new StringStream();
         const errorStream = new StringStream();
 
-        await sendRawPrompt(prompt, process.cwd(), outputStream, errorStream, cliConfig);
+        await sendRawPrompt(messages, resolved, outputStream, errorStream);
 
         assert.strictEqual(outputStream.data, 'hello\\{{world}}');
     } finally {
@@ -208,7 +209,7 @@ test('sendrawprompt escapes @ at start of lines in streaming response', async ()
         const outputStream = new StringStream();
         const errorStream = new StringStream();
 
-        await sendRawPrompt(prompt, process.cwd(), outputStream, errorStream, cliConfig);
+        await sendRawPrompt(messages, resolved, outputStream, errorStream);
 
         assert.strictEqual(outputStream.data, 'Here is info:\n\n\\@john is admin');
     } finally {
@@ -226,7 +227,7 @@ test('sendrawprompt escapes @ at start of lines in non-streaming response', asyn
         const outputStream = new StringStream();
         const errorStream = new StringStream();
 
-        await sendRawPrompt(prompt, process.cwd(), outputStream, errorStream, cliConfig);
+        await sendRawPrompt(messages, resolved, outputStream, errorStream);
 
         assert.strictEqual(outputStream.data, 'Here is info:\n\n\\@john is admin');
     } finally {
@@ -238,8 +239,10 @@ test('sendrawprompt throws when chat_template_path is missing', async () => {
     const outputStream = new StringStream();
     const errorStream = new StringStream();
 
+    const noTemplateConfig = { ...resolved, chat_template_path: undefined };
+
     await assert.rejects(
-        () => sendRawPrompt(prompt, process.cwd(), outputStream, errorStream, {}),
+        () => sendRawPrompt(messages, noTemplateConfig, outputStream, errorStream),
         (err) => {
             assert.match(err.message, /chat_template_path is required/);
             return true;

@@ -1,6 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const { sendPrompt } = require('../../sendprompt.js');
+const { parseConfigAndMessages, resolveConfig } = require('../../lib/pqutils.js');
 
 // Helper class to capture output
 class StringStream {
@@ -54,12 +55,16 @@ function mockStreamingResponse(chunks) {
     };
 }
 
-const prompt = `---
+const promptText = `---
 api_url: http://dummy
 dot_config_loading: false
 ---
 @user
 Hello`;
+
+const { config: promptConfig, messages: promptMessages } = parseConfigAndMessages(promptText);
+const resolved = resolveConfig(promptConfig, process.cwd());
+const messages = promptMessages.map(m => ({ ...m, role: m.name }));
 
 test('sendprompt handles streaming SSE response', async () => {
     const originalFetch = global.fetch;
@@ -74,7 +79,7 @@ test('sendprompt handles streaming SSE response', async () => {
         const outputStream = new StringStream();
         const errorStream = new StringStream();
 
-        await sendPrompt(prompt, process.cwd(), outputStream, errorStream);
+        await sendPrompt(messages, resolved, outputStream, errorStream);
 
         assert.strictEqual(outputStream.data, 'Hello world!');
     } finally {
@@ -94,7 +99,7 @@ test('sendprompt strips leading space from first streaming chunk', async () => {
         const outputStream = new StringStream();
         const errorStream = new StringStream();
 
-        await sendPrompt(prompt, process.cwd(), outputStream, errorStream);
+        await sendPrompt(messages, resolved, outputStream, errorStream);
 
         assert.strictEqual(outputStream.data, 'Hello world');
     } finally {
@@ -114,7 +119,7 @@ test('sendprompt strips leading newline from first streaming chunk', async () =>
         const outputStream = new StringStream();
         const errorStream = new StringStream();
 
-        await sendPrompt(prompt, process.cwd(), outputStream, errorStream);
+        await sendPrompt(messages, resolved, outputStream, errorStream);
 
         assert.strictEqual(outputStream.data, 'Hello world');
     } finally {
@@ -138,7 +143,7 @@ test('sendprompt throws on API error response', async () => {
         const errorStream = new StringStream();
 
         await assert.rejects(
-            () => sendPrompt(prompt, process.cwd(), outputStream, errorStream),
+            () => sendPrompt(messages, resolved, outputStream, errorStream),
             (err) => {
                 assert.match(err.message, /API request failed: 429/);
                 assert.match(err.message, /Rate limit exceeded/);
@@ -169,7 +174,8 @@ test('sendprompt logs cost on streaming response with usage', async () => {
         const outputStream = new StringStream();
         const errorStream = new StringStream();
 
-        const cliConfig = {
+        const configWithPricing = {
+            ...resolved,
             pricing: {
                 cost_uncached: 10,
                 cost_cached: 5,
@@ -177,7 +183,7 @@ test('sendprompt logs cost on streaming response with usage', async () => {
             }
         };
 
-        await sendPrompt(prompt, process.cwd(), outputStream, errorStream, cliConfig);
+        await sendPrompt(messages, configWithPricing, outputStream, errorStream);
 
         assert.strictEqual(outputStream.data, 'Hi');
         assert.match(errorStream.data, /total cost:/);
@@ -197,7 +203,7 @@ test('sendprompt escapes @ at start of lines in streaming response', async () =>
         const outputStream = new StringStream();
         const errorStream = new StringStream();
 
-        await sendPrompt(prompt, process.cwd(), outputStream, errorStream);
+        await sendPrompt(messages, resolved, outputStream, errorStream);
 
         assert.strictEqual(outputStream.data, 'Here is info:\n\n\\@john is admin');
     } finally {
@@ -217,7 +223,7 @@ test('sendprompt escapes @ at start of lines across streaming chunk boundaries',
         const outputStream = new StringStream();
         const errorStream = new StringStream();
 
-        await sendPrompt(prompt, process.cwd(), outputStream, errorStream);
+        await sendPrompt(messages, resolved, outputStream, errorStream);
 
         assert.strictEqual(outputStream.data, 'Hello\n\n\\@john is here');
     } finally {
@@ -235,7 +241,7 @@ test('sendprompt escapes @ at start of lines in non-streaming response', async (
         const outputStream = new StringStream();
         const errorStream = new StringStream();
 
-        await sendPrompt(prompt, process.cwd(), outputStream, errorStream);
+        await sendPrompt(messages, resolved, outputStream, errorStream);
 
         assert.strictEqual(outputStream.data, 'Here is info:\n\n\\@john is admin');
     } finally {
@@ -254,7 +260,7 @@ test('sendprompt escapes {{ in streaming response', async () => {
         const outputStream = new StringStream();
         const errorStream = new StringStream();
 
-        await sendPrompt(prompt, process.cwd(), outputStream, errorStream);
+        await sendPrompt(messages, resolved, outputStream, errorStream);
 
         assert.strictEqual(outputStream.data, 'Use \\{{ variable }} for substitution');
     } finally {
@@ -273,7 +279,7 @@ test('sendprompt escapes {% in streaming response', async () => {
         const outputStream = new StringStream();
         const errorStream = new StringStream();
 
-        await sendPrompt(prompt, process.cwd(), outputStream, errorStream);
+        await sendPrompt(messages, resolved, outputStream, errorStream);
 
         assert.strictEqual(outputStream.data, "Use \\{% include 'file.txt' %} for includes");
     } finally {
@@ -293,7 +299,7 @@ test('sendprompt escapes {{ across streaming chunk boundaries', async () => {
         const outputStream = new StringStream();
         const errorStream = new StringStream();
 
-        await sendPrompt(prompt, process.cwd(), outputStream, errorStream);
+        await sendPrompt(messages, resolved, outputStream, errorStream);
 
         assert.strictEqual(outputStream.data, 'hello\\{{world}}');
     } finally {
@@ -313,7 +319,7 @@ test('sendprompt escapes {% across streaming chunk boundaries', async () => {
         const outputStream = new StringStream();
         const errorStream = new StringStream();
 
-        await sendPrompt(prompt, process.cwd(), outputStream, errorStream);
+        await sendPrompt(messages, resolved, outputStream, errorStream);
 
         assert.strictEqual(outputStream.data, "hello\\{% include 'x' %}");
     } finally {
@@ -332,7 +338,7 @@ test('sendprompt flushes lone trailing { in streaming response', async () => {
         const outputStream = new StringStream();
         const errorStream = new StringStream();
 
-        await sendPrompt(prompt, process.cwd(), outputStream, errorStream);
+        await sendPrompt(messages, resolved, outputStream, errorStream);
 
         assert.strictEqual(outputStream.data, 'hello{');
     } finally {
@@ -350,7 +356,7 @@ test('sendprompt escapes {{ in non-streaming response', async () => {
         const outputStream = new StringStream();
         const errorStream = new StringStream();
 
-        await sendPrompt(prompt, process.cwd(), outputStream, errorStream);
+        await sendPrompt(messages, resolved, outputStream, errorStream);
 
         assert.strictEqual(outputStream.data, 'Use \\{{ var }} and \\{% include "f" %}');
     } finally {
