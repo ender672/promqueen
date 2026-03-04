@@ -4,6 +4,7 @@ const { registerPreviewCommands } = require('./commands/previews');
 const { registerRegenerateCommand } = require('./commands/regenerate');
 const { registerHtmlPreviewCommands, deactivate: deactivateHtmlPreview } = require('./commands/htmlPreview');
 const { ImageHoverProvider } = require('./providers/ImageHoverProvider');
+const { FrontmatterHoverProvider } = require('./providers/FrontmatterHoverProvider');
 const { CompletionProvider } = require('./providers/CompletionProvider');
 
 /**
@@ -19,7 +20,10 @@ function activate(context) {
         vscode.languages.registerHoverProvider('promqueen-pqueen', new ImageHoverProvider())
     );
     context.subscriptions.push(
-        vscode.languages.registerCompletionItemProvider('promqueen-pqueen', new CompletionProvider(), '@', '[')
+        vscode.languages.registerHoverProvider('promqueen-pqueen', new FrontmatterHoverProvider())
+    );
+    context.subscriptions.push(
+        vscode.languages.registerCompletionItemProvider('promqueen-pqueen', new CompletionProvider(), '@', '[', ':')
     );
 }
 

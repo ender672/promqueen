@@ -1,6 +1,7 @@
 const vscode = require('vscode');
 const path = require('path');
 const pqutils = require('../../lib/pqutils.js');
+const { FRONTMATTER_SCHEMA } = require('./frontmatterSchema.js');
 
 class CompletionProvider {
     /**
@@ -11,6 +12,12 @@ class CompletionProvider {
      */
     provideCompletionItems(document, position, _token, _context) {
         const linePrefix = document.lineAt(position).text.substr(0, position.character);
+
+        // Frontmatter key suggestions
+        const frontmatterRange = this.getFrontmatterRange(document);
+        if (frontmatterRange && position.line > frontmatterRange.start && position.line < frontmatterRange.end) {
+            return this.provideFrontmatterSuggestions(document, position, frontmatterRange);
+        }
 
         // Decorator suggestions: Check if we are inside a decorator block
         // Matches: @RoleName [PartialDecorator
@@ -24,6 +31,60 @@ class CompletionProvider {
         }
 
         return undefined;
+    }
+
+    getFrontmatterRange(document) {
+        if (document.lineAt(0).text.trim() !== '---') {
+            return null;
+        }
+        for (let i = 1; i < document.lineCount; i++) {
+            if (document.lineAt(i).text.trim() === '---') {
+                return { start: 0, end: i };
+            }
+        }
+        return null;
+    }
+
+    provideFrontmatterSuggestions(document, position, frontmatterRange) {
+        // Collect keys already present in the frontmatter
+        const presentKeys = new Set();
+        for (let i = frontmatterRange.start + 1; i < frontmatterRange.end; i++) {
+            const lineText = document.lineAt(i).text;
+            const match = lineText.match(/^(\w[\w_]*):/);
+            if (match) {
+                presentKeys.add(match[1]);
+            }
+        }
+
+        // Only suggest when the cursor is at a key position (start of line, not indented)
+        const linePrefix = document.lineAt(position).text.substr(0, position.character);
+        if (/^\s+/.test(linePrefix)) {
+            return undefined;
+        }
+
+        const items = [];
+        for (const entry of FRONTMATTER_SCHEMA) {
+            if (presentKeys.has(entry.key)) {
+                continue;
+            }
+
+            const item = new vscode.CompletionItem(entry.key, vscode.CompletionItemKind.Property);
+            item.detail = entry.type;
+
+            const doc = new vscode.MarkdownString();
+            doc.appendMarkdown(entry.description);
+            doc.appendMarkdown(`\n\n**Type:** \`${entry.type}\`  \n**Default:** \`${entry.defaultValue}\``);
+            if (entry.example) {
+                doc.appendMarkdown(`\n\n\`\`\`yaml\n${entry.example}\n\`\`\``);
+            }
+            item.documentation = doc;
+
+            item.insertText = entry.key + ': ';
+            item.sortText = items.length.toString().padStart(5, '0');
+            items.push(item);
+        }
+
+        return items;
     }
 
     provideDecoratorSuggestions(document) {

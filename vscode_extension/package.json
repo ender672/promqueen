@@ -85,7 +85,7 @@
         "watch:esbuild": "esbuild ./extension.js --bundle --outfile=dist/extension.js --external:vscode --external:commander --format=cjs --platform=node --loader:.mustache=text --watch",
         "package": "npm run build -- --minify",
         "pretest": "npm run build",
-        "test": "node test/run_test.js && node test/test_completion.js && node test/test_preview.js && node test/test_hover.js && node test/test_regenerate.js && node test/undo_test.js",
+        "test": "node test/run_test.js && node test/test_completion.js && node test/test_frontmatter_completion.js && node test/test_frontmatter_hover.js && node test/test_preview.js && node test/test_hover.js && node test/test_regenerate.js && node test/undo_test.js",
         "clean": "rm -rf dist out",
         "build": "esbuild ./extension.js --bundle --outfile=dist/extension.js --external:vscode --external:commander --format=cjs --platform=node --loader:.mustache=text --minify --sourcemap",
         "vsix": "vsce package"

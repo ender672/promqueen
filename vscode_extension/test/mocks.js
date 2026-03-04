@@ -128,7 +128,7 @@ function setupVscodeMock(customOverrides = {}) {
         Range: MockRange,
         WorkspaceEdit: MockWorkspaceEdit,
         CompletionItem: MockCompletionItem,
-        CompletionItemKind: { Keyword: 13 },
+        CompletionItemKind: { Keyword: 13, Property: 9, Value: 11 },
         MarkdownString: MockMarkdownString,
         Hover: MockHover,
 
