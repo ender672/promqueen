@@ -1,0 +1,13 @@
+---
+api_url: http://dummy
+dot_config_loading: false
+roleplay_user: User
+roleplay_impersonation_instruction: "Respond as {{char}}."
+---
+@User
+Tell me a joke.
+
+@Bot
+Why did the chicken cross the road?
+
+@User

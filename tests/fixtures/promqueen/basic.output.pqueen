@@ -1,0 +1,19 @@
+---
+api_url: http://dummy
+dot_config_loading: false
+roleplay_user: User
+roleplay_impersonation_instruction: "Write as {{char}}."
+---
+@User
+Hello there!
+
+@Alice
+Hi! How are you?
+
+@User
+I'm fine.
+
+@Alice
+Great to hear!
+
+@User

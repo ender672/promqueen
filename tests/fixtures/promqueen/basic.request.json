@@ -1,0 +1,20 @@
+{
+    "url": "http://dummy",
+    "method": "POST",
+    "body": {
+        "messages": [
+            {
+                "role": "user",
+                "content": "Hello there!"
+            },
+            {
+                "role": "assistant",
+                "content": "Hi! How are you?"
+            },
+            {
+                "role": "user",
+                "content": "I'm fine.\n\nWrite as Alice."
+            }
+        ]
+    }
+}

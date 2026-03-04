@@ -1,0 +1,12 @@
+{
+    "url": "http://dummy",
+    "method": "POST",
+    "body": {
+        "messages": [
+            {
+                "role": "user",
+                "content": "Tell me a joke.\n\nRespond as Bot."
+            }
+        ]
+    }
+}

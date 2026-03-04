@@ -1,6 +1,10 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
+const path = require('path');
+const fs = require('fs');
 const { runPipeline } = require('../../promqueen.js');
+
+const fixturesDir = path.join(__dirname, '../fixtures/promqueen');
 
 // A minimal in-memory file system that supports the operations runPipeline uses:
 // readFileSync, appendFileSync, createWriteStream
@@ -41,149 +45,100 @@ function createMemoryFS(initialContent) {
     };
 }
 
-test('runPipeline end-to-end: precompletionlint -> applytemplate -> rptoprompt -> sendprompt -> postcompletionlint', async () => {
-    // A simple two-message conversation between user and a character.
-    // precompletionlint should add padding and guess the next speaker.
-    // applytemplate passes through (no templates).
-    // rptoprompt converts names to roles and adds impersonation instruction.
-    // sendprompt calls the API and writes the response.
-    // postcompletionlint adds padding and guesses the next speaker.
-    const inputContent = `---
-api_url: http://dummy
-dot_config_loading: false
-roleplay_user: User
-roleplay_impersonation_instruction: "Write as {{char}}."
----
-@User
-Hello there!
+function sseChunk(data) {
+    return new TextEncoder().encode(`data: ${data}\n\n`);
+}
 
-@Alice
-Hi! How are you?
+function mockFetchJSON(responseBody) {
+    return async () => ({
+        ok: true,
+        status: 200,
+        headers: {
+            get: (name) => name.toLowerCase() === 'content-type' ? 'application/json' : null
+        },
+        json: async () => responseBody
+    });
+}
 
-@User
-I'm fine.
-
-@Alice
-`;
-
-    const memFS = createMemoryFS(inputContent);
-
-    const originalFetch = global.fetch;
-    global.fetch = async (url, options) => {
-        // Verify the request was sent to the right URL
-        assert.strictEqual(url, 'http://dummy');
-        assert.strictEqual(options.method, 'POST');
-
-        const body = JSON.parse(options.body);
-        // Verify messages were converted to roles
-        assert.ok(body.messages.length > 0, 'Should have messages in request body');
-        // The last message from sendprompt should be the impersonation instruction
-        const lastUserMsg = body.messages.filter(m => m.role === 'user').pop();
-        assert.ok(lastUserMsg, 'Should have at least one user message');
-        assert.match(lastUserMsg.content, /Write as Alice/, 'Should have impersonation instruction with char name');
-
-        return {
-            ok: true,
-            status: 200,
-            headers: {
-                get: (name) => {
-                    if (name.toLowerCase() === 'content-type') return 'application/json';
-                    return null;
-                }
-            },
-            json: async () => ({
-                choices: [{ message: { content: 'Great to hear!' } }]
-            })
-        };
-    };
-
-    // Mock stderr to suppress pipeline logging
-    const stderr = { write() {} };
-
-    try {
-        await runPipeline('/fake/test.pqueen', {
-            baseDir: process.cwd(),
-            cwd: process.cwd(),
-            stderr,
-            fileSystem: memFS,
-            quiet: true
-        });
-
-        const finalContent = memFS.getContent();
-
-        // The API response should have been appended
-        assert.ok(finalContent.includes('Great to hear!'), 'Final content should include API response');
-
-        // postcompletionlint should have guessed the next speaker (User, since Alice just spoke)
-        assert.ok(finalContent.includes('@User'), 'Final content should include next speaker guess from postcompletionlint');
-    } finally {
-        global.fetch = originalFetch;
-    }
-});
-
-test('runPipeline end-to-end with streaming response', async () => {
-    const inputContent = `---
-api_url: http://dummy
-dot_config_loading: false
-roleplay_user: User
-roleplay_impersonation_instruction: "Respond as {{char}}."
----
-@User
-Tell me a joke.
-
-@Bot
-`;
-
-    const memFS = createMemoryFS(inputContent);
-
-    // Helper to create an SSE chunk
-    function sseChunk(data) {
-        return new TextEncoder().encode(`data: ${data}\n\n`);
-    }
-
-    const originalFetch = global.fetch;
-    global.fetch = async () => {
-        const body = {
+function mockFetchStreaming(chunks) {
+    return async () => ({
+        ok: true,
+        status: 200,
+        headers: {
+            get: (name) => name.toLowerCase() === 'content-type' ? 'text/event-stream' : null
+        },
+        body: {
             async *[Symbol.asyncIterator]() {
-                yield sseChunk(JSON.stringify({ choices: [{ delta: { content: 'Why did the chicken' } }] }));
-                yield sseChunk(JSON.stringify({ choices: [{ delta: { content: ' cross the road?' } }] }));
+                for (const chunk of chunks) {
+                    yield sseChunk(JSON.stringify(chunk));
+                }
                 yield sseChunk('[DONE]');
             }
-        };
-        return {
-            ok: true,
-            status: 200,
-            headers: {
-                get: (name) => {
-                    if (name.toLowerCase() === 'content-type') return 'text/event-stream';
-                    return null;
-                }
-            },
-            body
-        };
-    };
+        }
+    });
+}
 
-    const stderr = { write() {} };
+// Find all input files
+const files = fs.readdirSync(fixturesDir);
+const inputFiles = files.filter(f => f.endsWith('.input.pqueen'));
 
-    try {
-        await runPipeline('/fake/test.pqueen', {
-            baseDir: process.cwd(),
-            cwd: process.cwd(),
-            stderr,
-            fileSystem: memFS,
-            quiet: true
-        });
+inputFiles.forEach(inputFile => {
+    const testName = inputFile.replace('.input.pqueen', '');
 
-        const finalContent = memFS.getContent();
+    const inputPath = path.join(fixturesDir, inputFile);
+    const outputPath = path.join(fixturesDir, `${testName}.output.pqueen`);
+    const requestPath = path.join(fixturesDir, `${testName}.request.json`);
+    const responsePath = path.join(fixturesDir, `${testName}.response.json`);
+    const streamingResponsePath = path.join(fixturesDir, `${testName}.response.ndjson`);
 
-        // The streamed response should have been appended
-        assert.ok(finalContent.includes('Why did the chicken cross the road?'),
-            'Final content should include streamed API response');
+    test(`promqueen pipeline - ${testName}`, async () => {
+        assert.ok(fs.existsSync(outputPath), `Missing output fixture: ${outputPath}`);
+        assert.ok(fs.existsSync(requestPath), `Missing request fixture: ${requestPath}`);
 
-        // postcompletionlint should guess User as next speaker
-        assert.ok(finalContent.includes('@User'),
-            'Final content should include next speaker guess');
-    } finally {
-        global.fetch = originalFetch;
-    }
+        const input = fs.readFileSync(inputPath, 'utf8');
+        const expectedOutput = fs.readFileSync(outputPath, 'utf8');
+        const expectedRequest = JSON.parse(fs.readFileSync(requestPath, 'utf8'));
+
+        const memFS = createMemoryFS(input);
+        let capturedUrl, capturedOptions;
+
+        const originalFetch = global.fetch;
+
+        if (fs.existsSync(streamingResponsePath)) {
+            const chunks = fs.readFileSync(streamingResponsePath, 'utf8')
+                .trim().split('\n').map(line => JSON.parse(line));
+            global.fetch = async (url, options) => {
+                capturedUrl = url;
+                capturedOptions = options;
+                return mockFetchStreaming(chunks)();
+            };
+        } else {
+            const responseBody = JSON.parse(fs.readFileSync(responsePath, 'utf8'));
+            global.fetch = async (url, options) => {
+                capturedUrl = url;
+                capturedOptions = options;
+                return mockFetchJSON(responseBody)();
+            };
+        }
+
+        try {
+            await runPipeline('/fake/test.pqueen', {
+                baseDir: process.cwd(),
+                cwd: process.cwd(),
+                stderr: { write() {} },
+                fileSystem: memFS,
+                quiet: true
+            });
+
+            // Verify request
+            assert.strictEqual(capturedUrl, expectedRequest.url);
+            assert.strictEqual(capturedOptions.method, expectedRequest.method);
+            assert.deepStrictEqual(JSON.parse(capturedOptions.body), expectedRequest.body);
+
+            // Verify final file content
+            assert.strictEqual(memFS.getContent(), expectedOutput);
+        } finally {
+            global.fetch = originalFetch;
+        }
+    });
 });
