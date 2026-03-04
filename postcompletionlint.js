@@ -10,18 +10,18 @@ const pqutils = require('./lib/pqutils.js');
 function getFinalMessagePadding(message) {
   // If the final message is null, don't do anything.
   if (message === null) {
-    return null;
+    return '';
   }
 
   // If the final message is an empty string, don't do anything.
   if (message === '') {
-    return null;
+    return '';
   }
 
   // If the final message is none of the above and ends with two newlines,
   // we are ready to add the next speaker.
   if (message.endsWith('\n\n')) {
-    return null;
+    return '';
   }
 
   // If the final message is none of the above and ends with a single newline,
@@ -43,10 +43,7 @@ function postCompletionLint(fileContent, baseDir) {
   let output = '';
 
   if (messages) {
-    const finalPadding = getFinalMessagePadding(messages.at(-1).content)
-    if (finalPadding) {
-      output += finalPadding;
-    }
+    output += getFinalMessagePadding(messages.at(-1).content);
   }
 
   const nextSpeaker = pqutils.guessNextSpeaker(messages, user);

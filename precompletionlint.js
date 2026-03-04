@@ -46,18 +46,18 @@ function getFinalMessagePadding(message) {
 
   // If the final message is an empty string, it's ready to be filled.
   if (message === '') {
-    return null;
+    return '';
   }
 
   // If the final message ends with a space, we want to continue from there.
   if (message.endsWith(' ')) {
-    return null;
+    return '';
   }
 
   // If the final message is none of the above and ends with two newlines,
   // we are ready for the next, unknown speaker.
   if (message.endsWith('\n\n')) {
-    return null;
+    return '';
   }
 
   // If the final message is none of the above and ends with a single newline,
@@ -82,10 +82,7 @@ function precompletionLint(fileContent, baseDir) {
   if (nameAutocomplete) {
     output += nameAutocomplete + '\n';
   } else if (messages && messages.length > 0) {
-    const finalPadding = getFinalMessagePadding(messages.at(-1).content)
-    if (finalPadding) {
-      output += finalPadding;
-    }
+    output += getFinalMessagePadding(messages.at(-1).content);
   }
 
   const nextSpeaker = pqutils.guessNextSpeaker(messages, user);
