@@ -52,24 +52,16 @@ function combineAdjacentMessagesWithSameRole(messages) {
   }, []);
 }
 
-function extractDecorators(message, decoratorsMap) {
-  if (!message.name) return;
+function resolveDecorators(message, decoratorsMap) {
+  if (!message.decorators || message.decorators.length === 0) return;
 
-  let cleanName = message.name;
-  let collectedDecorators = [];
-
-  for (const [key, value] of Object.entries(decoratorsMap)) {
-    const decoratorStr = `[${key}]`;
-    if (cleanName.includes(decoratorStr)) {
-      collectedDecorators.push(value);
-      cleanName = cleanName.split(decoratorStr).join(' ');
+  const resolved = [];
+  for (const tag of message.decorators) {
+    if (decoratorsMap[tag]) {
+      resolved.push(decoratorsMap[tag]);
     }
   }
-
-  if (collectedDecorators.length > 0) {
-    message.decorators = collectedDecorators;
-    message.name = cleanName.replace(/\s+/g, ' ').trim();
-  }
+  message.decorators = resolved;
 }
 
 function rpToPrompt(messages, resolvedConfig, basePath = process.cwd()) {
@@ -77,7 +69,7 @@ function rpToPrompt(messages, resolvedConfig, basePath = process.cwd()) {
   const user = resolvedConfig.roleplay_user;
 
   const decoratorsMap = pqutils.loadDecorators(resolvedConfig, basePath);
-  messages.forEach(msg => extractDecorators(msg, decoratorsMap));
+  messages.forEach(msg => resolveDecorators(msg, decoratorsMap));
 
   addRoles(messages, user);
 

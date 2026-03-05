@@ -1,0 +1,5 @@
+[
+    { "name": "system", "content": "You are a helpful assistant.", "decorators": [] },
+    { "name": "Alice", "content": "Hello!", "decorators": ["happy"] },
+    { "name": "Bob", "content": "", "decorators": ["sad", "happy"] }
+]

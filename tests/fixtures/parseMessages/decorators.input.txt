@@ -1,0 +1,7 @@
+@system
+You are a helpful assistant.
+
+@Alice [happy]
+Hello!
+
+@Bob [sad] [happy]
