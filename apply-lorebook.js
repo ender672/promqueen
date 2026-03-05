@@ -1,9 +1,5 @@
-#!/usr/bin/env node
-
-const fs = require('fs');
 const path = require('path');
-const process = require('process');
-const { parseConfigAndMessages, serializeMessages, serializeDocument, resolveConfig, PROMPT_ROLES } = require('./lib/pqutils');
+const { serializeMessages, PROMPT_ROLES } = require('./lib/pqutils');
 const { buildTemplateContext } = require('./lib/rendertemplate');
 
 function splitCBSArgs(argsStr) {
@@ -193,48 +189,6 @@ function resolveLorebookPath(resolvedConfig, basePath) {
   if (path.isAbsolute(lorebookPath)) return lorebookPath;
   if (!basePath) return lorebookPath;
   return path.resolve(basePath, lorebookPath);
-}
-
-function main() {
-  const commander = require('commander');
-
-  commander.program.description('Apply a lorebook to a prompt file.');
-  commander.program.argument('[prompt_path]', 'Path to the prompt file.');
-  commander.program.option('-l, --lorebook <path>', 'Path to the lorebook JSON file.');
-  commander.program.parse(process.argv);
-
-  const [filePath] = commander.program.args;
-  const options = commander.program.opts();
-
-  let promptText;
-  if (filePath && filePath !== '-') {
-    promptText = fs.readFileSync(filePath, 'utf8').replace(/\r\n/g, '\n');
-  } else {
-    promptText = fs.readFileSync(0, 'utf-8').replace(/\r\n/g, '\n');
-  }
-
-  const basePath = filePath && filePath !== '-' ? path.dirname(path.resolve(filePath)) : process.cwd();
-  const { config, messages } = parseConfigAndMessages(promptText);
-  const resolved = resolveConfig(config, basePath);
-
-  let lorebookPath = options.lorebook || resolveLorebookPath(resolved, basePath);
-  if (!lorebookPath) {
-    const defaultPath = path.resolve(basePath, 'character_book.json');
-    if (fs.existsSync(defaultPath)) {
-      lorebookPath = defaultPath;
-    } else {
-      console.error('No lorebook path provided. Use --lorebook or set lorebook in frontmatter config.');
-      process.exit(1);
-    }
-  }
-
-  const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
-  const resultMessages = applyLorebook(messages, resolved, lorebook);
-  process.stdout.write(serializeDocument(config, resultMessages));
-}
-
-if (require.main === module) {
-  main();
 }
 
 module.exports = { applyLorebook, resolveLorebookPath };

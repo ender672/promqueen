@@ -1,8 +1,3 @@
-#!/usr/bin/env node
-
-const fs = require('fs');
-const path = require('path');
-const yaml = require('js-yaml');
 const process = require('process');
 const pqutils = require('./lib/pqutils.js');
 const { renderTemplate } = require('./lib/rendertemplate.js');
@@ -132,46 +127,6 @@ function rpToPrompt(messages, resolvedConfig, basePath = process.cwd()) {
   messages = combineAdjacentMessagesWithSameRole(messages);
 
   return messages;
-}
-
-function serializeHistory(messages) {
-  return messages.map((message, index) => {
-    const prefix = index > 0 ? '\n\n' : '';
-    return `${prefix}@${message.role}\n${message.content}`;
-  }).join('');
-}
-
-function main() {
-  const [, , filePath] = process.argv;
-
-  try {
-    let prompt;
-
-    if (filePath) {
-      const resolvedPath = path.resolve(filePath);
-      prompt = fs.readFileSync(resolvedPath, 'utf8').replace(/\r\n/g, '\n');
-    } else {
-      prompt = fs.readFileSync(0, 'utf-8').replace(/\r\n/g, '\n');
-    }
-
-    const basePath = filePath ? path.dirname(path.resolve(filePath)) : process.cwd();
-    const { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(prompt);
-    const resolvedConfig = pqutils.resolveConfig(runtimeConfig, basePath);
-    const resultMessages = rpToPrompt(messages, resolvedConfig, basePath);
-
-    let output = '---\n';
-    output += yaml.dump(runtimeConfig);
-    output += '---\n';
-    output += serializeHistory(resultMessages);
-    process.stdout.write(output);
-  } catch (error) {
-    console.error('Error reading input:', error);
-    process.exit(1);
-  }
-}
-
-if (require.main === module) {
-  main();
 }
 
 module.exports = {

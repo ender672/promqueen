@@ -1,8 +1,4 @@
-#!/usr/bin/env node
-
-const fs = require('fs');
 const process = require('process');
-const pqutils = require('./lib/pqutils.js');
 const path = require('path');
 const { renderTemplate, buildTemplateContext } = require('./lib/rendertemplate.js');
 
@@ -48,59 +44,6 @@ function applyTemplate(messages, resolvedConfig, options = {}) {
         );
         return { ...message, content };
     });
-}
-
-function main() {
-  const commander = require('commander');
-
-  function cmdLineParseDataArg(value, previous) {
-    const eqIndex = value.indexOf('=');
-    if (eqIndex === -1) {
-      throw new commander.InvalidArgumentError(`Invalid data format "${value}". Expected key=value`);
-    }
-
-    const key = value.substring(0, eqIndex);
-    let rawVal = value.substring(eqIndex + 1);
-    let finalVal = rawVal;
-
-    if (rawVal.startsWith('@')) {
-      const path = rawVal.slice(1);
-      if (path === '-') {
-        finalVal = fs.readFileSync(0, 'utf-8');
-      } else {
-        finalVal = fs.readFileSync(path, 'utf-8');
-      }
-    }
-
-    previous[key] = finalVal;
-    return previous;
-  }
-
-  commander.program.description('Apply Jinja2 templates to a prompt file.');
-  commander.program.argument('[prompt_path]', 'Path to the prompt file.');
-  commander.program.option('-d, --data <pair>', 'Key/value pairs (key=value, key=@file)', cmdLineParseDataArg, {});
-  commander.program.option('-m, --message-template-loader-path <path>', 'Message template loader path.', process.cwd());
-  commander.program.parse(process.argv);
-
-  const [filePath] = commander.program.args;
-  const options = commander.program.opts();
-
-  let promptText;
-  if (filePath && filePath !== '-') {
-    promptText = fs.readFileSync(filePath, 'utf8').replace(/\r\n/g, '\n');
-  } else {
-    promptText = fs.readFileSync(0, 'utf-8').replace(/\r\n/g, '\n');
-  }
-
-  const cwd = process.cwd();
-  const { config, messages } = pqutils.parseConfigAndMessages(promptText);
-  const resolvedConfig = pqutils.resolveConfig(config, cwd);
-  const resultMessages = applyTemplate(messages, resolvedConfig, { ...options, cwd });
-  process.stdout.write(pqutils.serializeDocument(config, resultMessages));
-}
-
-if (require.main === module) {
-  main();
 }
 
 module.exports = { applyTemplate };

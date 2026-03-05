@@ -1,11 +1,7 @@
-#!/usr/bin/env node
-
 const fs = require('fs');
 const process = require('process');
-const yaml = require('js-yaml');
 const { Parser, Context } = require('@ender672/minja-js/minja');
 const eventsourceParser = require('eventsource-parser');
-const pqutils = require('./lib/pqutils.js');
 const path = require('path');
 
 async function* getStream(response) {
@@ -187,47 +183,6 @@ async function sendRawPrompt(messages, resolvedConfig, outputStream = process.st
         signal: options.signal,
     });
     await responseToOutput(response, resolvedConfig, outputStream, errorStream);
-}
-
-async function main() {
-  const commander = require('commander');
-  commander.program.description('Send a raw prompt to an LLM completions endpoint.');
-  commander.program.argument('[prompt_path]', 'Path to the prompt file.');
-  commander.program.option('-e, --expression <string>', 'Inline prompt string');
-  commander.program.option('-c, --config <path>', 'Path to a YAML config file');
-  commander.program.option('-t, --chat-template <path>', 'Path to a Jinja2 chat template file');
-  commander.program.parse(process.argv);
-  const [filePath] = commander.program.args;
-  const options = commander.program.opts();
-
-  let cliConfig = {};
-  if (options.config) {
-    try {
-      const configContent = fs.readFileSync(options.config, 'utf8').replace(/\r\n/g, '\n');
-      cliConfig = yaml.load(configContent) || {};
-    } catch (e) {
-      console.error(`Error loading config file: ${e.message}`);
-      process.exit(1);
-    }
-  }
-
-  if (options.chatTemplate) {
-    cliConfig.chat_template_path = options.chatTemplate;
-  }
-
-  let prompt = options.expression;
-  if (filePath && filePath !== '-') {
-    prompt = fs.readFileSync(filePath, 'utf8').replace(/\r\n/g, '\n');
-  } else if (!prompt) {
-    prompt = fs.readFileSync(0, 'utf-8').replace(/\r\n/g, '\n');
-  }
-  const { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(prompt);
-  const resolvedConfig = pqutils.resolveConfig(runtimeConfig, process.cwd(), cliConfig);
-  await sendRawPrompt(messages, resolvedConfig, process.stdout, process.stderr);
-}
-
-if (require.main === module) {
-  main();
 }
 
 module.exports = { sendRawPrompt };

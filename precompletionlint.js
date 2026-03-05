@@ -1,8 +1,3 @@
-#!/usr/bin/env node
-
-const fs = require('fs');
-const path = require('path');
-const process = require('process');
 const pqutils = require('./lib/pqutils.js');
 
 function getNameAutocomplete(history, extraNames) {
@@ -84,28 +79,6 @@ function precompletionLint(messages, resolvedConfig) {
   }
 
   return output;
-}
-
-function main() {
-  const [, , filePath] = process.argv;
-
-  if (!filePath) {
-    console.error('Error: Please provide a file path as an argument.');
-    console.log('Usage: node parseFile.js <path/to/your/file.txt>');
-    process.exit(1);
-  }
-
-  const resolvedPath = path.resolve(filePath);
-  const fileContent = fs.readFileSync(resolvedPath, 'utf8').replace(/\r\n/g, '\n');
-  const doc = pqutils.parseConfigAndMessages(fileContent);
-  const resolvedConfig = pqutils.resolveConfig(doc.config, process.cwd());
-
-  const output = precompletionLint(doc.messages, resolvedConfig);
-  process.stdout.write(output);
-}
-
-if (require.main === module) {
-  main();
 }
 
 module.exports = {
