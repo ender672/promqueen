@@ -30,7 +30,7 @@ function getRoleFlags(name, userName) {
   };
 }
 
-function rpToHtml({ config, messages }, resolvedConfig, templateText) {
+function rpToHtml({ messages }, resolvedConfig, templateText) {
   const userName = resolvedConfig.roleplay_user;
 
   const processedMessages = [];

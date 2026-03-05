@@ -3,7 +3,7 @@ const path = require('path');
 const { applyTemplate } = require('../../applytemplate.js');
 const { applyLorebook, resolveLorebookPath } = require('../../apply-lorebook.js');
 const { rpToPrompt } = require('../../rptoprompt.js');
-const pqutils = require('../../lib/pqutils.js');
+
 
 function getDocumentText(document) {
     return document.getText().replace(/\r\n/g, '\n');

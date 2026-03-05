@@ -11,7 +11,7 @@ const { postCompletionLint } = require('./postcompletionlint.js');
 const { applyLorebook, resolveLorebookPath } = require('./apply-lorebook.js');
 const pqutils = require('./lib/pqutils.js');
 
-async function runPipeline(filePath, { baseDir, cwd = process.cwd(), stderr = process.stderr, fileSystem = fs, quiet = false } = {}) {
+async function runPipeline(filePath, { cwd = process.cwd(), stderr = process.stderr, fileSystem = fs, quiet = false } = {}) {
     const absolutePath = path.resolve(filePath);
     const templateLoaderPath = path.dirname(absolutePath);
 
