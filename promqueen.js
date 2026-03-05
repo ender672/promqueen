@@ -33,8 +33,8 @@ async function runPipeline(filePath, { cwd = process.cwd(), stderr = process.std
             doc = pqutils.parseConfigAndMessages(content);
         }
 
-        // 4. Ephemeral transforms (each returns new messages array)
-        let apiMessages = structuredClone(doc.messages);
+        // 4. Ephemeral transforms (each copies messages before transforming)
+        let apiMessages = doc.messages;
 
         const lorebookPath = resolveLorebookPath(resolvedConfig, templateLoaderPath);
         if (lorebookPath) {
