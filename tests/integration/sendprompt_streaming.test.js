@@ -64,7 +64,7 @@ Hello`;
 
 const { config: promptConfig, messages: promptMessages } = parseConfigAndMessages(promptText);
 const resolved = resolveConfig(promptConfig, process.cwd());
-const messages = promptMessages.map(m => ({ ...m, role: m.name }));
+const messages = promptMessages;
 
 test('sendprompt handles streaming SSE response', async () => {
     const originalFetch = global.fetch;

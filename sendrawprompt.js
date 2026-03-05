@@ -223,14 +223,7 @@ async function main() {
   }
   const { config: runtimeConfig, messages } = pqutils.parseConfigAndMessages(prompt);
   const resolvedConfig = pqutils.resolveConfig(runtimeConfig, process.cwd(), cliConfig);
-  // Standalone usage: messages have name field, map to role
-  const nameMap = Object.fromEntries(pqutils.PROMPT_ROLES.map(r => [r, r]));
-  nameMap[resolvedConfig.roleplay_user] = 'user';
-  const messagesWithRoles = messages.map(m => ({
-    ...m,
-    role: m.role || nameMap[m.name] || 'assistant'
-  }));
-  await sendRawPrompt(messagesWithRoles, resolvedConfig, process.stdout, process.stderr);
+  await sendRawPrompt(messages, resolvedConfig, process.stdout, process.stderr);
 }
 
 if (require.main === module) {

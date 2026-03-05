@@ -6,25 +6,18 @@ const pqutils = require('./lib/pqutils.js');
 const path = require('path');
 const { renderTemplate, buildTemplateContext } = require('./lib/rendertemplate.js');
 
-function getRole(name, roleplayUser) {
-    if (name === 'system') return 'system';
-    if (name === 'user' || name === roleplayUser) return 'user';
-    if (name === null) return null;
-    return 'assistant';
-}
-
-function canInclude(index, messages, roleplayUser) {
-    const role = getRole(messages[index].name, roleplayUser);
+function canInclude(index, messages) {
+    const role = messages[index].role;
     if (role === null) return true;
     if (index === 0) return true;
     if (index === 1) {
-        const r0 = getRole(messages[0].name, roleplayUser);
+        const r0 = messages[0].role;
         return (r0 === 'system' && (role === 'user' || role === 'assistant'))
             || (r0 === 'user' && role === 'assistant');
     }
     if (index === 2) {
-        return getRole(messages[0].name, roleplayUser) === 'system'
-            && getRole(messages[1].name, roleplayUser) === 'user'
+        return messages[0].role === 'system'
+            && messages[1].role === 'user'
             && role === 'assistant';
     }
     return false;
@@ -33,7 +26,6 @@ function canInclude(index, messages, roleplayUser) {
 function applyTemplate(messages, resolvedConfig, options = {}) {
     const cwd = options.cwd || process.cwd();
     const templateLoaderPath = resolvedConfig.message_template_loader_path || options.messageTemplateLoaderPath || cwd;
-    const roleplayUser = resolvedConfig.roleplay_user;
 
     const fullMessageTemplateContext = {
         ...buildTemplateContext(resolvedConfig, messages),
@@ -44,7 +36,7 @@ function applyTemplate(messages, resolvedConfig, options = {}) {
             return { ...message };
         }
 
-        const allowIncludes = canInclude(i, messages, roleplayUser);
+        const allowIncludes = canInclude(i, messages);
         // We pass a dummy file name 'root' joined to the loader path so that
         // renderTemplate's path.dirname() correctly resolves to templateLoaderPath
         const content = renderTemplate(

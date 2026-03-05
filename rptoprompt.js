@@ -7,27 +7,9 @@ const process = require('process');
 const pqutils = require('./lib/pqutils.js');
 const { renderTemplate } = require('./lib/rendertemplate.js');
 
-function buildNameMap(promptRoles, userName) {
-  const nameMap = Object.fromEntries(
-    promptRoles.map(role => [role, role])
-  );
-  nameMap[userName] = 'user';
-  return nameMap;
-}
-
-function addRoles(messages, userName) {
-  const nameMap = buildNameMap(pqutils.PROMPT_ROLES, userName);
-  messages.forEach(message => {
-    message.role = nameMap[message.name] || 'assistant';
-    if (pqutils.PROMPT_ROLES.includes(message.name)) {
-      delete message.name;
-    }
-  });
-}
-
 function prefixWithNames(messages) {
   messages.forEach(message => {
-    if (message.name) {
+    if (!pqutils.PROMPT_ROLES.includes(message.name)) {
       message.content = `${message.name.toUpperCase()}\n${message.content}`;
     }
   });
@@ -35,7 +17,7 @@ function prefixWithNames(messages) {
 
 function namedMessagesAsRole(messages, role) {
   messages.forEach(message => {
-    if (message.name) {
+    if (!pqutils.PROMPT_ROLES.includes(message.name)) {
       message.role = role;
     }
   });
@@ -71,13 +53,11 @@ function rpToPrompt(messages, resolvedConfig, basePath = process.cwd()) {
   const decoratorsMap = pqutils.loadDecorators(resolvedConfig, basePath);
   messages.forEach(msg => resolveDecorators(msg, decoratorsMap));
 
-  addRoles(messages, user);
-
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i];
-    // If we have decorators but no name, it means we have a standard role (like assistant)
-    // with decorators. We need to inject these as instructions.
-    if (msg.decorators && msg.decorators.length > 0 && !msg.name) {
+    // If we have decorators on a standard role (like assistant),
+    // we need to inject these as instructions.
+    if (msg.decorators && msg.decorators.length > 0 && pqutils.PROMPT_ROLES.includes(msg.name)) {
       const instruction = msg.decorators.join('\n');
       messages.splice(i, 0, { role: 'user', content: instruction });
       delete msg.decorators;
@@ -91,16 +71,18 @@ function rpToPrompt(messages, resolvedConfig, basePath = process.cwd()) {
   let hasPrefilledMessage = false;
   let characterDecorators = [];
 
-  if (messages.length && messages[messages.length - 1].name) {
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage.decorators) {
-      characterDecorators = lastMessage.decorators;
+  const lastMsg = messages.length ? messages[messages.length - 1] : null;
+  const lastIsCharacter = lastMsg && !pqutils.PROMPT_ROLES.includes(lastMsg.name);
+
+  if (lastIsCharacter) {
+    if (lastMsg.decorators) {
+      characterDecorators = lastMsg.decorators;
     }
 
-    if (lastMessage.content === null || lastMessage.content === "") {
-      userRequestedCharacter = lastMessage.name;
-    } else if (typeof lastMessage.content === 'string' && lastMessage.content.endsWith(' ')) {
-      userRequestedCharacter = lastMessage.name;
+    if (lastMsg.content === null || lastMsg.content === "") {
+      userRequestedCharacter = lastMsg.name;
+    } else if (typeof lastMsg.content === 'string' && lastMsg.content.endsWith(' ')) {
+      userRequestedCharacter = lastMsg.name;
       hasPrefilledMessage = true;
     }
   }
@@ -141,7 +123,7 @@ function rpToPrompt(messages, resolvedConfig, basePath = process.cwd()) {
     if (prefilledMessage) {
       messages.push({ role: 'assistant', content: prefilledMessage.content });
     }
-  } else if (messages.length && messages[messages.length - 1].name) {
+  } else if (lastIsCharacter) {
     // we're going to ask the llm to complete a prefixed message
     messages.pop();
     messages[messages.length - 1].role = 'assistant';

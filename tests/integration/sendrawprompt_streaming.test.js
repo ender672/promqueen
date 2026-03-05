@@ -68,7 +68,7 @@ Hello`;
 
 const { config: promptConfig, messages: promptMessages } = parseConfigAndMessages(promptText);
 const resolved = resolveConfig(promptConfig, process.cwd(), { chat_template_path: chatTemplatePath });
-const messages = promptMessages.map(m => ({ ...m, role: m.name }));
+const messages = promptMessages;
 
 test('sendrawprompt handles streaming SSE response', async () => {
     const originalFetch = global.fetch;

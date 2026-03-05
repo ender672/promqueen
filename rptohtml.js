@@ -16,23 +16,15 @@ function unescapePipelineSequences(text) {
     .replace(/\\{%/g, '{%');
 }
 
-function getRoleFlags(name, userName) {
-  const nameMap = Object.fromEntries(
-    pqutils.PROMPT_ROLES.map(role => [role, role])
-  );
-  nameMap[userName] = 'user';
-  const role = nameMap[name] || 'assistant';
-
+function getRoleFlags(message) {
   return {
-    isUser: role === 'user',
-    isAssistant: role === 'assistant',
-    isSystem: role === 'system',
+    isUser: message.role === 'user',
+    isAssistant: message.role === 'assistant',
+    isSystem: message.role === 'system',
   };
 }
 
 function rpToHtml({ messages }, resolvedConfig, templateText) {
-  const userName = resolvedConfig.roleplay_user;
-
   const processedMessages = [];
   let seenAssistant = false;
   for (const message of messages) {
@@ -40,7 +32,7 @@ function rpToHtml({ messages }, resolvedConfig, templateText) {
 
     const unescaped = unescapePipelineSequences(message.content);
     const html = marked.parse(unescaped);
-    const flags = getRoleFlags(message.name, userName);
+    const flags = getRoleFlags(message);
 
     if (flags.isAssistant) seenAssistant = true;
 

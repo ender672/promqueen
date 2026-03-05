@@ -92,8 +92,8 @@ function applyLorebook(messages, resolvedConfig, lorebook) {
   // Scannable message indices: skip system prompt (index 0) and initial user message (index 1)
   const scannableIndices = [];
   for (let i = 0; i < result.length; i++) {
-    if (i === 0 && result[i].name === 'system') continue;
-    if (i === 1 && result[i].name === 'user') continue;
+    if (i === 0 && result[i].role === 'system') continue;
+    if (i === 1 && result[i].role === 'user') continue;
     scannableIndices.push(i);
   }
 
@@ -101,7 +101,7 @@ function applyLorebook(messages, resolvedConfig, lorebook) {
   const allScannedText = scannableIndices.map(i => result[i].content || '').join('\n');
 
   // First non-system message index (insertion target for constant entries)
-  const firstNonSystemIndex = (result.length > 0 && result[0].name === 'system') ? 1 : 0;
+  const firstNonSystemIndex = (result.length > 0 && result[0].role === 'system') ? 1 : 0;
 
   // Map: message index -> array of matched entries
   const insertions = new Map();
