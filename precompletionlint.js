@@ -20,14 +20,11 @@ function getNameAutocomplete(history, extraNames) {
   const nameCandidates = history.map(x => x.name).reverse();
   const latestSpeaker = nameCandidates.shift(); // .shift() removes the first element
 
-  // First, see if we have an exact name match in our history.
-  // .some() is a clean way to check if any element matches
-  if (nameCandidates.some(candidate => candidate === latestSpeaker)) {
+  // First, see if we have an exact name match in our history or extra names.
+  const augmentedCandidates = [...nameCandidates, ...extraNames];
+  if (augmentedCandidates.some(candidate => candidate === latestSpeaker)) {
     return null;
   }
-
-  // Try to find a partial match, including extra names
-  const augmentedCandidates = [...nameCandidates, ...extraNames];
   for (const candidate of augmentedCandidates) {
     if (candidate.startsWith(latestSpeaker)) {
       // Return the part of the string that's missing
