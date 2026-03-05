@@ -15,7 +15,6 @@ vscodeMock.window.activeTextEditor = {
     }
 };
 
-
 // --- Mock Fetch ---
 global.fetch = async (_url) => ({
     ok: true,
@@ -32,7 +31,6 @@ async function runTest() {
 
     const extension = require('../dist/extension.js');
     extension.activate({ subscriptions: [] });
-
 
     await vscodeMock.commands.executeCommand('promqueen.regenerateLastMessage');
 }

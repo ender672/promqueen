@@ -16,7 +16,6 @@ vscodeMock.window.activeTextEditor = {
     }
 };
 
-
 // --- Mock Fetch for SendPrompt ---
 global.fetch = async (_url, _options) => {
 
@@ -33,7 +32,6 @@ global.fetch = async (_url, _options) => {
 
 // --- Run Test ---
 async function runTest() {
-
 
     // Load extension
     const extension = require('../dist/extension.js');

@@ -41,10 +41,8 @@ vscodeMock.workspace.applyEdit = async (edit) => {
 
 // No need to intercept require here as setupVscodeMock does it
 
-
 // --- Run Test ---
 async function runTest() {
-
 
     // Load extension
     const extension = require('../dist/extension.js');

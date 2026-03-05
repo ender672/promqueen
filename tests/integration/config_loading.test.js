@@ -74,7 +74,6 @@ test('resolveConfig honors dot_config_loading option and only checks home dir', 
 
 });
 
-
 test('parseConfigOnly throws when input does not start with ---', () => {
   assert.throws(
     () => parseConfigOnly('no front matter here'),

@@ -5,8 +5,6 @@ const path = require('path');
 const process = require('process');
 const pqutils = require('./lib/pqutils.js');
 
-
-
 function getNameAutocomplete(history, extraNames) {
   if (history.length === 0) {
     return null;

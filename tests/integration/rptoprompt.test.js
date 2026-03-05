@@ -6,7 +6,6 @@ const fs = require('fs');
 const yaml = require('js-yaml');
 const { parseConfigAndMessages, resolveConfig } = require('../../lib/pqutils.js');
 
-
 const fixturesDir = path.join(__dirname, '../fixtures/rptoprompt');
 
 function serializeRpToPromptOutput(runtimeConfig, messages) {

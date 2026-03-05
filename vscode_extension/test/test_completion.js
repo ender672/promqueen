@@ -4,7 +4,6 @@ const { setupVscodeMock, MockDocument } = require('./mocks');
 
 setupVscodeMock();
 
-
 // --- Run Test ---
 const { CompletionProvider } = require('../providers/CompletionProvider');
 
@@ -64,7 +63,6 @@ User prompt 2
     // "00000", "00001"
     assert.strictEqual(items1[0].sortText, '00000');
     assert.strictEqual(items1[1].sortText, '00001');
-
 
     // Test Case 2: Not starting with @
     // If line is " @", it shouldn't trigger (based on our impl: startsWith('@'))

@@ -52,7 +52,6 @@ function combineAdjacentMessagesWithSameRole(messages) {
   }, []);
 }
 
-
 function extractDecorators(message, decoratorsMap) {
   if (!message.name) return;
 

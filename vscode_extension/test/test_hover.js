@@ -4,14 +4,10 @@ const { setupVscodeMock, MockDocument, MockMarkdownString } = require('./mocks')
 
 setupVscodeMock();
 
-
 // --- Run Test ---
 const { ImageHoverProvider } = require('../providers/ImageHoverProvider');
 
-
-
 function test() {
-
 
     const provider = new ImageHoverProvider();
     const doc = new MockDocument([
@@ -32,13 +28,11 @@ function test() {
     assert.strictEqual(hover1.contents.supportHtml, true);
     assert.strictEqual(hover1.contents.isTrusted, true);
 
-
     // Test Case 2: Hover over text
     const pos2 = { line: 0, character: 0 };
     const hover2 = provider.provideHover(doc, pos2);
 
     assert.strictEqual(hover2, null, "Hover should be null for regular text");
-
 
     // Test Case 3: Hover outside image on same line
     const pos3 = { line: 1, character: 0 }; // "Here"

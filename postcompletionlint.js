@@ -5,8 +5,6 @@ const path = require('path');
 const process = require('process');
 const pqutils = require('./lib/pqutils.js');
 
-
-
 function getFinalMessagePadding(message) {
   // If the final message is null, don't do anything.
   if (message === null) {
