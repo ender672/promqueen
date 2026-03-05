@@ -5,6 +5,7 @@ const { applyTemplate } = require('../../applytemplate.js');
 const { applyLorebook, resolveLorebookPath } = require('../../apply-lorebook.js');
 const { precompletionLint } = require('../../precompletionlint.js');
 const pqutils = require('../../lib/pqutils.js');
+const { applyExtraInstructions } = require('../../apply-extra-instructions.js');
 const { getDocumentText, preparePrompt } = require('./helpers');
 
 function registerPreviewCommands(context) {
@@ -112,6 +113,7 @@ function registerPreviewCommands(context) {
                 const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
                 resultMessages = applyLorebook(parsedDoc.messages, resolvedConfig, lorebook);
             }
+            resultMessages = applyExtraInstructions(resultMessages);
 
             const result = pqutils.serializeDocument(parsedDoc.config, resultMessages);
 

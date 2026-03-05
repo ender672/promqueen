@@ -173,11 +173,12 @@ function applyLorebook(messages, resolvedConfig, lorebook) {
       ? templateContext
       : { ...templateContext, char: target.name };
     entryGroup.sort((a, b) => (a.insertion_order || 0) - (b.insertion_order || 0));
-    const joinedContent = entryGroup.map(e => {
+    const renderedEntries = entryGroup.map(e => {
       const expanded = expandCBS(e.content, messageContext, hashSeed);
       return entryTemplate.replace('{{content}}', expanded);
-    }).join('\n');
-    target.content = (target.content || '') + '\n\n' + joinedContent;
+    });
+    if (!target.extra_instructions) target.extra_instructions = [];
+    target.extra_instructions.push(...renderedEntries);
   }
 
   return result;

@@ -9,6 +9,7 @@ const { sendPrompt } = require('./sendprompt.js');
 const { sendRawPrompt } = require('./sendrawprompt.js');
 const { postCompletionLint } = require('./postcompletionlint.js');
 const { applyLorebook, resolveLorebookPath } = require('./apply-lorebook.js');
+const { applyExtraInstructions } = require('./apply-extra-instructions.js');
 const pqutils = require('./lib/pqutils.js');
 
 async function runPipeline(filePath, { cwd = process.cwd(), stderr = process.stderr, fileSystem = fs, quiet = false } = {}) {
@@ -47,6 +48,7 @@ async function runPipeline(filePath, { cwd = process.cwd(), stderr = process.std
         });
 
         apiMessages = rpToPrompt(apiMessages, resolvedConfig, cwd);
+        apiMessages = applyExtraInstructions(apiMessages);
 
         // 5. Send to API (streams response to file)
         const fileStream = fileSystem.createWriteStream(absolutePath, { flags: 'a' });
