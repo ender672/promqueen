@@ -9,7 +9,7 @@ function watchFiles(watchPath) {
   const watcher = chokidar.watch(watchPath, {
     persistent: true,
     ignoreInitial: true,
-    ignored: ['node_modules', '_rptoprompt_output.js'],
+    ignored: ['node_modules', '_formatnames_output.js'],
   });
 
   watcher.on('change', async (filePath) => {

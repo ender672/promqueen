@@ -6,7 +6,7 @@
   "bin": {
     "pqueen": "promqueen.js",
     "pqueen-applytemplate": "applytemplate.js",
-    "pqueen-rptoprompt": "rptoprompt.js",
+    "pqueen-formatnames": "formatnames.js",
     "pqueen-sendprompt": "sendprompt.js",
     "pqueen-precompletionlint": "precompletionlint.js",
     "pqueen-postcompletionlint": "postcompletionlint.js",

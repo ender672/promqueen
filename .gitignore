@@ -2,7 +2,7 @@
 /.promqueen
 /node_modules
 /_request.json
-/_rptoprompt_output.js
+/_formatnames_output.js
 /_ttt.json
 /test_pqutils.js
 /vscode_extension/node_modules

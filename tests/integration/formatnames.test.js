@@ -1,12 +1,12 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
-const { rpToPrompt } = require('../../rptoprompt.js');
+const { formatNames } = require('../../formatnames.js');
 const fs = require('fs');
 const yaml = require('js-yaml');
 const { parseConfigAndMessages, resolveConfig } = require('../../lib/pqutils.js');
 
-const fixturesDir = path.join(__dirname, '../fixtures/rptoprompt');
+const fixturesDir = path.join(__dirname, '../fixtures/formatnames');
 
 function serializeOutput(runtimeConfig, messages) {
   let output = '---\n';
@@ -27,7 +27,7 @@ inputFiles.forEach(inputFile => {
   const testName = inputFile.replace('.input.pqueen', '');
   const expectedOutputFile = inputFile.replace('.input.pqueen', '.output.pqueen');
 
-  test(`rptoprompt processes ${testName}`, async () => {
+  test(`formatnames processes ${testName}`, async () => {
     const inputPath = path.join(fixturesDir, inputFile);
     const outputPath = path.join(fixturesDir, expectedOutputFile);
 
@@ -39,7 +39,7 @@ inputFiles.forEach(inputFile => {
     const { config, messages } = parseConfigAndMessages(prompt);
     const resolved = resolveConfig(config, fixturesDir);
 
-    const resultMessages = rpToPrompt(messages, resolved);
+    const resultMessages = formatNames(messages, resolved);
     const output = serializeOutput(config, resultMessages);
     const expectedOutput = fs.readFileSync(outputPath, 'utf8');
 

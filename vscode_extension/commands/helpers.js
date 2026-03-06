@@ -3,7 +3,7 @@ const path = require('path');
 const { applyTemplate } = require('../../applytemplate.js');
 const { applyLorebook, resolveLorebookPath } = require('../../apply-lorebook.js');
 const { injectInstructions } = require('../../inject-instructions.js');
-const { rpToPrompt } = require('../../rptoprompt.js');
+const { formatNames } = require('../../formatnames.js');
 
 function getDocumentText(document) {
     return document.getText().replace(/\r\n/g, '\n');
@@ -27,7 +27,7 @@ function preparePrompt(messages, resolvedConfig, templateLoaderPath, projectRoot
     });
 
     apiMessages = injectInstructions(apiMessages, resolvedConfig, projectRoot);
-    apiMessages = rpToPrompt(apiMessages, resolvedConfig);
+    apiMessages = formatNames(apiMessages, resolvedConfig);
     return apiMessages;
 }
 

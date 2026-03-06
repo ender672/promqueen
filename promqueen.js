@@ -5,7 +5,7 @@ const path = require('path');
 const { precompletionLint } = require('./precompletionlint.js');
 const { applyTemplate } = require('./applytemplate.js');
 const { injectInstructions } = require('./inject-instructions.js');
-const { rpToPrompt } = require('./rptoprompt.js');
+const { formatNames } = require('./formatnames.js');
 const { sendPrompt } = require('./sendprompt.js');
 const { sendRawPrompt } = require('./sendrawprompt.js');
 const { postCompletionLint } = require('./postcompletionlint.js');
@@ -49,7 +49,7 @@ async function runPipeline(filePath, { cwd = process.cwd(), stderr = process.std
         });
 
         apiMessages = injectInstructions(apiMessages, resolvedConfig, cwd);
-        apiMessages = rpToPrompt(apiMessages, resolvedConfig);
+        apiMessages = formatNames(apiMessages, resolvedConfig);
         apiMessages = combineAdjacentMessages(apiMessages);
 
         // 5. Send to API (streams response to file)

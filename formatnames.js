@@ -16,7 +16,7 @@ function namedMessagesAsRole(messages, role) {
   });
 }
 
-function rpToPrompt(messages, resolvedConfig) {
+function formatNames(messages, resolvedConfig) {
   messages = messages.map(m => ({ ...m }));
 
   if (resolvedConfig.roleplay_combined_group_chat) {
@@ -30,5 +30,5 @@ function rpToPrompt(messages, resolvedConfig) {
 }
 
 module.exports = {
-  rpToPrompt
+  formatNames
 };

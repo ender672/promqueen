@@ -187,7 +187,7 @@ The name of the user/player character. This name is mapped to the `user` role wh
 
 - **Type:** String
 - **Default:** `'user'`
-- **Used by:** `rptoprompt.js`, `precompletionlint.js`, `postcompletionlint.js`, `lib/rendertemplate.js`
+- **Used by:** `formatnames.js`, `precompletionlint.js`, `postcompletionlint.js`, `lib/rendertemplate.js`
 
 ```yaml
 roleplay_user: Alice
@@ -199,7 +199,7 @@ Enables group chat mode. When true, all named character messages are prefixed wi
 
 - **Type:** Boolean
 - **Default:** `false`
-- **Used by:** `rptoprompt.js`
+- **Used by:** `formatnames.js`
 
 ```yaml
 roleplay_combined_group_chat: true
@@ -211,7 +211,7 @@ Template string injected as a `user` message when the LLM is asked to impersonat
 
 - **Type:** String
 - **Default:** none
-- **Used by:** `rptoprompt.js`
+- **Used by:** `formatnames.js`
 
 ```yaml
 roleplay_impersonation_instruction: '[OOC: Write the next reply as {{char}}, responding to {{user}}.]'
@@ -223,7 +223,7 @@ Per-character overrides for the impersonation instruction. When a character has 
 
 - **Type:** Object mapping character names to instruction strings
 - **Default:** none
-- **Used by:** `rptoprompt.js`
+- **Used by:** `formatnames.js`
 
 ```yaml
 roleplay_char_impersonation_instruction:
@@ -237,7 +237,7 @@ When true and in impersonation mode, prefixes each named character's message con
 
 - **Type:** Boolean
 - **Default:** none (treated as false)
-- **Used by:** `rptoprompt.js`
+- **Used by:** `formatnames.js`
 
 ```yaml
 roleplay_prefix_with_name: true
@@ -249,7 +249,7 @@ Path to a YAML file that maps decorator names to instruction text. Decorators ar
 
 - **Type:** String (file path)
 - **Default:** none
-- **Used by:** `rptoprompt.js` (loaded via `lib/pqutils.js`)
+- **Used by:** `formatnames.js` (loaded via `lib/pqutils.js`)
 
 ```yaml
 decorators: decorators.yaml
