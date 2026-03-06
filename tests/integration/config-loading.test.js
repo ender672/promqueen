@@ -247,6 +247,59 @@ test('resolveConfig cliConfig merges with defaults when no other layers present'
   assert.strictEqual(result.roleplay_combined_group_chat, false);
 });
 
+test('resolveConfig expands $VAR env vars in api_call_headers', () => {
+  process.env.PQ_TEST_API_KEY = 'sk-test-12345';
+  try {
+    const result = resolveConfig({
+      dot_config_loading: false,
+      api_call_headers: {
+        Authorization: 'Bearer $PQ_TEST_API_KEY',
+      },
+    }, '/tmp');
+    assert.strictEqual(result.api_call_headers.Authorization, 'Bearer sk-test-12345');
+  } finally {
+    delete process.env.PQ_TEST_API_KEY;
+  }
+});
+
+test('resolveConfig expands ${VAR} env vars in api_call_headers', () => {
+  process.env.PQ_TEST_API_KEY = 'sk-test-67890';
+  try {
+    const result = resolveConfig({
+      dot_config_loading: false,
+      api_call_headers: {
+        'x-api-key': '${PQ_TEST_API_KEY}',
+      },
+    }, '/tmp');
+    assert.strictEqual(result.api_call_headers['x-api-key'], 'sk-test-67890');
+  } finally {
+    delete process.env.PQ_TEST_API_KEY;
+  }
+});
+
+test('resolveConfig throws for undefined env vars in api_call_headers', () => {
+  delete process.env.PQ_TEST_NONEXISTENT_VAR;
+  assert.throws(
+    () => resolveConfig({
+      dot_config_loading: false,
+      api_call_headers: {
+        Authorization: 'Bearer $PQ_TEST_NONEXISTENT_VAR',
+      },
+    }, '/tmp'),
+    { message: /Environment variable PQ_TEST_NONEXISTENT_VAR is not set/ }
+  );
+});
+
+test('resolveConfig passes through non-string header values unchanged', () => {
+  const result = resolveConfig({
+    dot_config_loading: false,
+    api_call_headers: {
+      'X-Numeric': 42,
+    },
+  }, '/tmp');
+  assert.strictEqual(result.api_call_headers['X-Numeric'], 42);
+});
+
 test('resolveConfig full priority ordering across all layers', async (t) => {
   const originalHomedir = os.homedir;
   const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'pq-priority-'));

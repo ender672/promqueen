@@ -97,6 +97,16 @@ api_call_headers:
   X-Custom-Header: value
 ```
 
+Header values support environment variable expansion using `$VAR` or `${VAR}` syntax. This avoids putting API keys directly in config files:
+
+```yaml
+api_call_headers:
+  Authorization: Bearer $OPENAI_API_KEY
+  x-api-key: ${ANTHROPIC_API_KEY}
+```
+
+An error is thrown if a referenced environment variable is not set.
+
 ### `api_call_props`
 
 Additional properties merged into the JSON request body. This is where model selection, sampling parameters, and other API-specific options go.

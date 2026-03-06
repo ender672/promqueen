@@ -10,7 +10,7 @@ const FRONTMATTER_SCHEMA = [
         key: 'api_call_headers',
         type: 'Object',
         defaultValue: '{}',
-        description: 'HTTP headers included in the API request.',
+        description: 'HTTP headers included in the API request. Values support `$VAR` / `${VAR}` env var expansion.',
         example: 'api_call_headers:\n  Authorization: Bearer sk-...'
     },
     {
