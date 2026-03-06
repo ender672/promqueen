@@ -1,54 +1,62 @@
 #!/usr/bin/env node
 
+const fs = require('fs');
+const path = require('path');
+const { Parser, Context } = require('@ender672/minja-js/minja');
 const { extractAiCardData } = require('./lib/card-utils');
 
-function createChatmlPrompt(characterData) {
+const defaultTemplatePath = path.join(__dirname, 'templates', 'charcard-to-txt.jinja');
+
+function buildTemplateView(characterData) {
     const name = (characterData.name || 'Character').trim();
-    const description = characterData.description;
-    const personality = characterData.personality;
-    const scenario = characterData.scenario;
 
-    const systemParts = [];
+    const parts = [];
+    if (characterData.description) parts.push(characterData.description);
+    if (characterData.personality) parts.push(characterData.personality);
+    if (characterData.scenario) parts.push(`Scenario: ${characterData.scenario}`);
 
-    if (description) systemParts.push(description);
-    if (personality) systemParts.push(personality);
-    if (scenario) systemParts.push(`Scenario: ${scenario}`);
-
-    let roleplayPrompt = systemParts.join('\n');
-
-    const mesExample = characterData.mes_example;
-    if (mesExample) {
-        const mesExampleAry = mesExample
+    const examples = [];
+    if (characterData.mes_example) {
+        const parsed = characterData.mes_example
             .split('<START>')
             .map(x => x.trim())
             .filter(x => x.length > 0);
-
-        if (mesExampleAry.length > 0) {
-            roleplayPrompt += "\n\nEXAMPLE MESSAGES:";
-            for (const x of mesExampleAry) {
-                roleplayPrompt += `\n\n${x}`;
-            }
-        }
+        examples.push(...parsed);
     }
 
-    roleplayPrompt = roleplayPrompt.replaceAll('{{char}}', name);
-    return roleplayPrompt;
+    return {
+        name,
+        parts: parts.map(p => p.replaceAll('{{char}}', name)),
+        examples: examples.map(e => e.replaceAll('{{char}}', name)),
+    };
+}
+
+function createChatmlPrompt(characterData, templateText) {
+    if (!templateText) {
+        templateText = fs.readFileSync(defaultTemplatePath, 'utf8');
+    }
+    const view = buildTemplateView(characterData);
+    const root = Parser.parse(templateText);
+    const ctx = Context.make(view);
+    return root.render(ctx).trimEnd();
 }
 
 function main() {
     const args = process.argv.slice(2);
     if (args.length < 1) {
-        console.error("Usage: node card_reader.js <path_to_png>");
+        console.error("Usage: charcard-png-to-txt <path_to_png> [template_path]");
         process.exit(1);
     }
 
+    const templatePath = args[1] || defaultTemplatePath;
+    const templateText = fs.readFileSync(templatePath, 'utf8');
     const aiCardData = extractAiCardData(args[0]);
-    const chatml = createChatmlPrompt(aiCardData);
-    process.stdout.write(chatml + "\n");
+    const result = createChatmlPrompt(aiCardData, templateText);
+    process.stdout.write(result + "\n");
 }
 
 if (require.main === module) {
   main();
 }
 
-module.exports = { createChatmlPrompt };
+module.exports = { createChatmlPrompt, buildTemplateView };
