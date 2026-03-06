@@ -2,7 +2,7 @@ const vscode = require('vscode');
 const path = require('path');
 const { rpToHtml } = require('../../rp-to-html.js');
 const pqutils = require('../../lib/pq-utils.js');
-const sillytavernTemplate = require('../../templates/sillytavern.mustache');
+const midnightTemplate = require('../../templates/midnight.mustache');
 
 let htmlPreviewPanel = null;
 let htmlPreviewDebounceTimer = null;
@@ -19,7 +19,7 @@ function updateHtmlPreview(document) {
         const text = document.getText().replace(/\r\n/g, '\n');
         const doc = pqutils.parseConfigAndMessages(text);
         const resolvedConfig = pqutils.resolveConfig(doc.config, basePath);
-        let html = rpToHtml(doc, resolvedConfig, sillytavernTemplate);
+        let html = rpToHtml(doc, resolvedConfig, midnightTemplate);
         html += '\n<script>window.scrollTo(0, document.body.scrollHeight);</script>';
         htmlPreviewPanel.webview.html = html;
         htmlPreviewPanel.title = `Preview: ${path.basename(document.fileName)}`;
