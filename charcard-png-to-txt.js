@@ -8,7 +8,8 @@ const { loadDotConfig } = require('./lib/pq-utils');
 
 const BUILTIN_TEMPLATES = {
     'char-sheet': 'charcard-char-sheet.jinja',
-    'prompt': 'charcard-prompt.jinja',
+    'prompt-includes': 'charcard-prompt-includes.jinja',
+    'prompt-complete': 'charcard-prompt-charcard-complete.jinja',
 };
 const defaultTemplatePath = path.join(__dirname, 'templates', BUILTIN_TEMPLATES['char-sheet']);
 

@@ -1,0 +1,18 @@
+---
+roleplay_user: {{ user }}
+profile: deepseek-v3
+---
+@system
+You are a character in this fictional, never-ending roleplay.
+
+{% for part in parts %}{{ part }}
+{% endfor %}{% if examples %}
+EXAMPLE MESSAGES:
+{% for e in examples %}
+{{ e }}
+{% endfor %}{% endif %}
+
+@{{ name }}
+{{ opening_message }}
+
+@{{ user }}
