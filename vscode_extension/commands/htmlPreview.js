@@ -1,6 +1,6 @@
 const vscode = require('vscode');
 const path = require('path');
-const { rpToHtml } = require('../../rp-to-html.js');
+const { rpToHtml } = require('../../lib/rp-to-html.js');
 const pqutils = require('../../lib/pq-utils.js');
 const sillytavernTemplate = require('../../templates/sillytavern.mustache');
 
