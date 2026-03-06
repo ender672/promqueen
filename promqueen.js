@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { precompletionLint } = require('./precompletionlint.js');
 const { applyTemplate } = require('./applytemplate.js');
+const { injectInstructions } = require('./inject-instructions.js');
 const { rpToPrompt } = require('./rptoprompt.js');
 const { sendPrompt } = require('./sendprompt.js');
 const { sendRawPrompt } = require('./sendrawprompt.js');
@@ -48,7 +49,8 @@ async function runPipeline(filePath, { cwd = process.cwd(), stderr = process.std
             messageTemplateLoaderPath: templateLoaderPath, cwd
         });
 
-        apiMessages = rpToPrompt(apiMessages, resolvedConfig, cwd);
+        apiMessages = injectInstructions(apiMessages, resolvedConfig, cwd);
+        apiMessages = rpToPrompt(apiMessages, resolvedConfig);
         apiMessages = applyExtraInstructions(apiMessages);
         apiMessages = combineAdjacentMessages(apiMessages);
 

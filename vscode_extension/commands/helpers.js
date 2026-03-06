@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { applyTemplate } = require('../../applytemplate.js');
 const { applyLorebook, resolveLorebookPath } = require('../../apply-lorebook.js');
+const { injectInstructions } = require('../../inject-instructions.js');
 const { rpToPrompt } = require('../../rptoprompt.js');
 const { applyExtraInstructions } = require('../../apply-extra-instructions.js');
 
@@ -26,7 +27,8 @@ function preparePrompt(messages, resolvedConfig, templateLoaderPath, projectRoot
         cwd: projectRoot
     });
 
-    apiMessages = rpToPrompt(apiMessages, resolvedConfig, projectRoot);
+    apiMessages = injectInstructions(apiMessages, resolvedConfig, projectRoot);
+    apiMessages = rpToPrompt(apiMessages, resolvedConfig);
     return applyExtraInstructions(apiMessages);
 }
 
