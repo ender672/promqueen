@@ -1,0 +1,8 @@
+[
+  { "role": "system", "content": "System prompt" },
+  { "role": "user", "content": "First user message" },
+  { "role": "user", "content": "Second user message" },
+  { "role": "assistant", "content": "First assistant" },
+  { "role": "assistant", "content": "Second assistant" },
+  { "role": "user", "content": "Third user message" }
+]

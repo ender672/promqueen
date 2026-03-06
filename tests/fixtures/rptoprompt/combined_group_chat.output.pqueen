@@ -12,11 +12,14 @@ This is a user instruction
 BOB
 Hi, Alice!
 
+@assistant
 ALICE
 Hi, Bob!
 
+@assistant
 JAY
 Hey all!
 Write a python function to calculate factorial.
 
+@assistant
 HENRY

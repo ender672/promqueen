@@ -10,6 +10,7 @@ This is the system instruction
 @user
 This is a user instruction
 
+@user
 BOB
 Hi, Alice!
 
@@ -17,6 +18,7 @@ Hi, Alice!
 ALICE
 Hi, Bob!
 
+@assistant
 JAY
 Hey all!
 
@@ -24,4 +26,5 @@ Hey all!
 BOB
 
 
+@user
 [OOC: You are Bob.]

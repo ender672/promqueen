@@ -12,11 +12,13 @@ This is the system instruction
 @user
 This is a user instruction
 
+@user
 Hi, Alice!
 
 @assistant
 Hi, Bob!
 
+@assistant
 Hey all!
 Write a python function to calculate factorial.
 

@@ -1,0 +1,5 @@
+[
+  { "role": "assistant", "content": "First" },
+  { "role": "assistant", "content": "Second" },
+  { "role": "assistant", "content": "Third" }
+]

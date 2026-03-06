@@ -1,0 +1,6 @@
+[
+  { "role": "system", "content": "System prompt" },
+  { "role": "user", "content": "Hello" },
+  { "role": "assistant", "content": "Hi there" },
+  { "role": "user", "content": "Goodbye" }
+]

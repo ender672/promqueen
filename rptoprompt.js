@@ -18,17 +18,6 @@ function namedMessagesAsRole(messages, role) {
   });
 }
 
-function combineAdjacentMessagesWithSameRole(messages) {
-  return messages.reduce((acc, message) => {
-    if (acc.length > 0 && acc[acc.length - 1].role === message.role) {
-      acc[acc.length - 1].content += '\n\n' + message.content;
-    } else {
-      acc.push(message);
-    }
-    return acc;
-  }, []);
-}
-
 function resolveDecorators(message, decoratorsMap) {
   if (!message.decorators || message.decorators.length === 0) return;
 
@@ -123,8 +112,6 @@ function rpToPrompt(messages, resolvedConfig, basePath = process.cwd()) {
     messages.pop();
     messages[messages.length - 1].role = 'assistant';
   }
-
-  messages = combineAdjacentMessagesWithSameRole(messages);
 
   return messages;
 }
