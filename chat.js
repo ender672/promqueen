@@ -14,6 +14,8 @@ const { sendPromptAnthropic } = require('./send-prompt-anthropic.js');
 const { sendRawPrompt } = require('./send-raw-prompt.js');
 const { applyLorebook, resolveLorebookPath } = require('./apply-lorebook.js');
 const { combineAdjacentMessages } = require('./combine-messages.js');
+const { extractAiCardData } = require('./lib/card-utils.js');
+const { createChatmlPrompt } = require('./charcard-png-to-txt.js');
 const pqutils = require('./lib/pq-utils.js');
 
 function displayConversation(messages) {
@@ -178,7 +180,7 @@ async function runChatTurn(store, cwd, rl) {
 async function main() {
     const program = new Command();
     program
-        .argument('<file>', 'path to a .pqueen file')
+        .argument('<file>', 'path to a .pqueen file or character card .png')
         .option('--no-save', 'do not save changes to the .pqueen file')
         .parse();
 
@@ -192,9 +194,19 @@ async function main() {
         process.exit(1);
     }
 
-    const store = opts.save === false
-        ? createMemoryStore(fs.readFileSync(absolutePath, 'utf8'))
-        : createFileStore(absolutePath);
+    let store;
+    if (absolutePath.endsWith('.png')) {
+        const dotConfig = pqutils.loadDotConfig();
+        const templatePath = path.join(__dirname, 'templates', 'charcard-prompt-charcard-complete.jinja');
+        const templateText = fs.readFileSync(templatePath, 'utf8');
+        const aiCardData = extractAiCardData(absolutePath);
+        const pqueenContent = createChatmlPrompt(aiCardData, templateText, { roleplayUser: dotConfig.roleplay_user });
+        store = createMemoryStore(pqueenContent + '\n');
+    } else if (opts.save === false) {
+        store = createMemoryStore(fs.readFileSync(absolutePath, 'utf8'));
+    } else {
+        store = createFileStore(absolutePath);
+    }
 
     // Initial load to display conversation and determine user role
     let content = store.read();
