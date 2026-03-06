@@ -6,7 +6,11 @@ const { Parser, Context } = require('@ender672/minja-js/minja');
 const { extractAiCardData } = require('./lib/card-utils');
 const { loadDotConfig } = require('./lib/pq-utils');
 
-const defaultTemplatePath = path.join(__dirname, 'templates', 'charcard-char-sheet.jinja');
+const BUILTIN_TEMPLATES = {
+    'char-sheet': 'charcard-char-sheet.jinja',
+    'prompt': 'charcard-prompt.jinja',
+};
+const defaultTemplatePath = path.join(__dirname, 'templates', BUILTIN_TEMPLATES['char-sheet']);
 
 function buildTemplateView(characterData, { altGreeting } = {}) {
     const name = (characterData.name || 'Character').trim();
@@ -54,29 +58,35 @@ function createChatmlPrompt(characterData, templateText, { altGreeting, roleplay
 }
 
 function main() {
-    const args = process.argv.slice(2);
-    if (args.length < 1) {
-        console.error("Usage: charcard-png-to-txt <path_to_png> [template_path] [--alt-greeting <n>]");
-        process.exit(1);
-    }
+    const { Command } = require('commander');
+    const program = new Command();
 
-    let altGreeting;
-    const altIdx = args.indexOf('--alt-greeting');
-    if (altIdx !== -1) {
-        altGreeting = parseInt(args[altIdx + 1], 10);
-        if (Number.isNaN(altGreeting)) {
-            console.error("Error: --alt-greeting requires a numeric argument");
+    program
+        .argument('<png_path>', 'path to character card PNG')
+        .argument('[template_path]', 'path to a custom jinja template')
+        .option('--builtin <name>', `use a built-in template (${Object.keys(BUILTIN_TEMPLATES).join(', ')})`)
+        .option('--alt-greeting <n>', 'use alternate greeting by index', parseInt)
+        .parse();
+
+    const opts = program.opts();
+    const [pngPath, customTemplatePath] = program.args;
+
+    let templatePath;
+    if (opts.builtin) {
+        if (!BUILTIN_TEMPLATES[opts.builtin]) {
+            console.error(`Error: unknown builtin template '${opts.builtin}'. Available: ${Object.keys(BUILTIN_TEMPLATES).join(', ')}`);
             process.exit(1);
         }
-        args.splice(altIdx, 2);
+        templatePath = path.join(__dirname, 'templates', BUILTIN_TEMPLATES[opts.builtin]);
+    } else {
+        templatePath = customTemplatePath || defaultTemplatePath;
     }
 
-    const templatePath = args[1] || defaultTemplatePath;
     const templateText = fs.readFileSync(templatePath, 'utf8');
     const dotConfig = loadDotConfig();
     const roleplayUser = dotConfig.roleplay_user;
-    const aiCardData = extractAiCardData(args[0]);
-    const result = createChatmlPrompt(aiCardData, templateText, { altGreeting, roleplayUser });
+    const aiCardData = extractAiCardData(pngPath);
+    const result = createChatmlPrompt(aiCardData, templateText, { altGreeting: opts.altGreeting, roleplayUser });
     process.stdout.write(result + "\n");
 }
 
