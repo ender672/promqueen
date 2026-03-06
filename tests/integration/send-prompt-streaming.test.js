@@ -77,7 +77,6 @@ test('sendprompt handles streaming SSE response', async () => {
 
     try {
         const outputStream = new StringStream();
-        const errorStream = new StringStream();
 
         await sendPrompt(messages, resolved, outputStream);
 
@@ -97,7 +96,6 @@ test('sendprompt strips leading space from first streaming chunk', async () => {
 
     try {
         const outputStream = new StringStream();
-        const errorStream = new StringStream();
 
         await sendPrompt(messages, resolved, outputStream);
 
@@ -117,7 +115,6 @@ test('sendprompt strips leading newline from first streaming chunk', async () =>
 
     try {
         const outputStream = new StringStream();
-        const errorStream = new StringStream();
 
         await sendPrompt(messages, resolved, outputStream);
 
@@ -140,7 +137,6 @@ test('sendprompt throws on API error response', async () => {
 
     try {
         const outputStream = new StringStream();
-        const errorStream = new StringStream();
 
         await assert.rejects(
             () => sendPrompt(messages, resolved, outputStream),
@@ -202,7 +198,6 @@ test('sendprompt escapes @ at start of lines in streaming response', async () =>
 
     try {
         const outputStream = new StringStream();
-        const errorStream = new StringStream();
 
         await sendPrompt(messages, resolved, outputStream);
 
@@ -222,7 +217,6 @@ test('sendprompt escapes @ at start of lines across streaming chunk boundaries',
 
     try {
         const outputStream = new StringStream();
-        const errorStream = new StringStream();
 
         await sendPrompt(messages, resolved, outputStream);
 
@@ -240,7 +234,6 @@ test('sendprompt escapes @ at start of lines in non-streaming response', async (
 
     try {
         const outputStream = new StringStream();
-        const errorStream = new StringStream();
 
         await sendPrompt(messages, resolved, outputStream);
 
@@ -259,7 +252,6 @@ test('sendprompt escapes {{ in streaming response', async () => {
 
     try {
         const outputStream = new StringStream();
-        const errorStream = new StringStream();
 
         await sendPrompt(messages, resolved, outputStream);
 
@@ -278,7 +270,6 @@ test('sendprompt escapes {% in streaming response', async () => {
 
     try {
         const outputStream = new StringStream();
-        const errorStream = new StringStream();
 
         await sendPrompt(messages, resolved, outputStream);
 
@@ -298,7 +289,6 @@ test('sendprompt escapes {{ across streaming chunk boundaries', async () => {
 
     try {
         const outputStream = new StringStream();
-        const errorStream = new StringStream();
 
         await sendPrompt(messages, resolved, outputStream);
 
@@ -318,7 +308,6 @@ test('sendprompt escapes {% across streaming chunk boundaries', async () => {
 
     try {
         const outputStream = new StringStream();
-        const errorStream = new StringStream();
 
         await sendPrompt(messages, resolved, outputStream);
 
@@ -337,7 +326,6 @@ test('sendprompt flushes lone trailing { in streaming response', async () => {
 
     try {
         const outputStream = new StringStream();
-        const errorStream = new StringStream();
 
         await sendPrompt(messages, resolved, outputStream);
 
@@ -355,7 +343,6 @@ test('sendprompt escapes {{ in non-streaming response', async () => {
 
     try {
         const outputStream = new StringStream();
-        const errorStream = new StringStream();
 
         await sendPrompt(messages, resolved, outputStream);
 

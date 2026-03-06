@@ -9,7 +9,7 @@ const { postCompletionLint } = require('./post-completion-lint.js');
 const { applyTemplate } = require('./apply-template.js');
 const { injectInstructions } = require('./inject-instructions.js');
 const { formatNames } = require('./format-names.js');
-const { sendPrompt, pricingToString } = require('./send-prompt.js');
+const { sendPrompt } = require('./send-prompt.js');
 const { sendPromptAnthropic } = require('./send-prompt-anthropic.js');
 const { sendRawPrompt } = require('./send-raw-prompt.js');
 const { applyLorebook, resolveLorebookPath } = require('./apply-lorebook.js');
@@ -123,12 +123,9 @@ async function runChatTurn(absolutePath, rl) {
         if (resolvedConfig.api_url && resolvedConfig.api_url.endsWith('/v1/completions')) {
             await sendRawPrompt(apiMessages, resolvedConfig, teeStream, process.stderr, templateLoaderPath, { signal: controller.signal });
         } else if (resolvedConfig.api_url && resolvedConfig.api_url.includes('anthropic.com')) {
-            await sendPromptAnthropic(apiMessages, resolvedConfig, teeStream, process.stderr, { signal: controller.signal });
+            await sendPromptAnthropic(apiMessages, resolvedConfig, teeStream, { signal: controller.signal });
         } else {
-            const pricing = await sendPrompt(apiMessages, resolvedConfig, teeStream, { signal: controller.signal });
-            if (pricing) {
-                process.stderr.write(pricingToString(pricing) + '\n');
-            }
+            await sendPrompt(apiMessages, resolvedConfig, teeStream, { signal: controller.signal });
         }
     } catch (err) {
         if (err.name === 'AbortError') {

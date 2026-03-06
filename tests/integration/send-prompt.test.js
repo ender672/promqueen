@@ -62,7 +62,6 @@ inputFiles.forEach(inputFile => {
 
     try {
       const outputStream = new StringStream();
-      const errorStream = new StringStream();
 
       await sendPrompt(
         messages,

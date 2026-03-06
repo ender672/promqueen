@@ -7,7 +7,7 @@ const { applyTemplate } = require('./apply-template.js');
 const { injectInstructions } = require('./inject-instructions.js');
 const { formatNames } = require('./format-names.js');
 const { sendPrompt, pricingToString } = require('./send-prompt.js');
-const { sendPromptAnthropic } = require('./send-prompt-anthropic.js');
+const { sendPromptAnthropic, pricingToString: anthropicPricingToString } = require('./send-prompt-anthropic.js');
 const { sendRawPrompt } = require('./send-raw-prompt.js');
 const { postCompletionLint } = require('./post-completion-lint.js');
 const { applyLorebook, resolveLorebookPath } = require('./apply-lorebook.js');
@@ -58,7 +58,10 @@ async function runPipeline(filePath, { cwd = process.cwd(), stderr = process.std
         if (resolvedConfig.api_url && resolvedConfig.api_url.endsWith('/v1/completions')) {
             await sendRawPrompt(apiMessages, resolvedConfig, fileStream, stderr, templateLoaderPath);
         } else if (resolvedConfig.api_url && resolvedConfig.api_url.includes('anthropic.com')) {
-            await sendPromptAnthropic(apiMessages, resolvedConfig, fileStream, stderr);
+            const anthropicPricing = await sendPromptAnthropic(apiMessages, resolvedConfig, fileStream);
+            if (anthropicPricing) {
+                stderr.write(anthropicPricingToString(anthropicPricing) + '\n');
+            }
         } else {
             const pricing = await sendPrompt(apiMessages, resolvedConfig, fileStream);
             if (pricing) {
