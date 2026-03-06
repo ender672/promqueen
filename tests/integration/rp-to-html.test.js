@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
-const { rpToHtml } = require('../../lib/rp-to-html.js');
+const { rpToHtml } = require('../../rp-to-html.js');
 const { parseConfigAndMessages, resolveConfig } = require('../../lib/pq-utils.js');
 
 const fixturesDir = path.join(__dirname, '../fixtures/rp-to-html');
