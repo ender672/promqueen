@@ -1,14 +1,7 @@
 /.devcontainer
 /.promqueen
 /node_modules
-/_request.json
-/_formatnames_output.js
-/_ttt.json
-/test_pqutils.js
 /vscode_extension/node_modules
 /vscode_extension/dist
 /vscode_extension/promqueen-extension-*.vsix
-/TODO-*.md
 /not-for-coding-agents
-/server.js
-/web
