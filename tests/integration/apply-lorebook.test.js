@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
 const { applyLorebook, resolveLorebookPath } = require('../../apply-lorebook.js');
-const { parseConfigAndMessages, serializeDocument, resolveConfig } = require('../../lib/pqutils.js');
+const { parseConfigAndMessages, serializeDocument, resolveConfig } = require('../../lib/pq-utils.js');
 
 const fixturesDir = path.join(__dirname, '../fixtures/apply-lorebook');
 

@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 npm test                    # Run all integration tests
 npm run lint                # Run ESLint
-node --test tests/integration/sendprompt.test.js  # Run a single test file
+node --test tests/integration/send-prompt.test.js  # Run a single test file
 ```
 
 VS Code extension (run from `vscode_extension/`):
@@ -39,25 +39,25 @@ Character names use `@Character Name` (non-standard roles get mapped to `user`/`
 ### Pipeline Stages (`promqueen.js`)
 
 ```
-precompletionlint → applyLorebook → applyTemplate → injectInstructions → formatNames → combineAdjacentMessages → sendPrompt → postCompletionLint
+pre-completion-lint → apply-lorebook → apply-template → inject-instructions → format-names → combine-messages → send-prompt → post-completion-lint
 ```
 
-1. **precompletionlint** - Autocompletes partial speaker names, adds whitespace padding, and appends the next speaker's `@name` tag to prepare the file for the LLM response
+1. **pre-completion-lint** - Autocompletes partial speaker names, adds whitespace padding, and appends the next speaker's `@name` tag to prepare the file for the LLM response
 2. **apply-lorebook** - Injects lorebook entries into messages based on keyword matches
-3. **applytemplate** - Jinja2-like template substitution (`{{ var }}`, `{% include %}`)
+3. **apply-template** - Jinja2-like template substitution (`{{ var }}`, `{% include %}`)
 4. **inject-instructions** - Resolves decorator tags into instruction text injected before decorated messages, and handles impersonation/prefill logic for the final character message
-5. **formatnames** - Optionally prefixes message content with character names and, in combined group chat mode, sets all character messages to the `assistant` role
+5. **format-names** - Optionally prefixes message content with character names and, in combined group chat mode, sets all character messages to the `assistant` role
 6. **combine-messages** - Combines adjacent messages with the same role into a single message
-7. **sendprompt** - Sends request to LLM API and streams the results via SSE, escapes template/role syntax in output, tracks token costs
-8. **postcompletionlint** - Adds whitespace padding and appends the next speaker's `@name` tag for the next user-entered message.
+7. **send-prompt** - Sends request to LLM API and streams the results via SSE, escapes template/role syntax in output, tracks token costs
+8. **post-completion-lint** - Adds whitespace padding and appends the next speaker's `@name` tag for the next user-entered message.
 
 ### Key Modules
 
-- **`lib/pqutils.js`** - Config parsing with hierarchical resolution: defaults → `~/.promqueen` → CLI config → active profile → frontmatter
-- **`sendprompt.js`** - LLM API communication with streaming (eventsource-parser) and cost calculation
-- **`applytemplate.js`** - Template engine using rendertemplate for variable substitution
-- **`lib/rendertemplate.js`** - Variable substitution and file inclusion with path traversal security checks
-- **`lib/cardutils.js`** - Extracts character data from PNG AI character cards
+- **`lib/pq-utils.js`** - Config parsing with hierarchical resolution: defaults → `~/.promqueen` → CLI config → active profile → frontmatter
+- **`send-prompt.js`** - LLM API communication with streaming (eventsource-parser) and cost calculation
+- **`apply-template.js`** - Template engine using render-template for variable substitution
+- **`lib/render-template.js`** - Variable substitution and file inclusion with path traversal security checks
+- **`lib/card-utils.js`** - Extracts character data from PNG AI character cards
 
 ### VS Code Extension (`vscode_extension/`)
 

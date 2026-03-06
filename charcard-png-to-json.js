@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { extractAiCardData } = require('./lib/cardutils');
+const { extractAiCardData } = require('./lib/card-utils');
 
 function cardToJson(cardData) {
     return JSON.stringify(cardData, null, 2);

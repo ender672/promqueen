@@ -1,4 +1,4 @@
-const pqutils = require('./lib/pqutils.js');
+const pqutils = require('./lib/pq-utils.js');
 
 function getFinalMessagePadding(message) {
   // If the final message is null, don't do anything.

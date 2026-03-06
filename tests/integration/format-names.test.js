@@ -1,12 +1,12 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
-const { formatNames } = require('../../formatnames.js');
+const { formatNames } = require('../../format-names.js');
 const fs = require('fs');
 const yaml = require('js-yaml');
-const { parseConfigAndMessages, resolveConfig } = require('../../lib/pqutils.js');
+const { parseConfigAndMessages, resolveConfig } = require('../../lib/pq-utils.js');
 
-const fixturesDir = path.join(__dirname, '../fixtures/formatnames');
+const fixturesDir = path.join(__dirname, '../fixtures/format-names');
 
 function serializeOutput(runtimeConfig, messages) {
   let output = '---\n';

@@ -2,16 +2,16 @@
 
 const fs = require('fs');
 const path = require('path');
-const { precompletionLint } = require('./precompletionlint.js');
-const { applyTemplate } = require('./applytemplate.js');
+const { precompletionLint } = require('./pre-completion-lint.js');
+const { applyTemplate } = require('./apply-template.js');
 const { injectInstructions } = require('./inject-instructions.js');
-const { formatNames } = require('./formatnames.js');
-const { sendPrompt } = require('./sendprompt.js');
-const { sendRawPrompt } = require('./sendrawprompt.js');
-const { postCompletionLint } = require('./postcompletionlint.js');
+const { formatNames } = require('./format-names.js');
+const { sendPrompt } = require('./send-prompt.js');
+const { sendRawPrompt } = require('./send-raw-prompt.js');
+const { postCompletionLint } = require('./post-completion-lint.js');
 const { applyLorebook, resolveLorebookPath } = require('./apply-lorebook.js');
 const { combineAdjacentMessages } = require('./combine-messages.js');
-const pqutils = require('./lib/pqutils.js');
+const pqutils = require('./lib/pq-utils.js');
 
 async function runPipeline(filePath, { cwd = process.cwd(), stderr = process.stderr, fileSystem = fs, quiet = false } = {}) {
     const absolutePath = path.resolve(filePath);

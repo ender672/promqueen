@@ -1,4 +1,4 @@
-const pqutils = require('./lib/pqutils.js');
+const pqutils = require('./lib/pq-utils.js');
 
 function getNameAutocomplete(history, extraNames) {
   if (history.length === 0) {

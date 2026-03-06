@@ -1,6 +1,6 @@
 const path = require('path');
-const { serializeMessages, PROMPT_ROLES } = require('./lib/pqutils');
-const { buildTemplateContext } = require('./lib/rendertemplate');
+const { serializeMessages, PROMPT_ROLES } = require('./lib/pq-utils');
+const { buildTemplateContext } = require('./lib/render-template');
 
 function splitCBSArgs(argsStr) {
   const parts = [];

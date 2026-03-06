@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { resolveConfig, parseConfigOnly } = require('../../lib/pqutils.js');
+const { resolveConfig, parseConfigOnly } = require('../../lib/pq-utils.js');
 
 test('resolveConfig honors dot_config_loading option and only checks home dir', async (t) => {
   // Mock os.homedir

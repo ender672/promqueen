@@ -1,10 +1,10 @@
 const vscode = require('vscode');
 const path = require('path');
-const { precompletionLint } = require('../../precompletionlint.js');
-const { sendPrompt } = require('../../sendprompt.js');
-const { sendRawPrompt } = require('../../sendrawprompt.js');
-const { postCompletionLint } = require('../../postcompletionlint.js');
-const pqutils = require('../../lib/pqutils.js');
+const { precompletionLint } = require('../../pre-completion-lint.js');
+const { sendPrompt } = require('../../send-prompt.js');
+const { sendRawPrompt } = require('../../send-raw-prompt.js');
+const { postCompletionLint } = require('../../post-completion-lint.js');
+const pqutils = require('../../lib/pq-utils.js');
 const { getDocumentText, preparePrompt } = require('./helpers');
 
 const activePipelines = new Map();

@@ -1,8 +1,8 @@
 ---
 dot_config_loading: false
 message_template_variables:
-  my_path: tests/fixtures/applytemplate/simple.txt
-  my_prefix: tests/fixtures/applytemplate/concat
+  my_path: tests/fixtures/apply-template/simple.txt
+  my_prefix: tests/fixtures/apply-template/concat
 ---
 Start
 {% include my_path %}

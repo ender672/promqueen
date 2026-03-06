@@ -1,7 +1,7 @@
 const vscode = require('vscode');
 const path = require('path');
-const { rpToHtml } = require('../../rptohtml.js');
-const pqutils = require('../../lib/pqutils.js');
+const { rpToHtml } = require('../../rp-to-html.js');
+const pqutils = require('../../lib/pq-utils.js');
 const sillytavernTemplate = require('../../templates/sillytavern.mustache');
 
 let htmlPreviewPanel = null;

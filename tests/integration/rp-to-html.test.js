@@ -2,10 +2,10 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
-const { rpToHtml } = require('../../rptohtml.js');
-const { parseConfigAndMessages, resolveConfig } = require('../../lib/pqutils.js');
+const { rpToHtml } = require('../../rp-to-html.js');
+const { parseConfigAndMessages, resolveConfig } = require('../../lib/pq-utils.js');
 
-const fixturesDir = path.join(__dirname, '../fixtures/rptohtml');
+const fixturesDir = path.join(__dirname, '../fixtures/rp-to-html');
 
 const files = fs.readdirSync(fixturesDir);
 const inputFiles = files.filter(f => f.endsWith('.input.pqueen'));

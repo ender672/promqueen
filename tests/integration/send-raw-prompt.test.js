@@ -2,10 +2,10 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
-const { sendRawPrompt } = require('../../sendrawprompt.js');
-const { parseConfigAndMessages, resolveConfig } = require('../../lib/pqutils.js');
+const { sendRawPrompt } = require('../../send-raw-prompt.js');
+const { parseConfigAndMessages, resolveConfig } = require('../../lib/pq-utils.js');
 
-const fixturesDir = path.join(__dirname, '../fixtures/sendrawprompt');
+const fixturesDir = path.join(__dirname, '../fixtures/send-raw-prompt');
 const chatTemplatePath = path.join(fixturesDir, 'chatml.jinja');
 
 // Helper class to capture output

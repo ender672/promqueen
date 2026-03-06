@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { sendPrompt } = require('../../sendprompt.js');
+const { sendPrompt } = require('../../send-prompt.js');
 
 // Helper class to capture output
 class StringStream {

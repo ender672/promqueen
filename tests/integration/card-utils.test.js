@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const zlib = require('zlib');
-const { extractAiCardDataFromBuffer } = require('../../lib/cardutils.js');
+const { extractAiCardDataFromBuffer } = require('../../lib/card-utils.js');
 
 /**
  * Build a minimal valid PNG buffer with optional tEXt chunks.

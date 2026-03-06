@@ -2,10 +2,10 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
-const { sendPrompt } = require('../../sendprompt.js');
-const { parseConfigAndMessages, resolveConfig } = require('../../lib/pqutils.js');
+const { sendPrompt } = require('../../send-prompt.js');
+const { parseConfigAndMessages, resolveConfig } = require('../../lib/pq-utils.js');
 
-const fixturesDir = path.join(__dirname, '../fixtures/sendprompt');
+const fixturesDir = path.join(__dirname, '../fixtures/send-prompt');
 
 // Helper class to capture output
 class StringStream {

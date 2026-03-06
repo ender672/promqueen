@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const fs = require('fs');
-const { extractAiCardData } = require('./lib/cardutils');
+const { extractAiCardData } = require('./lib/card-utils');
 
 /**
  * Sanitizes a character name to be safe for use as a filename.

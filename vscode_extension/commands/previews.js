@@ -1,10 +1,10 @@
 const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
-const { applyTemplate } = require('../../applytemplate.js');
+const { applyTemplate } = require('../../apply-template.js');
 const { applyLorebook, resolveLorebookPath } = require('../../apply-lorebook.js');
-const { precompletionLint } = require('../../precompletionlint.js');
-const pqutils = require('../../lib/pqutils.js');
+const { precompletionLint } = require('../../pre-completion-lint.js');
+const pqutils = require('../../lib/pq-utils.js');
 const { getDocumentText, preparePrompt } = require('./helpers');
 
 function registerPreviewCommands(context) {

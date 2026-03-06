@@ -1,7 +1,7 @@
 ---
 dot_config_loading: false
 roleplay_user: Jim
-message_template_loader_path: tests/fixtures/applytemplate
+message_template_loader_path: tests/fixtures/apply-template
 ---
 @system
 System message.

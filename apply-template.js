@@ -1,6 +1,6 @@
 const process = require('process');
 const path = require('path');
-const { renderTemplate, buildTemplateContext } = require('./lib/rendertemplate.js');
+const { renderTemplate, buildTemplateContext } = require('./lib/render-template.js');
 
 function canInclude(index, messages) {
     const role = messages[index].role;

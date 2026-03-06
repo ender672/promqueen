@@ -1,6 +1,6 @@
 const vscode = require('vscode');
 const path = require('path');
-const pqutils = require('../../lib/pqutils.js');
+const pqutils = require('../../lib/pq-utils.js');
 const { FRONTMATTER_SCHEMA } = require('./frontmatterSchema.js');
 
 class CompletionProvider {

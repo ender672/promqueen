@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { sendPrompt } = require('../../sendprompt.js');
-const { parseConfigAndMessages, resolveConfig } = require('../../lib/pqutils.js');
+const { sendPrompt } = require('../../send-prompt.js');
+const { parseConfigAndMessages, resolveConfig } = require('../../lib/pq-utils.js');
 
 // Helper class to capture output
 class StringStream {

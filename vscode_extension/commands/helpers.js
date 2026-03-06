@@ -1,9 +1,9 @@
 const fs = require('fs');
 const path = require('path');
-const { applyTemplate } = require('../../applytemplate.js');
+const { applyTemplate } = require('../../apply-template.js');
 const { applyLorebook, resolveLorebookPath } = require('../../apply-lorebook.js');
 const { injectInstructions } = require('../../inject-instructions.js');
-const { formatNames } = require('../../formatnames.js');
+const { formatNames } = require('../../format-names.js');
 
 function getDocumentText(document) {
     return document.getText().replace(/\r\n/g, '\n');

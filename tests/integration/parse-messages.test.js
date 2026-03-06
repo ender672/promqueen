@@ -2,9 +2,9 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
-const { parseMessages } = require('../../lib/pqutils.js');
+const { parseMessages } = require('../../lib/pq-utils.js');
 
-const fixturesDir = path.join(__dirname, '../fixtures/parseMessages');
+const fixturesDir = path.join(__dirname, '../fixtures/parse-messages');
 
 // Find all input files
 const files = fs.readdirSync(fixturesDir);

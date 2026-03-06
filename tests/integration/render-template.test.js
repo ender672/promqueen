@@ -1,9 +1,9 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
-const { renderTemplate } = require('../../lib/rendertemplate.js');
+const { renderTemplate } = require('../../lib/render-template.js');
 
-const fixturesDir = path.join(__dirname, '../fixtures/applytemplate');
+const fixturesDir = path.join(__dirname, '../fixtures/apply-template');
 
 test('renderTemplate throws "Template not found" when included file does not exist', () => {
   const template = '{% include "nonexistent_file.txt" %}';

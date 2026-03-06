@@ -2,10 +2,10 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
-const { applyTemplate } = require('../../applytemplate.js');
-const { parseConfigAndMessages, serializeDocument, resolveConfig } = require('../../lib/pqutils.js');
+const { applyTemplate } = require('../../apply-template.js');
+const { parseConfigAndMessages, serializeDocument, resolveConfig } = require('../../lib/pq-utils.js');
 
-const fixturesDir = path.join(__dirname, '../fixtures/applytemplate');
+const fixturesDir = path.join(__dirname, '../fixtures/apply-template');
 
 // Find all input files
 const files = fs.readdirSync(fixturesDir);

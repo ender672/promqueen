@@ -1,6 +1,6 @@
 const process = require('process');
-const pqutils = require('./lib/pqutils.js');
-const { renderTemplate } = require('./lib/rendertemplate.js');
+const pqutils = require('./lib/pq-utils.js');
+const { renderTemplate } = require('./lib/render-template.js');
 
 function resolveDecorators(message, decoratorsMap) {
   if (!message.decorators || message.decorators.length === 0) return;

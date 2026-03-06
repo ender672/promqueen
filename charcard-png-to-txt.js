@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { extractAiCardData } = require('./lib/cardutils');
+const { extractAiCardData } = require('./lib/card-utils');
 
 function createChatmlPrompt(characterData) {
     const name = (characterData.name || 'Character').trim();

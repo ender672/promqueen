@@ -2,10 +2,10 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const path = require('node:path');
 const fs = require('fs');
-const { precompletionLint } = require('../../precompletionlint.js');
-const { parseConfigAndMessages, resolveConfig } = require('../../lib/pqutils.js');
+const { precompletionLint } = require('../../pre-completion-lint.js');
+const { parseConfigAndMessages, resolveConfig } = require('../../lib/pq-utils.js');
 
-const fixturesDir = path.resolve(__dirname, '../fixtures/precompletionlint');
+const fixturesDir = path.resolve(__dirname, '../fixtures/pre-completion-lint');
 
 // Find all input files
 const files = fs.readdirSync(fixturesDir);
