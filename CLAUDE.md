@@ -39,14 +39,17 @@ Character names use `@Character Name` (non-standard roles get mapped to `user`/`
 ### Pipeline Stages (`promqueen.js`)
 
 ```
-precompletionlint → applytemplate → formatnames → sendprompt → postcompletionlint
+precompletionlint → applyLorebook → applyTemplate → injectInstructions → formatNames → combineAdjacentMessages → sendPrompt → postCompletionLint
 ```
 
-1. **precompletionlint** - Prepares the file with a speaker name and whitespace for the LLM response
-2. **applytemplate** - Jinja2-like template substitution (`{{ var }}`, `{% include %}`)
-3. **formatnames** - Converts `@Character Name` chat format to `@system` / `@assistant` / `@user` format that more closely aligns with what will be sent to the API.
-4. **sendprompt** - Sends request to LLM API and streams the results via SSE, tracks token costs
-5. **postcompletionlint** - Prepares the file with a new speaker name for the next user-entered message.
+1. **precompletionlint** - Autocompletes partial speaker names, adds whitespace padding, and appends the next speaker's `@name` tag to prepare the file for the LLM response
+2. **apply-lorebook** - Injects lorebook entries into messages based on keyword matches
+3. **applytemplate** - Jinja2-like template substitution (`{{ var }}`, `{% include %}`)
+4. **inject-instructions** - Resolves decorator tags into instruction text injected before decorated messages, and handles impersonation/prefill logic for the final character message
+5. **formatnames** - Optionally prefixes message content with character names and, in combined group chat mode, sets all character messages to the `assistant` role
+6. **combine-messages** - Combines adjacent messages with the same role into a single message
+7. **sendprompt** - Sends request to LLM API and streams the results via SSE, escapes template/role syntax in output, tracks token costs
+8. **postcompletionlint** - Adds whitespace padding and appends the next speaker's `@name` tag for the next user-entered message.
 
 ### Key Modules
 
@@ -59,7 +62,7 @@ precompletionlint → applytemplate → formatnames → sendprompt → postcompl
 ### VS Code Extension (`vscode_extension/`)
 
 Separate package with its own `node_modules`. Bundled via esbuild → `dist/extension.js`. Provides:
-- Commands: Run Pipeline, Preview Prompt, Regenerate Last Message
+- Commands: Run Pipeline, Preview Prompt, Preview Template, Preview Lorebook, Preview HTML, Regenerate Last Message, Run Precompletion Lint, Cancel Pipeline
 - `.pqueen` language support with TextMate grammar
 - CompletionProvider for role names and decorators
 - ImageHoverProvider for image previews
