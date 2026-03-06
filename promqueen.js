@@ -7,6 +7,7 @@ const { applyTemplate } = require('./apply-template.js');
 const { injectInstructions } = require('./inject-instructions.js');
 const { formatNames } = require('./format-names.js');
 const { sendPrompt } = require('./send-prompt.js');
+const { sendPromptAnthropic } = require('./send-prompt-anthropic.js');
 const { sendRawPrompt } = require('./send-raw-prompt.js');
 const { postCompletionLint } = require('./post-completion-lint.js');
 const { applyLorebook, resolveLorebookPath } = require('./apply-lorebook.js');
@@ -56,6 +57,8 @@ async function runPipeline(filePath, { cwd = process.cwd(), stderr = process.std
         const fileStream = fileSystem.createWriteStream(absolutePath, { flags: 'a' });
         if (resolvedConfig.api_url && resolvedConfig.api_url.endsWith('/v1/completions')) {
             await sendRawPrompt(apiMessages, resolvedConfig, fileStream, stderr, templateLoaderPath);
+        } else if (resolvedConfig.api_url && resolvedConfig.api_url.includes('anthropic.com')) {
+            await sendPromptAnthropic(apiMessages, resolvedConfig, fileStream, stderr);
         } else {
             await sendPrompt(apiMessages, resolvedConfig, fileStream, stderr);
         }
