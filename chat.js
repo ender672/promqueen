@@ -34,8 +34,33 @@ function displayConversation(messages) {
     }
 }
 
-function ensureReadyForUserInput(absolutePath, userName) {
-    const content = fs.readFileSync(absolutePath, 'utf8');
+function createFileStore(absolutePath) {
+    return {
+        read() { return fs.readFileSync(absolutePath, 'utf8'); },
+        append(text) { fs.appendFileSync(absolutePath, text); },
+        createAppendStream() { return fs.createWriteStream(absolutePath, { flags: 'a' }); },
+    };
+}
+
+function createMemoryStore(initialContent) {
+    return {
+        content: initialContent,
+        read() { return this.content; },
+        append(text) { this.content += text; },
+        createAppendStream() {
+            const self = this;
+            const noop = () => {};
+            return {
+                write(chunk) { self.content += chunk; },
+                end: noop,
+                on(ev, cb) { if (ev === 'finish') cb(); },
+            };
+        },
+    };
+}
+
+function ensureReadyForUserInput(store, userName) {
+    const content = store.read();
     const doc = pqutils.parseConfigAndMessages(content);
     const lastMsg = doc.messages.at(-1);
 
@@ -54,27 +79,25 @@ function ensureReadyForUserInput(absolutePath, userName) {
         padding = '\n\n';
     }
 
-    fs.appendFileSync(absolutePath, padding + `@${userName}\n`);
+    store.append(padding + `@${userName}\n`);
 }
 
-async function runChatTurn(absolutePath, rl) {
-    const templateLoaderPath = path.dirname(absolutePath);
-    const cwd = path.dirname(absolutePath);
+async function runChatTurn(store, cwd, rl) {
+    const templateLoaderPath = cwd;
 
     // Re-read and re-parse each turn to pick up any external edits
-    let content = fs.readFileSync(absolutePath, 'utf8');
+    let content = store.read();
     let doc = pqutils.parseConfigAndMessages(content);
     const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, {});
 
     // Pre-completion lint
     const preOutput = precompletionLint(doc.messages, resolvedConfig);
     if (preOutput) {
-        // Write to file as-is
-        fs.appendFileSync(absolutePath, preOutput);
+        store.append(preOutput);
         // Display to console: strip leading whitespace, colorize @name tags
         const displayOutput = preOutput.replace(/^\s+/, '\n').replace(/@(\S+)/g, '\x1b[36m@$1\x1b[0m');
         process.stdout.write(displayOutput);
-        content = fs.readFileSync(absolutePath, 'utf8');
+        content = store.read();
         doc = pqutils.parseConfigAndMessages(content);
     }
 
@@ -99,12 +122,12 @@ async function runChatTurn(absolutePath, rl) {
     apiMessages = formatNames(apiMessages, resolvedConfig);
     apiMessages = combineAdjacentMessages(apiMessages);
 
-    // Send to API — tee output to both stdout and file
-    const fileStream = fs.createWriteStream(absolutePath, { flags: 'a' });
+    // Send to API — tee output to both stdout and store
+    const appendStream = store.createAppendStream();
     const teeStream = {
         write(chunk) {
             process.stdout.write(chunk);
-            fileStream.write(chunk);
+            appendStream.write(chunk);
         }
     };
 
@@ -135,20 +158,20 @@ async function runChatTurn(absolutePath, rl) {
         }
     } finally {
         process.removeListener('SIGINT', onSigint);
-        fileStream.end();
-        await new Promise((resolve) => fileStream.on('finish', resolve));
+        appendStream.end();
+        await new Promise((resolve) => appendStream.on('finish', resolve));
         rl.resume();
     }
 
     // Post-completion lint: add padding and next speaker tag
-    content = fs.readFileSync(absolutePath, 'utf8');
+    content = store.read();
     doc = pqutils.parseConfigAndMessages(content);
     const postConfig = { ...resolvedConfig, user: resolvedConfig.user || resolvedConfig.roleplay_user };
     const postOutput = postCompletionLint(doc.messages, postConfig);
     if (postOutput) {
         const displayOutput = postOutput.replace(/@(\S+)/g, '\x1b[36m@$1\x1b[0m');
         process.stdout.write(displayOutput);
-        fs.appendFileSync(absolutePath, postOutput);
+        store.append(postOutput);
     }
 }
 
@@ -156,27 +179,34 @@ async function main() {
     const program = new Command();
     program
         .argument('<file>', 'path to a .pqueen file')
+        .option('--no-save', 'do not save changes to the .pqueen file')
         .parse();
 
     const filePath = program.args[0];
+    const opts = program.opts();
     const absolutePath = path.resolve(filePath);
+    const cwd = path.dirname(absolutePath);
 
     if (!fs.existsSync(absolutePath)) {
         console.error(`File not found: ${absolutePath}`);
         process.exit(1);
     }
 
+    const store = opts.save === false
+        ? createMemoryStore(fs.readFileSync(absolutePath, 'utf8'))
+        : createFileStore(absolutePath);
+
     // Initial load to display conversation and determine user role
-    let content = fs.readFileSync(absolutePath, 'utf8');
+    let content = store.read();
     let doc = pqutils.parseConfigAndMessages(content);
-    const resolvedConfig = pqutils.resolveConfig(doc.config, path.dirname(absolutePath), {});
+    const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, {});
     const userName = resolvedConfig.roleplay_user || 'user';
 
     // Run pre-completion lint on startup
     const preOutput = precompletionLint(doc.messages, resolvedConfig);
     if (preOutput) {
-        fs.appendFileSync(absolutePath, preOutput);
-        content = fs.readFileSync(absolutePath, 'utf8');
+        store.append(preOutput);
+        content = store.read();
         doc = pqutils.parseConfigAndMessages(content);
     }
 
@@ -184,7 +214,7 @@ async function main() {
     displayConversation(doc.messages);
 
     // Ensure file is ready for user input
-    ensureReadyForUserInput(absolutePath, userName);
+    ensureReadyForUserInput(store, userName);
 
     const rl = readline.createInterface({
         input: process.stdin,
@@ -201,11 +231,11 @@ async function main() {
                 return;
             }
 
-            // Append user's text to the file (the @UserName tag is already there)
-            fs.appendFileSync(absolutePath, line);
+            // Append user's text (the @UserName tag is already there)
+            store.append(line);
 
             // Run the pipeline for this turn
-            activeTurn = runChatTurn(absolutePath, rl);
+            activeTurn = runChatTurn(store, cwd, rl);
             await activeTurn;
             activeTurn = null;
 
