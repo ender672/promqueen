@@ -10,7 +10,6 @@ const { sendPrompt } = require('./sendprompt.js');
 const { sendRawPrompt } = require('./sendrawprompt.js');
 const { postCompletionLint } = require('./postcompletionlint.js');
 const { applyLorebook, resolveLorebookPath } = require('./apply-lorebook.js');
-const { applyExtraInstructions } = require('./apply-extra-instructions.js');
 const { combineAdjacentMessages } = require('./combine-messages.js');
 const pqutils = require('./lib/pqutils.js');
 
@@ -51,7 +50,6 @@ async function runPipeline(filePath, { cwd = process.cwd(), stderr = process.std
 
         apiMessages = injectInstructions(apiMessages, resolvedConfig, cwd);
         apiMessages = rpToPrompt(apiMessages, resolvedConfig);
-        apiMessages = applyExtraInstructions(apiMessages);
         apiMessages = combineAdjacentMessages(apiMessages);
 
         // 5. Send to API (streams response to file)

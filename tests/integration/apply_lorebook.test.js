@@ -3,7 +3,6 @@ const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
 const { applyLorebook, resolveLorebookPath } = require('../../apply-lorebook.js');
-const { applyExtraInstructions } = require('../../apply-extra-instructions.js');
 const { parseConfigAndMessages, serializeDocument, resolveConfig } = require('../../lib/pqutils.js');
 
 const fixturesDir = path.join(__dirname, '../fixtures/apply-lorebook');
@@ -35,8 +34,7 @@ inputFiles.forEach(inputFile => {
     const resolved = resolveConfig(config);
     const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
 
-    let resultMessages = applyLorebook(messages, resolved, lorebook);
-    resultMessages = applyExtraInstructions(resultMessages);
+    const resultMessages = applyLorebook(messages, resolved, lorebook);
     const output = serializeDocument(config, resultMessages);
     const expectedOutput = fs.readFileSync(outputPath, 'utf8');
 
@@ -54,8 +52,7 @@ test('apply-lorebook - resolveLorebookPath extracts lorebook from frontmatter co
   assert.strictEqual(lorebookPath, 'tests/fixtures/apply-lorebook/config_lorebook_path.lorebook.json');
 
   const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
-  let resultMessages = applyLorebook(messages, resolved, lorebook);
-  resultMessages = applyExtraInstructions(resultMessages);
+  const resultMessages = applyLorebook(messages, resolved, lorebook);
   const output = serializeDocument(config, resultMessages);
 
   const expectedOutputPath = path.join(fixturesDir, 'config_lorebook_path.output.pqueen');

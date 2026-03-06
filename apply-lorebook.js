@@ -177,8 +177,7 @@ function applyLorebook(messages, resolvedConfig, lorebook) {
       const expanded = expandCBS(e.content, messageContext, hashSeed);
       return entryTemplate.replace('{{content}}', expanded);
     });
-    if (!target.extra_instructions) target.extra_instructions = [];
-    target.extra_instructions.push(...renderedEntries);
+    target.content = (target.content || '') + '\n\n' + renderedEntries.join('\n');
   }
 
   return result;
