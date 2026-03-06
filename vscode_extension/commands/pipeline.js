@@ -1,7 +1,7 @@
 const vscode = require('vscode');
 const path = require('path');
 const { precompletionLint } = require('../../pre-completion-lint.js');
-const { sendPrompt } = require('../../send-prompt.js');
+const { sendPrompt, pricingToString } = require('../../send-prompt.js');
 const { sendPromptAnthropic } = require('../../send-prompt-anthropic.js');
 const { sendRawPrompt } = require('../../send-raw-prompt.js');
 const { postCompletionLint } = require('../../post-completion-lint.js');
@@ -89,7 +89,10 @@ async function executePipeline(document, progress, abortController, options) {
     } else if (resolvedConfig.api_url && resolvedConfig.api_url.includes('anthropic.com')) {
         await sendPromptAnthropic(apiMessages, resolvedConfig, outputStream, errorStream, sendOptions);
     } else {
-        await sendPrompt(apiMessages, resolvedConfig, outputStream, errorStream, sendOptions);
+        const pricing = await sendPrompt(apiMessages, resolvedConfig, outputStream, sendOptions);
+        if (pricing) {
+            errorStream.write(pricingToString(pricing) + '\n');
+        }
     }
 
     // Wait for all edits to finish

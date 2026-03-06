@@ -67,8 +67,7 @@ inputFiles.forEach(inputFile => {
       await sendPrompt(
         messages,
         resolved,
-        outputStream,
-        errorStream
+        outputStream
       );
 
       assert.strictEqual(capturedUrl, expectedRequest.url, `URL for ${testName} should match`);

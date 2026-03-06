@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { sendPrompt } = require('../../send-prompt.js');
+const { sendPrompt, pricingToString } = require('../../send-prompt.js');
 
 // Helper class to capture output
 class StringStream {
@@ -12,7 +12,7 @@ class StringStream {
     }
 }
 
-test('sendprompt logs cost to stderr when pricing and usage are present', async () => {
+test('sendprompt returns pricing object when pricing and usage are present', async () => {
     // Mock global.fetch
     const originalFetch = global.fetch;
     global.fetch = async () => {
@@ -35,7 +35,6 @@ test('sendprompt logs cost to stderr when pricing and usage are present', async 
 
     try {
         const outputStream = new StringStream();
-        const errorStream = new StringStream();
 
         const resolvedConfig = {
             pricing: {
@@ -50,15 +49,17 @@ test('sendprompt logs cost to stderr when pricing and usage are present', async 
 
         const messages = [{ role: 'user', content: 'hi' }];
 
-        await sendPrompt(
-            messages,
-            resolvedConfig,
-            outputStream,
-            errorStream
-        );
+        const pricing = await sendPrompt(messages, resolvedConfig, outputStream);
 
-        assert.match(errorStream.data, /total cost: 0.00190¢/, 'Stderr should contain correct cost calculation');
-        assert.match(errorStream.data, /20.0% cached/, 'Stderr should contain correct cached percentage');
+        assert.ok(pricing, 'Should return pricing object');
+        assert.strictEqual(pricing.promptTokens, 100);
+        assert.strictEqual(pricing.cachedTokens, 20);
+        assert.strictEqual(pricing.completionTokens, 50);
+        assert.strictEqual(pricing.cachedPercentage, 20);
+
+        const costString = pricingToString(pricing);
+        assert.match(costString, /total cost: 0.00190¢/, 'Should contain correct cost calculation');
+        assert.match(costString, /20.0% cached/, 'Should contain correct cached percentage');
 
     } finally {
         global.fetch = originalFetch;
@@ -87,7 +88,6 @@ test('sendprompt cost calculation with zero prompt tokens avoids division by zer
 
     try {
         const outputStream = new StringStream();
-        const errorStream = new StringStream();
 
         const resolvedConfig = {
             pricing: {
@@ -102,17 +102,16 @@ test('sendprompt cost calculation with zero prompt tokens avoids division by zer
 
         const messages = [{ role: 'user', content: 'hi' }];
 
-        await sendPrompt(
-            messages,
-            resolvedConfig,
-            outputStream,
-            errorStream
-        );
+        const pricing = await sendPrompt(messages, resolvedConfig, outputStream);
 
-        assert.match(errorStream.data, /total cost: 0.00100¢/, 'Should compute correct total with zero prompt tokens');
-        assert.match(errorStream.data, /0\.0% cached/, 'Should show 0.0% cached, not NaN');
-        assert.doesNotMatch(errorStream.data, /NaN/, 'Should not contain NaN');
-        assert.doesNotMatch(errorStream.data, /Infinity/, 'Should not contain Infinity');
+        assert.ok(pricing, 'Should return pricing object');
+        assert.strictEqual(pricing.cachedPercentage, 0, 'Should show 0% cached, not NaN');
+
+        const costString = pricingToString(pricing);
+        assert.match(costString, /total cost: 0.00100¢/, 'Should compute correct total with zero prompt tokens');
+        assert.match(costString, /0\.0% cached/, 'Should show 0.0% cached, not NaN');
+        assert.doesNotMatch(costString, /NaN/, 'Should not contain NaN');
+        assert.doesNotMatch(costString, /Infinity/, 'Should not contain Infinity');
 
     } finally {
         global.fetch = originalFetch;

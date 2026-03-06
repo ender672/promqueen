@@ -6,7 +6,7 @@ const { precompletionLint } = require('./pre-completion-lint.js');
 const { applyTemplate } = require('./apply-template.js');
 const { injectInstructions } = require('./inject-instructions.js');
 const { formatNames } = require('./format-names.js');
-const { sendPrompt } = require('./send-prompt.js');
+const { sendPrompt, pricingToString } = require('./send-prompt.js');
 const { sendPromptAnthropic } = require('./send-prompt-anthropic.js');
 const { sendRawPrompt } = require('./send-raw-prompt.js');
 const { postCompletionLint } = require('./post-completion-lint.js');
@@ -60,7 +60,10 @@ async function runPipeline(filePath, { cwd = process.cwd(), stderr = process.std
         } else if (resolvedConfig.api_url && resolvedConfig.api_url.includes('anthropic.com')) {
             await sendPromptAnthropic(apiMessages, resolvedConfig, fileStream, stderr);
         } else {
-            await sendPrompt(apiMessages, resolvedConfig, fileStream, stderr);
+            const pricing = await sendPrompt(apiMessages, resolvedConfig, fileStream);
+            if (pricing) {
+                stderr.write(pricingToString(pricing) + '\n');
+            }
         }
 
         fileStream.end();

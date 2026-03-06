@@ -25,7 +25,7 @@ async function* getStream(response) {
     }
 }
 
-function usageToCostString(pricing, usage) {
+function usageToPricing(pricing, usage) {
     const cachedTokens = usage["prompt_tokens_details"]["cached_tokens"];
     const promptTokens = usage["prompt_tokens"];
     const costUncached = (promptTokens - cachedTokens) / 1000000 * pricing.cost_uncached;
@@ -39,10 +39,24 @@ function usageToCostString(pricing, usage) {
         cachedPercentage = (cachedTokens / promptTokens) * 100;
     }
 
-    return `total cost: ${costTotal.toFixed(5)}¢, requests/penny: ${requestsPerPenny.toFixed(2)}, uncached in: ${costUncached.toFixed(5)}¢, cached in: ${costCached.toFixed(5)}¢, output: ${costOutput.toFixed(5)}¢, ${cachedPercentage.toFixed(1)}% cached`;
+    return {
+        costTotal,
+        requestsPerPenny,
+        costUncached,
+        costCached,
+        costOutput,
+        cachedPercentage,
+        promptTokens,
+        cachedTokens,
+        completionTokens: usage["completion_tokens"],
+    };
 }
 
-async function responseToOutput(response, fullConfig, outputStream, errorStream) {
+function pricingToString(p) {
+    return `total cost: ${p.costTotal.toFixed(5)}¢, requests/penny: ${p.requestsPerPenny.toFixed(2)}, uncached in: ${p.costUncached.toFixed(5)}¢, cached in: ${p.costCached.toFixed(5)}¢, output: ${p.costOutput.toFixed(5)}¢, ${p.cachedPercentage.toFixed(1)}% cached`;
+}
+
+async function responseToOutput(response, fullConfig, outputStream) {
     if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`API request failed: ${response.status} - ${errorText}`);
@@ -50,6 +64,7 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
 
     const contentType = response.headers.get('content-type');
     const isStreaming = contentType && contentType.includes('text/event-stream');
+    let pricingResult = null;
 
     if (isStreaming) {
         let isFirstEvent = true;
@@ -62,8 +77,7 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
 
             const json = JSON.parse(event.data);
             if (fullConfig.pricing && json.usage) {
-                const costString = usageToCostString(fullConfig.pricing, json.usage);
-                errorStream.write(costString + '\n');
+                pricingResult = usageToPricing(fullConfig.pricing, json.usage);
             }
 
             let content = json.choices[0]?.delta?.content || '';
@@ -100,8 +114,7 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
     } else {
         const json = await response.json();
         if (fullConfig.pricing && json.usage) {
-            const costString = usageToCostString(fullConfig.pricing, json.usage);
-            errorStream.write(costString + '\n');
+            pricingResult = usageToPricing(fullConfig.pricing, json.usage);
         }
         let content = json.choices?.[0]?.message?.content || '';
         content = content.replace(/\{\{/g, '\\{{');
@@ -109,9 +122,11 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
         content = content.replace(/^@/gm, '\\@');
         outputStream.write(content);
     }
+
+    return pricingResult;
 }
 
-async function sendPrompt(messages, resolvedConfig, outputStream = process.stdout, errorStream = process.stderr, options = {}) {
+async function sendPrompt(messages, resolvedConfig, outputStream = process.stdout, options = {}) {
     const promptMessages = messages.map(message => {
         let content = message.content;
         if (content) {
@@ -153,7 +168,7 @@ async function sendPrompt(messages, resolvedConfig, outputStream = process.stdou
         body: JSON.stringify(body),
         signal: options.signal,
     });
-    await responseToOutput(response, resolvedConfig, outputStream, errorStream);
+    return await responseToOutput(response, resolvedConfig, outputStream);
 }
 
-module.exports = { sendPrompt };
+module.exports = { sendPrompt, pricingToString };
