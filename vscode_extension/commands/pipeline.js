@@ -130,6 +130,8 @@ async function executePipeline(document, progress, abortController, options) {
     if (autoSave) {
         await document.save();
     }
+
+    return pricing;
 }
 
 function registerPipelineCommands(context) {
@@ -152,16 +154,21 @@ function registerPipelineCommands(context) {
         activePipelines.set(documentKey, abortController);
 
         try {
+            let pricing;
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
                 title: 'PromQueen',
                 cancellable: true
             }, async (progress, token) => {
                 token.onCancellationRequested(() => abortController.abort());
-                await executePipeline(document, progress, abortController, options);
+                pricing = await executePipeline(document, progress, abortController, options);
             });
 
-            vscode.window.showInformationMessage('PromQueen: Pipeline finished.');
+            if (pricing) {
+                vscode.window.showInformationMessage(`PromQueen: ${pricingToString(pricing)}`);
+            } else {
+                vscode.window.showInformationMessage('PromQueen: Pipeline finished.');
+            }
 
         } catch (err) {
             if (err.name === 'AbortError') {
