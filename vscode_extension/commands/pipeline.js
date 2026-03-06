@@ -1,9 +1,10 @@
 const vscode = require('vscode');
 const path = require('path');
 const { precompletionLint } = require('../../pre-completion-lint.js');
-const { sendPrompt, pricingToString } = require('../../send-prompt.js');
-const { sendPromptAnthropic, pricingToString: anthropicPricingToString } = require('../../send-prompt-anthropic.js');
+const { sendPrompt } = require('../../send-prompt.js');
+const { sendPromptAnthropic } = require('../../send-prompt-anthropic.js');
 const { sendRawPrompt } = require('../../send-raw-prompt.js');
+const { pricingToString } = require('../../lib/send-prompt-common.js');
 const { postCompletionLint } = require('../../post-completion-lint.js');
 const pqutils = require('../../lib/pq-utils.js');
 const { getDocumentText, preparePrompt } = require('./helpers');
@@ -84,18 +85,16 @@ async function executePipeline(document, progress, abortController, options) {
     };
 
     const sendOptions = { signal: abortController.signal };
+    let pricing;
     if (resolvedConfig.api_url && resolvedConfig.api_url.endsWith('/v1/completions')) {
-        await sendRawPrompt(apiMessages, resolvedConfig, outputStream, errorStream, templateLoaderPath, sendOptions);
+        pricing = await sendRawPrompt(apiMessages, resolvedConfig, outputStream, templateLoaderPath, sendOptions);
     } else if (resolvedConfig.api_url && resolvedConfig.api_url.includes('anthropic.com')) {
-        const anthropicPricing = await sendPromptAnthropic(apiMessages, resolvedConfig, outputStream, sendOptions);
-        if (anthropicPricing) {
-            errorStream.write(anthropicPricingToString(anthropicPricing) + '\n');
-        }
+        pricing = await sendPromptAnthropic(apiMessages, resolvedConfig, outputStream, sendOptions);
     } else {
-        const pricing = await sendPrompt(apiMessages, resolvedConfig, outputStream, sendOptions);
-        if (pricing) {
-            errorStream.write(pricingToString(pricing) + '\n');
-        }
+        pricing = await sendPrompt(apiMessages, resolvedConfig, outputStream, sendOptions);
+    }
+    if (pricing) {
+        errorStream.write(pricingToString(pricing) + '\n');
     }
 
     // Wait for all edits to finish

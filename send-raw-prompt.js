@@ -1,46 +1,15 @@
 const fs = require('fs');
 const process = require('process');
 const { Parser, Context } = require('@ender672/minja-js/minja');
-const eventsourceParser = require('eventsource-parser');
 const path = require('path');
+const {
+    getStream, unescapeMessages, escapeContent, escapeContentBlock,
+    calculatePricing, pricingToString, debugLogBody, sendRequest,
+} = require('./lib/send-prompt-common.js');
 
-async function* getStream(response) {
-    const decoder = new TextDecoder('utf-8');
-    let eventsToYield = [];
-
-    const parser = eventsourceParser.createParser({
-        onEvent: (event) => {
-            eventsToYield.push(event);
-        }
-    });
-
-    for await (const chunk of response.body) {
-        const textChunk = decoder.decode(chunk, { stream: true });
-        parser.feed(textChunk);
-
-        for (const event of eventsToYield) {
-            yield event;
-        }
-
-        eventsToYield = [];
-    }
-}
-
-function usageToCostString(pricing, usage) {
+function usageToPricing(pricing, usage) {
     const cachedTokens = usage["prompt_tokens_details"]["cached_tokens"];
-    const promptTokens = usage["prompt_tokens"];
-    const costUncached = (promptTokens - cachedTokens) / 1000000 * pricing.cost_uncached;
-    const costCached = cachedTokens / 1000000 * pricing.cost_cached;
-    const costOutput = usage["completion_tokens"] / 1000000 * pricing.cost_output;
-    const costTotal = costUncached + costCached + costOutput;
-    const requestsPerPenny = 1 / costTotal;
-
-    let cachedPercentage = 0;
-    if (promptTokens > 0) {
-        cachedPercentage = (cachedTokens / promptTokens) * 100;
-    }
-
-    return `total cost: ${costTotal.toFixed(5)}¢, requests/penny: ${requestsPerPenny.toFixed(2)}, uncached in: ${costUncached.toFixed(5)}¢, cached in: ${costCached.toFixed(5)}¢, output: ${costOutput.toFixed(5)}¢, ${cachedPercentage.toFixed(1)}% cached`;
+    return calculatePricing(pricing, usage["prompt_tokens"], cachedTokens, usage["completion_tokens"]);
 }
 
 function applyChatTemplate(messages, templateString, config) {
@@ -65,14 +34,10 @@ function applyChatTemplate(messages, templateString, config) {
     return root.render(ctx);
 }
 
-async function responseToOutput(response, fullConfig, outputStream, errorStream) {
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API request failed: ${response.status} - ${errorText}`);
-    }
-
+async function responseToOutput(response, fullConfig, outputStream) {
     const contentType = response.headers.get('content-type');
     const isStreaming = contentType && contentType.includes('text/event-stream');
+    let pricingResult = null;
 
     if (isStreaming) {
         let isFirstEvent = true;
@@ -85,8 +50,7 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
 
             const json = JSON.parse(event.data);
             if (fullConfig.pricing && json.usage) {
-                const costString = usageToCostString(fullConfig.pricing, json.usage);
-                errorStream.write(costString + '\n');
+                pricingResult = usageToPricing(fullConfig.pricing, json.usage);
             }
 
             let content = json.choices[0]?.text || '';
@@ -105,15 +69,11 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
                     content = content.slice(0, -1);
                     pendingBrace = true;
                 }
-                content = content.replace(/\{\{/g, '\\{{');
-                content = content.replace(/\{%/g, '\\{%');
-                content = content.replace(/\n@/g, '\n\\@');
-                if (lastCharWasNewline && content[0] === '@') {
-                    content = '\\' + content;
-                }
+                const escaped = escapeContent(content, lastCharWasNewline);
+                content = escaped.content;
+                lastCharWasNewline = escaped.lastCharWasNewline;
                 if (content) {
                     outputStream.write(content);
-                    lastCharWasNewline = content.endsWith('\n');
                 }
             }
         }
@@ -123,18 +83,16 @@ async function responseToOutput(response, fullConfig, outputStream, errorStream)
     } else {
         const json = await response.json();
         if (fullConfig.pricing && json.usage) {
-            const costString = usageToCostString(fullConfig.pricing, json.usage);
-            errorStream.write(costString + '\n');
+            pricingResult = usageToPricing(fullConfig.pricing, json.usage);
         }
         let content = json.choices?.[0]?.text || '';
-        content = content.replace(/\{\{/g, '\\{{');
-        content = content.replace(/\{%/g, '\\{%');
-        content = content.replace(/^@/gm, '\\@');
-        outputStream.write(content);
+        outputStream.write(escapeContentBlock(content));
     }
+
+    return pricingResult;
 }
 
-async function sendRawPrompt(messages, resolvedConfig, outputStream = process.stdout, errorStream = process.stderr, fileBasePath = process.cwd(), options = {}) {
+async function sendRawPrompt(messages, resolvedConfig, outputStream = process.stdout, fileBasePath = process.cwd(), options = {}) {
     const chatTemplatePath = resolvedConfig.chat_template_path;
     if (!chatTemplatePath) {
         throw new Error('chat_template_path is required for sendrawprompt (set via --chat-template, config file, or frontmatter)');
@@ -142,18 +100,7 @@ async function sendRawPrompt(messages, resolvedConfig, outputStream = process.st
 
     const templateString = fs.readFileSync(path.resolve(fileBasePath, chatTemplatePath), 'utf8');
 
-    const promptMessages = messages.map(message => {
-        let content = message.content;
-        if (content) {
-            content = content.replace(/\\\{\{/g, '{{');
-            content = content.replace(/\\\{%/g, '{%');
-            content = content.replace(/^\\@/gm, '@');
-        }
-        return {
-            role: message.role,
-            content: content
-        }
-    });
+    const promptMessages = unescapeMessages(messages);
 
     const lastMessage = promptMessages.at(-1);
     if (lastMessage && lastMessage.role === 'assistant') {
@@ -167,22 +114,10 @@ async function sendRawPrompt(messages, resolvedConfig, outputStream = process.st
     const body = {
         ...resolvedConfig.api_call_props,
         prompt: promptString,
-    }
-    if (resolvedConfig.debug_log_path) {
-        const debugDir = path.resolve(resolvedConfig.debug_log_path);
-        if (!fs.existsSync(debugDir)) {
-            fs.mkdirSync(debugDir, { recursive: true });
-        }
-        const debugPath = path.join(debugDir, 'last_request_payload.json');
-        fs.writeFileSync(debugPath, JSON.stringify(body, null, 2));
-    }
-    const response = await fetch(resolvedConfig.api_url, {
-        method: 'POST',
-        headers: resolvedConfig.api_call_headers,
-        body: JSON.stringify(body),
-        signal: options.signal,
-    });
-    await responseToOutput(response, resolvedConfig, outputStream, errorStream);
+    };
+    debugLogBody(resolvedConfig, body);
+    const response = await sendRequest(resolvedConfig, body, options);
+    return await responseToOutput(response, resolvedConfig, outputStream);
 }
 
-module.exports = { sendRawPrompt };
+module.exports = { sendRawPrompt, pricingToString };

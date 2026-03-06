@@ -6,9 +6,10 @@ const { precompletionLint } = require('./pre-completion-lint.js');
 const { applyTemplate } = require('./apply-template.js');
 const { injectInstructions } = require('./inject-instructions.js');
 const { formatNames } = require('./format-names.js');
-const { sendPrompt, pricingToString } = require('./send-prompt.js');
-const { sendPromptAnthropic, pricingToString: anthropicPricingToString } = require('./send-prompt-anthropic.js');
+const { sendPrompt } = require('./send-prompt.js');
+const { sendPromptAnthropic } = require('./send-prompt-anthropic.js');
 const { sendRawPrompt } = require('./send-raw-prompt.js');
+const { pricingToString } = require('./lib/send-prompt-common.js');
 const { postCompletionLint } = require('./post-completion-lint.js');
 const { applyLorebook, resolveLorebookPath } = require('./apply-lorebook.js');
 const { combineAdjacentMessages } = require('./combine-messages.js');
@@ -55,18 +56,16 @@ async function runPipeline(filePath, { cwd = process.cwd(), stderr = process.std
 
         // 5. Send to API (streams response to file)
         const fileStream = fileSystem.createWriteStream(absolutePath, { flags: 'a' });
+        let pricing;
         if (resolvedConfig.api_url && resolvedConfig.api_url.endsWith('/v1/completions')) {
-            await sendRawPrompt(apiMessages, resolvedConfig, fileStream, stderr, templateLoaderPath);
+            pricing = await sendRawPrompt(apiMessages, resolvedConfig, fileStream, templateLoaderPath);
         } else if (resolvedConfig.api_url && resolvedConfig.api_url.includes('anthropic.com')) {
-            const anthropicPricing = await sendPromptAnthropic(apiMessages, resolvedConfig, fileStream);
-            if (anthropicPricing) {
-                stderr.write(anthropicPricingToString(anthropicPricing) + '\n');
-            }
+            pricing = await sendPromptAnthropic(apiMessages, resolvedConfig, fileStream);
         } else {
-            const pricing = await sendPrompt(apiMessages, resolvedConfig, fileStream);
-            if (pricing) {
-                stderr.write(pricingToString(pricing) + '\n');
-            }
+            pricing = await sendPrompt(apiMessages, resolvedConfig, fileStream);
+        }
+        if (pricing) {
+            stderr.write(pricingToString(pricing) + '\n');
         }
 
         fileStream.end();

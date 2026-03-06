@@ -1,67 +1,15 @@
-const fs = require('fs');
 const process = require('process');
-const eventsourceParser = require('eventsource-parser');
-const path = require('path');
-
-async function* getStream(response) {
-    const decoder = new TextDecoder('utf-8');
-    let eventsToYield = [];
-
-    const parser = eventsourceParser.createParser({
-        onEvent: (event) => {
-            eventsToYield.push(event);
-        }
-    });
-
-    for await (const chunk of response.body) {
-        const textChunk = decoder.decode(chunk, { stream: true });
-        parser.feed(textChunk);
-
-        for (const event of eventsToYield) {
-            yield event;
-        }
-
-        eventsToYield = [];
-    }
-}
+const {
+    getStream, unescapeMessages, escapeContent, escapeContentBlock,
+    calculatePricing, pricingToString, debugLogBody, sendRequest,
+} = require('./lib/send-prompt-common.js');
 
 function usageToPricing(pricing, usage) {
     const cachedTokens = usage.cache_read_input_tokens || 0;
-    const promptTokens = usage.input_tokens;
-    const costUncached = (promptTokens - cachedTokens) / 1000000 * pricing.cost_uncached;
-    const costCached = cachedTokens / 1000000 * pricing.cost_cached;
-    const costOutput = usage.output_tokens / 1000000 * pricing.cost_output;
-    const costTotal = costUncached + costCached + costOutput;
-    const requestsPerPenny = 1 / costTotal;
-
-    let cachedPercentage = 0;
-    if (promptTokens > 0) {
-        cachedPercentage = (cachedTokens / promptTokens) * 100;
-    }
-
-    return {
-        costTotal,
-        requestsPerPenny,
-        costUncached,
-        costCached,
-        costOutput,
-        cachedPercentage,
-        promptTokens,
-        cachedTokens,
-        completionTokens: usage.output_tokens,
-    };
-}
-
-function pricingToString(p) {
-    return `total cost: ${p.costTotal.toFixed(5)}¢, requests/penny: ${p.requestsPerPenny.toFixed(2)}, uncached in: ${p.costUncached.toFixed(5)}¢, cached in: ${p.costCached.toFixed(5)}¢, output: ${p.costOutput.toFixed(5)}¢, ${p.cachedPercentage.toFixed(1)}% cached`;
+    return calculatePricing(pricing, usage.input_tokens, cachedTokens, usage.output_tokens);
 }
 
 async function responseToOutput(response, fullConfig, outputStream) {
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API request failed: ${response.status} - ${errorText}`);
-    }
-
     const contentType = response.headers.get('content-type');
     const isStreaming = contentType && contentType.includes('text/event-stream');
     let pricingResult = null;
@@ -101,15 +49,11 @@ async function responseToOutput(response, fullConfig, outputStream) {
                     content = content.slice(0, -1);
                     pendingBrace = true;
                 }
-                content = content.replace(/\{\{/g, '\\{{');
-                content = content.replace(/\{%/g, '\\{%');
-                content = content.replace(/\n@/g, '\n\\@');
-                if (lastCharWasNewline && content[0] === '@') {
-                    content = '\\' + content;
-                }
+                const escaped = escapeContent(content, lastCharWasNewline);
+                content = escaped.content;
+                lastCharWasNewline = escaped.lastCharWasNewline;
                 if (content) {
                     outputStream.write(content);
-                    lastCharWasNewline = content.endsWith('\n');
                 }
             }
         }
@@ -122,28 +66,14 @@ async function responseToOutput(response, fullConfig, outputStream) {
             pricingResult = usageToPricing(fullConfig.pricing, json.usage);
         }
         let content = json.content?.[0]?.text || '';
-        content = content.replace(/\{\{/g, '\\{{');
-        content = content.replace(/\{%/g, '\\{%');
-        content = content.replace(/^@/gm, '\\@');
-        outputStream.write(content);
+        outputStream.write(escapeContentBlock(content));
     }
 
     return pricingResult;
 }
 
 async function sendPromptAnthropic(messages, resolvedConfig, outputStream = process.stdout, options = {}) {
-    const promptMessages = messages.map(message => {
-        let content = message.content;
-        if (content) {
-            content = content.replace(/\\\{\{/g, '{{');
-            content = content.replace(/\\\{%/g, '{%');
-            content = content.replace(/^\\@/gm, '@');
-        }
-        return {
-            role: message.role,
-            content: content
-        }
-    });
+    const promptMessages = unescapeMessages(messages);
 
     // Extract system messages into a top-level system parameter
     const systemMessages = promptMessages.filter(m => m.role === 'system');
@@ -165,20 +95,8 @@ async function sendPromptAnthropic(messages, resolvedConfig, outputStream = proc
         body.system = systemMessages.map(m => m.content).join('\n\n');
     }
 
-    if (resolvedConfig.debug_log_path) {
-        const debugDir = path.resolve(resolvedConfig.debug_log_path);
-        if (!fs.existsSync(debugDir)) {
-            fs.mkdirSync(debugDir, { recursive: true });
-        }
-        const debugPath = path.join(debugDir, 'last_request_payload.json');
-        fs.writeFileSync(debugPath, JSON.stringify(body, null, 2));
-    }
-    const response = await fetch(resolvedConfig.api_url, {
-        method: 'POST',
-        headers: resolvedConfig.api_call_headers,
-        body: JSON.stringify(body),
-        signal: options.signal,
-    });
+    debugLogBody(resolvedConfig, body);
+    const response = await sendRequest(resolvedConfig, body, options);
     return await responseToOutput(response, resolvedConfig, outputStream);
 }
 
