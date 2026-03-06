@@ -5,6 +5,7 @@ const path = require('path');
 const readline = require('readline');
 const { Command } = require('commander');
 const { precompletionLint } = require('./pre-completion-lint.js');
+const { postCompletionLint } = require('./post-completion-lint.js');
 const { applyTemplate } = require('./apply-template.js');
 const { injectInstructions } = require('./inject-instructions.js');
 const { formatNames } = require('./format-names.js');
@@ -16,7 +17,11 @@ const { combineAdjacentMessages } = require('./combine-messages.js');
 const pqutils = require('./lib/pq-utils.js');
 
 function displayConversation(messages) {
-    for (const msg of messages) {
+    for (let i = 0; i < messages.length; i++) {
+        const msg = messages[i];
+        if (i > 0) {
+            process.stdout.write('\n');
+        }
         if (msg.name) {
             process.stdout.write(`\x1b[36m@${msg.name}\x1b[0m\n`);
         }
@@ -64,7 +69,11 @@ async function runChatTurn(absolutePath, rl) {
     // Pre-completion lint
     const preOutput = precompletionLint(doc.messages, resolvedConfig);
     if (preOutput) {
+        // Write to file as-is
         fs.appendFileSync(absolutePath, preOutput);
+        // Display to console: strip leading whitespace, colorize @name tags
+        const displayOutput = preOutput.replace(/^\s+/, '\n').replace(/@(\S+)/g, '\x1b[36m@$1\x1b[0m');
+        process.stdout.write(displayOutput);
         content = fs.readFileSync(absolutePath, 'utf8');
         doc = pqutils.parseConfigAndMessages(content);
     }
@@ -111,7 +120,6 @@ async function runChatTurn(absolutePath, rl) {
     process.on('SIGINT', onSigint);
 
     try {
-        process.stdout.write('\x1b[36m');
         if (resolvedConfig.api_url && resolvedConfig.api_url.endsWith('/v1/completions')) {
             await sendRawPrompt(apiMessages, resolvedConfig, teeStream, process.stderr, templateLoaderPath, { signal: controller.signal });
         } else if (resolvedConfig.api_url && resolvedConfig.api_url.includes('anthropic.com')) {
@@ -119,9 +127,7 @@ async function runChatTurn(absolutePath, rl) {
         } else {
             await sendPrompt(apiMessages, resolvedConfig, teeStream, process.stderr, { signal: controller.signal });
         }
-        process.stdout.write('\x1b[0m');
     } catch (err) {
-        process.stdout.write('\x1b[0m');
         if (err.name === 'AbortError') {
             process.stderr.write('\n[cancelled]\n');
         } else {
@@ -134,7 +140,16 @@ async function runChatTurn(absolutePath, rl) {
         rl.resume();
     }
 
-    process.stdout.write('\n');
+    // Post-completion lint: add padding and next speaker tag
+    content = fs.readFileSync(absolutePath, 'utf8');
+    doc = pqutils.parseConfigAndMessages(content);
+    const postConfig = { ...resolvedConfig, user: resolvedConfig.user || resolvedConfig.roleplay_user };
+    const postOutput = postCompletionLint(doc.messages, postConfig);
+    if (postOutput) {
+        const displayOutput = postOutput.replace(/@(\S+)/g, '\x1b[36m@$1\x1b[0m');
+        process.stdout.write(displayOutput);
+        fs.appendFileSync(absolutePath, postOutput);
+    }
 }
 
 async function main() {
@@ -152,10 +167,18 @@ async function main() {
     }
 
     // Initial load to display conversation and determine user role
-    const content = fs.readFileSync(absolutePath, 'utf8');
-    const doc = pqutils.parseConfigAndMessages(content);
+    let content = fs.readFileSync(absolutePath, 'utf8');
+    let doc = pqutils.parseConfigAndMessages(content);
     const resolvedConfig = pqutils.resolveConfig(doc.config, path.dirname(absolutePath), {});
     const userName = resolvedConfig.roleplay_user || 'user';
+
+    // Run pre-completion lint on startup
+    const preOutput = precompletionLint(doc.messages, resolvedConfig);
+    if (preOutput) {
+        fs.appendFileSync(absolutePath, preOutput);
+        content = fs.readFileSync(absolutePath, 'utf8');
+        doc = pqutils.parseConfigAndMessages(content);
+    }
 
     // Display existing conversation
     displayConversation(doc.messages);
@@ -168,7 +191,7 @@ async function main() {
         output: process.stdout,
     });
 
-    const prompt = `\x1b[32m@${userName}>\x1b[0m `;
+    const prompt = '';
     let activeTurn = null;
 
     const promptForInput = () => {
@@ -185,9 +208,6 @@ async function main() {
             activeTurn = runChatTurn(absolutePath, rl);
             await activeTurn;
             activeTurn = null;
-
-            // Prepare file for next user input
-            ensureReadyForUserInput(absolutePath, userName);
 
             promptForInput();
         });
