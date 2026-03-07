@@ -212,6 +212,7 @@ async function main() {
     }
 
     let store;
+    let savePath = null;
     if (absolutePath.endsWith('.png')) {
         const dotConfig = await ensureRoleplayUser(pqutils.loadDotConfig());
         const templatePath = path.join(__dirname, 'templates', 'charcard-prompt-charcard-complete.jinja');
@@ -247,11 +248,13 @@ async function main() {
             }
             fs.writeFileSync(pqueenPath, pqueenContent + '\n', 'utf8');
             process.stderr.write(`Created ${pqueenPath}\n`);
+            savePath = pqueenPath;
             store = createFileStore(pqueenPath);
         }
     } else if (opts.save === false) {
         store = createMemoryStore(fs.readFileSync(absolutePath, 'utf8'));
     } else {
+        savePath = absolutePath;
         store = createFileStore(absolutePath);
     }
 
@@ -348,7 +351,10 @@ async function main() {
         if (activeTurn) {
             await activeTurn;
         }
-        console.log('\nGoodbye!');
+        if (savePath) {
+            process.stderr.write(`\nSaved to ${savePath}\n`);
+        }
+        console.log('Goodbye!');
         process.exit(0);
     });
 
