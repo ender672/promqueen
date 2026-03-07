@@ -7,9 +7,16 @@ const { Command } = require('commander');
 const { precompletionLint } = require('./pre-completion-lint.js');
 const { postCompletionLint } = require('./post-completion-lint.js');
 const { preparePrompt, dispatchSendPrompt } = require('./lib/pipeline.js');
+const { pricingToString } = require('./lib/send-prompt-common.js');
 const { extractAiCardData } = require('./lib/card-utils.js');
 const { createChatmlPrompt } = require('./charcard-png-to-txt.js');
 const pqutils = require('./lib/pq-utils.js');
+
+function writeStatusLine(text) {
+    const cols = process.stdout.columns || 80;
+    const padded = text.padEnd(cols).slice(0, cols);
+    process.stdout.write(`\x1b[7m${padded}\x1b[0m\n`);
+}
 
 function displayConversation(messages) {
     for (let i = 0; i < messages.length; i++) {
@@ -77,7 +84,7 @@ function ensureReadyForUserInput(store, userName) {
     store.append(padding + `@${userName}\n`);
 }
 
-async function runChatTurn(store, cwd, rl) {
+async function runChatTurn(store, cwd, rl, opts) {
     const templateLoaderPath = cwd;
 
     // Re-read and re-parse each turn to pick up any external edits
@@ -117,8 +124,9 @@ async function runChatTurn(store, cwd, rl) {
     rl.pause();
     process.on('SIGINT', onSigint);
 
+    let pricingResult;
     try {
-        await dispatchSendPrompt(apiMessages, resolvedConfig, teeStream, templateLoaderPath, { signal: controller.signal });
+        pricingResult = await dispatchSendPrompt(apiMessages, resolvedConfig, teeStream, templateLoaderPath, { signal: controller.signal });
     } catch (err) {
         if (err.name === 'AbortError') {
             process.stderr.write('\n[cancelled]\n');
@@ -132,6 +140,11 @@ async function runChatTurn(store, cwd, rl) {
         rl.resume();
     }
 
+    if (opts.status) {
+        process.stdout.write('\n');
+        writeStatusLine(pricingResult ? pricingToString(pricingResult) : 'no pricing data');
+    }
+
     // Post-completion lint: add padding and next speaker tag
     content = store.read();
     doc = pqutils.parseConfigAndMessages(content);
@@ -142,6 +155,8 @@ async function runChatTurn(store, cwd, rl) {
         process.stdout.write(displayOutput);
         store.append(postOutput);
     }
+
+    return pricingResult;
 }
 
 async function main() {
@@ -149,6 +164,7 @@ async function main() {
     program
         .argument('<file>', 'path to a .pqueen file or character card .png')
         .option('--no-save', 'do not save changes to the .pqueen file')
+        .option('--status', 'show a persistent status line with cost info')
         .parse();
 
     const filePath = program.args[0];
@@ -212,7 +228,7 @@ async function main() {
             store.append(line);
 
             // Run the pipeline for this turn
-            activeTurn = runChatTurn(store, cwd, rl);
+            activeTurn = runChatTurn(store, cwd, rl, opts);
             await activeTurn;
             activeTurn = null;
 
