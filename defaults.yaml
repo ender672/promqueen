@@ -3,6 +3,7 @@ roleplay_combined_group_chat: false
 dot_config_loading: true
 connection_profiles:
   claude-haiku-4-5:
+    requires_env: ANTHROPIC_API_KEY
     api_url: https://api.anthropic.com/v1/messages
     api_call_headers:
       content-type: application/json
@@ -17,6 +18,7 @@ connection_profiles:
       cost_cached: 10
       cost_output: 500
   gpt-4o-mini:
+    requires_env: OPENAI_API_KEY
     api_url: https://api.openai.com/v1/chat/completions
     api_call_headers:
       content-type: application/json
@@ -30,6 +32,7 @@ connection_profiles:
       cost_cached: 7.5
       cost_output: 60
   gemini-2.5-flash-lite:
+    requires_env: GOOGLE_API_KEY
     api_url: https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
     api_call_headers:
       content-type: application/json
@@ -43,6 +46,7 @@ connection_profiles:
       cost_cached: 1
       cost_output: 40
   deepseek-chat:
+    requires_env: DEEPSEEK_API_KEY
     api_url: https://api.deepseek.com/v1/chat/completions
     api_call_headers:
       content-type: application/json

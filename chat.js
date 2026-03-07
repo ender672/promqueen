@@ -12,6 +12,16 @@ const { extractAiCardData } = require('./lib/card-utils.js');
 const { createChatmlPrompt } = require('./charcard-png-to-txt.js');
 const pqutils = require('./lib/pq-utils.js');
 
+function filterUsableProfiles(profiles) {
+    const result = {};
+    for (const [name, profile] of Object.entries(profiles)) {
+        if (!profile.requires_env || process.env[profile.requires_env]) {
+            result[name] = profile;
+        }
+    }
+    return result;
+}
+
 function promptConnectionSelection(profiles) {
     const names = Object.keys(profiles);
     let selected = 0;
@@ -258,7 +268,15 @@ async function main() {
     const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, cliConfig);
 
     if (!resolvedConfig.connection) {
-        const selected = await promptConnectionSelection(resolvedConfig.connection_profiles);
+        const usableProfiles = filterUsableProfiles(resolvedConfig.connection_profiles);
+        const usableNames = Object.keys(usableProfiles);
+        if (usableNames.length === 0) {
+            console.error('No usable connection profiles found. Set the required environment variable for at least one profile.');
+            process.exit(1);
+        }
+        const selected = usableNames.length === 1
+            ? usableNames[0]
+            : await promptConnectionSelection(usableProfiles);
         cliConfig.connection = selected;
         // Re-resolve so the connection is validated
         pqutils.resolveConfig(doc.config, cwd, cliConfig);
