@@ -141,7 +141,9 @@ async function runChatTurn(store, cwd, rl, opts) {
     }
 
     if (opts.status) {
-        process.stdout.write('\n');
+        const cur = store.read();
+        const statusPad = cur.endsWith('\n') ? '\n' : '\n\n';
+        process.stdout.write(statusPad);
         writeStatusLine(pricingResult ? pricingToString(pricingResult) : 'no pricing data');
     }
 
@@ -151,7 +153,10 @@ async function runChatTurn(store, cwd, rl, opts) {
     const postConfig = { ...resolvedConfig, user: resolvedConfig.user || resolvedConfig.roleplay_user };
     const postOutput = postCompletionLint(doc.messages, postConfig);
     if (postOutput) {
-        const displayOutput = postOutput.replace(/@(\S+)/g, '\x1b[36m@$1\x1b[0m');
+        // When status is shown, it handles display spacing — strip stored padding from display
+        const displayOutput = opts.status
+            ? postOutput.replace(/^\n+/, '\n').replace(/@(\S+)/g, '\x1b[36m@$1\x1b[0m')
+            : postOutput.replace(/@(\S+)/g, '\x1b[36m@$1\x1b[0m');
         process.stdout.write(displayOutput);
         store.append(postOutput);
     }
