@@ -85,15 +85,13 @@ async function runChatTurn(store, cwd, rl) {
     let doc = pqutils.parseConfigAndMessages(content);
     const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, {});
 
-    // Pre-completion lint
+    // Pre-completion lint (mutates doc.messages, returns text to append)
     const preOutput = precompletionLint(doc.messages, resolvedConfig);
     if (preOutput) {
         store.append(preOutput);
         // Display to console: strip leading whitespace, colorize @name tags
         const displayOutput = preOutput.replace(/^\s+/, '\n').replace(/@(\S+)/g, '\x1b[36m@$1\x1b[0m');
         process.stdout.write(displayOutput);
-        content = store.read();
-        doc = pqutils.parseConfigAndMessages(content);
     }
 
     // Ephemeral transforms
@@ -183,12 +181,10 @@ async function main() {
     const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, {});
     const userName = resolvedConfig.roleplay_user || 'user';
 
-    // Run pre-completion lint on startup
+    // Run pre-completion lint on startup (mutates doc.messages, returns text to append)
     const preOutput = precompletionLint(doc.messages, resolvedConfig);
     if (preOutput) {
         store.append(preOutput);
-        content = store.read();
-        doc = pqutils.parseConfigAndMessages(content);
     }
 
     // Display existing conversation

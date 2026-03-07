@@ -21,16 +21,11 @@ function registerPreviewCommands(context) {
         const templateLoaderPath = path.dirname(document.uri.fsPath);
 
         try {
-            // 1. Parse, resolve config, and precompletion lint
-            let text = getDocumentText(document);
-            let parsedDoc = pqutils.parseConfigAndMessages(text);
+            // 1. Parse, resolve config, and precompletion lint (mutates parsedDoc.messages)
+            const text = getDocumentText(document);
+            const parsedDoc = pqutils.parseConfigAndMessages(text);
             const resolvedConfig = pqutils.resolveConfig(parsedDoc.config, projectRoot, {});
-            const preOutput = precompletionLint(parsedDoc.messages, resolvedConfig);
-
-            if (preOutput) {
-                text += preOutput;
-                parsedDoc = pqutils.parseConfigAndMessages(text);
-            }
+            precompletionLint(parsedDoc.messages, resolvedConfig);
 
             // 2. Prepare prompt
             const apiMessages = preparePrompt(parsedDoc.messages, resolvedConfig, templateLoaderPath, projectRoot);

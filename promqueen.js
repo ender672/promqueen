@@ -22,12 +22,10 @@ async function runPipeline(filePath, { cwd = process.cwd(), stderr = process.std
         // 2. Resolve config once for the entire pipeline
         const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, {});
 
-        // 3. Pre-completion lint (returns text to append)
+        // 3. Pre-completion lint (mutates doc.messages, returns text to append)
         const preOutput = precompletionLint(doc.messages, resolvedConfig);
         if (preOutput) {
             fileSystem.appendFileSync(absolutePath, preOutput);
-            content = fileSystem.readFileSync(absolutePath, 'utf8');
-            doc = pqutils.parseConfigAndMessages(content);
         }
 
         // 4. Ephemeral transforms (each copies messages before transforming)

@@ -61,6 +61,13 @@ function getFinalMessagePadding(message) {
   return '\n\n';
 }
 
+function assignRole(name, roleplayUser) {
+  if (name === null) return null;
+  if (pqutils.PROMPT_ROLES.includes(name)) return name;
+  if (name === roleplayUser) return 'user';
+  return 'assistant';
+}
+
 function precompletionLint(messages, resolvedConfig) {
   const user = resolvedConfig.roleplay_user;
 
@@ -69,13 +76,27 @@ function precompletionLint(messages, resolvedConfig) {
   const nameAutocomplete = getNameAutocomplete(messages, [user, ...pqutils.PROMPT_ROLES]);
   if (nameAutocomplete) {
     output += nameAutocomplete + '\n';
+    // Fix the last message's name and role in place
+    const last = messages.at(-1);
+    last.name += nameAutocomplete;
+    last.role = assignRole(last.name, user);
   } else if (messages && messages.length > 0) {
-    output += getFinalMessagePadding(messages.at(-1).content);
+    const padding = getFinalMessagePadding(messages.at(-1).content);
+    output += padding;
+    if (padding) {
+      messages.at(-1).content = (messages.at(-1).content || '') + padding;
+    }
   }
 
   const nextSpeaker = pqutils.guessNextSpeaker(messages, user);
   if (nextSpeaker) {
     output += `@${nextSpeaker}\n`;
+    messages.push({
+      name: nextSpeaker,
+      role: assignRole(nextSpeaker, user),
+      content: null,
+      decorators: []
+    });
   }
 
   return output;

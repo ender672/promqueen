@@ -36,17 +36,15 @@ async function executePipeline(document, progress, abortController, options) {
         isFirstEdit = false;
     };
 
-    // 1. Parse, resolve config, and precompletion lint
+    // 1. Parse, resolve config, and precompletion lint (mutates doc.messages)
     progress.report({ message: 'Running precompletion lint...' });
-    let text = getDocumentText(document);
-    let doc = pqutils.parseConfigAndMessages(text);
+    const text = getDocumentText(document);
+    const doc = pqutils.parseConfigAndMessages(text);
     const resolvedConfig = pqutils.resolveConfig(doc.config, projectRoot, {});
     const preOutput = precompletionLint(doc.messages, resolvedConfig);
 
     if (preOutput) {
         await applyEdit(preOutput);
-        text = getDocumentText(document);
-        doc = pqutils.parseConfigAndMessages(text);
     }
 
     // 2. Prepare prompt
