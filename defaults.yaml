@@ -73,6 +73,34 @@ connection_profiles:
       cost_uncached: 20
       cost_cached: 10
       cost_output: 50
+  ministral-3b:
+    requires_env: MISTRAL_API_KEY
+    api_url: https://api.mistral.ai/v1/chat/completions
+    api_call_headers:
+      content-type: application/json
+      authorization: Bearer $MISTRAL_API_KEY
+    api_call_props:
+      model: ministral-3b-latest
+      stream: true
+      max_tokens: 4096
+    pricing:
+      cost_uncached: 10
+      cost_cached: 5
+      cost_output: 10
+  moonshot-v1-8k:
+    requires_env: MOONSHOT_API_KEY
+    api_url: https://api.moonshot.ai/v1/chat/completions
+    api_call_headers:
+      content-type: application/json
+      authorization: Bearer $MOONSHOT_API_KEY
+    api_call_props:
+      model: moonshot-v1-8k
+      stream: true
+      max_tokens: 4096
+    pricing:
+      cost_uncached: 20
+      cost_cached: 5
+      cost_output: 200
   glm-4.7-flash:
     requires_env: ZAI_API_KEY
     api_url: https://api.z.ai/api/paas/v4/chat/completions
