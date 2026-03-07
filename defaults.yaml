@@ -1,7 +1,6 @@
 roleplay_user: user
 roleplay_combined_group_chat: false
 dot_config_loading: true
-connection: claude-haiku-4-5
 connection_profiles:
   claude-haiku-4-5:
     api_url: https://api.anthropic.com/v1/messages

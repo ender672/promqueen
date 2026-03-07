@@ -131,14 +131,12 @@ test('resolveConfig validates connection profile exists', () => {
   assert.strictEqual(conn.pricing.cost_uncached, 100);
 });
 
-test('resolveConfig throws when connection is missing', () => {
-  assert.throws(
-    () => resolveConfig({
-      dot_config_loading: false,
-      connection: null,
-    }, '/tmp'),
-    { message: /Missing required config: connection/ }
-  );
+test('resolveConfig allows missing connection', () => {
+  const result = resolveConfig({
+    dot_config_loading: false,
+    connection: null,
+  }, '/tmp');
+  assert.ok(!result.connection);
 });
 
 test('resolveConfig throws when connection profile does not exist', () => {
