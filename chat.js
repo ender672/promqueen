@@ -12,6 +12,61 @@ const { extractAiCardData } = require('./lib/card-utils.js');
 const { createChatmlPrompt } = require('./charcard-png-to-txt.js');
 const pqutils = require('./lib/pq-utils.js');
 
+function promptConnectionSelection(profiles) {
+    const names = Object.keys(profiles);
+    let selected = 0;
+
+    const draw = () => {
+        // Move cursor up to redraw (except first draw)
+        process.stderr.write(`\x1b[${names.length}A`);
+        for (let i = 0; i < names.length; i++) {
+            const marker = i === selected ? '\x1b[36m> ' : '  ';
+            const reset = i === selected ? '\x1b[0m' : '';
+            process.stderr.write(`\x1b[2K${marker}${names[i]}${reset}\n`);
+        }
+    };
+
+    return new Promise((resolve) => {
+        process.stderr.write('\nNo connection profile selected. Choose one:\n\n');
+        // Print initial blank lines so draw() can overwrite them
+        for (let i = 0; i < names.length; i++) {
+            process.stderr.write('\n');
+        }
+        draw();
+
+        const wasRaw = process.stdin.isRaw;
+        process.stdin.setRawMode(true);
+        process.stdin.resume();
+
+        const onData = (key) => {
+            // Ctrl+C
+            if (key[0] === 0x03) {
+                process.stdin.setRawMode(wasRaw);
+                process.stdin.removeListener('data', onData);
+                process.stderr.write('\n');
+                process.exit(0);
+            }
+            // Enter
+            if (key[0] === 0x0d) {
+                process.stdin.setRawMode(wasRaw);
+                process.stdin.removeListener('data', onData);
+                process.stdin.pause();
+                process.stderr.write('\n');
+                resolve(names[selected]);
+                return;
+            }
+            // Arrow keys: ESC [ A (up) / ESC [ B (down)
+            if (key[0] === 0x1b && key[1] === 0x5b) {
+                if (key[2] === 0x41) selected = (selected - 1 + names.length) % names.length; // up
+                if (key[2] === 0x42) selected = (selected + 1) % names.length;                // down
+                draw();
+            }
+        };
+
+        process.stdin.on('data', onData);
+    });
+}
+
 function writeStatusLine(text) {
     const cols = process.stdout.columns || 80;
     const padded = text.padEnd(cols).slice(0, cols);
@@ -84,13 +139,13 @@ function ensureReadyForUserInput(store, userName) {
     store.append(padding + `@${userName}\n`);
 }
 
-async function runChatTurn(store, cwd, rl, opts) {
+async function runChatTurn(store, cwd, rl, opts, cliConfig) {
     const templateLoaderPath = cwd;
 
     // Re-read and re-parse each turn to pick up any external edits
     let content = store.read();
     let doc = pqutils.parseConfigAndMessages(content);
-    const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, {});
+    const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, cliConfig);
 
     // Pre-completion lint (mutates doc.messages, returns text to append)
     const preOutput = precompletionLint(doc.messages, resolvedConfig);
@@ -199,7 +254,16 @@ async function main() {
     // Initial load to display conversation and determine user role
     let content = store.read();
     let doc = pqutils.parseConfigAndMessages(content);
-    const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, {});
+    let cliConfig = {};
+    const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, cliConfig);
+
+    if (!resolvedConfig.connection) {
+        const selected = await promptConnectionSelection(resolvedConfig.connection_profiles);
+        cliConfig.connection = selected;
+        // Re-resolve so the connection is validated
+        pqutils.resolveConfig(doc.config, cwd, cliConfig);
+    }
+
     const userName = resolvedConfig.roleplay_user || 'user';
 
     // Run pre-completion lint on startup (mutates doc.messages, returns text to append)
@@ -233,7 +297,7 @@ async function main() {
             store.append(line);
 
             // Run the pipeline for this turn
-            activeTurn = runChatTurn(store, cwd, rl, opts);
+            activeTurn = runChatTurn(store, cwd, rl, opts, cliConfig);
             await activeTurn;
             activeTurn = null;
 
