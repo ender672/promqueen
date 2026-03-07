@@ -15,7 +15,7 @@ const pqutils = require('./lib/pq-utils.js');
 function writeStatusLine(text) {
     const cols = process.stdout.columns || 80;
     const padded = text.padEnd(cols).slice(0, cols);
-    process.stdout.write(`\x1b[7m${padded}\x1b[0m\n`);
+    process.stdout.write(`\x1b[90m${padded}\x1b[0m\n`);
 }
 
 function displayConversation(messages) {

@@ -6,7 +6,7 @@ const {
 const { getConnectionProfile } = require('./lib/pq-utils.js');
 
 function usageToPricing(pricing, usage) {
-    const cachedTokens = usage["prompt_tokens_details"]["cached_tokens"];
+    const cachedTokens = usage["prompt_tokens_details"]?.["cached_tokens"] || 0;
     return calculatePricing(pricing, usage["prompt_tokens"], cachedTokens, usage["completion_tokens"]);
 }
 
@@ -86,6 +86,9 @@ async function sendPrompt(messages, resolvedConfig, outputStream = process.stdou
         ...connProfile.api_call_props,
         messages: promptMessages,
     };
+    if (body.stream && connProfile.pricing) {
+        body.stream_options = { include_usage: true };
+    }
     debugLogBody(resolvedConfig, body);
     const response = await sendRequest(connProfile, body, options);
     return await responseToOutput(response, connProfile, outputStream);
