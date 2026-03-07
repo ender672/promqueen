@@ -23,7 +23,7 @@ async function runPipeline(filePath, { cwd = process.cwd(), stderr = process.std
         const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, {});
 
         // 3. Pre-completion lint (mutates doc.messages, returns text to append)
-        const preOutput = precompletionLint(doc.messages, resolvedConfig);
+        const preOutput = precompletionLint(doc.messages, resolvedConfig, templateLoaderPath);
         if (preOutput) {
             fileSystem.appendFileSync(absolutePath, preOutput);
         }

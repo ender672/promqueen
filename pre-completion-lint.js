@@ -1,3 +1,4 @@
+const process = require('process');
 const pqutils = require('./lib/pq-utils.js');
 
 function getNameAutocomplete(history, extraNames) {
@@ -68,35 +69,94 @@ function assignRole(name, roleplayUser) {
   return 'assistant';
 }
 
-function precompletionLint(messages, resolvedConfig) {
+function getIncompleteDecorator(name) {
+  // Check if name contains an unclosed bracket: "Jim [partial"
+  const openIdx = name.lastIndexOf('[');
+  if (openIdx === -1) return null;
+  // If there's a closing bracket after the last open bracket, it's complete
+  if (name.indexOf(']', openIdx) !== -1) return null;
+  const charName = name.substring(0, openIdx).trim();
+  const partial = name.substring(openIdx + 1);
+  return { charName, partial };
+}
+
+function getDecoratorAutocomplete(messages, partial, configDecoratorNames) {
+  // Collect all decorators from history, most recent last
+  const historyDecorators = [];
+  for (const msg of messages) {
+    if (msg.decorators) {
+      for (const d of msg.decorators) {
+        historyDecorators.push(d);
+      }
+    }
+  }
+
+  // Filter history decorators to those matching the partial prefix
+  const historyMatches = historyDecorators.filter(d => d.startsWith(partial));
+
+  // Most recently used history match wins
+  if (historyMatches.length > 0) return historyMatches[historyMatches.length - 1];
+
+  // Fall back to config decorator names
+  const configMatch = configDecoratorNames.find(d => d.startsWith(partial));
+  if (configMatch) return configMatch;
+
+  return null;
+}
+
+function precompletionLint(messages, resolvedConfig, basePath = process.cwd()) {
   const user = resolvedConfig.roleplay_user;
 
   let output = '';
 
-  const nameAutocomplete = getNameAutocomplete(messages, [user, ...pqutils.PROMPT_ROLES]);
-  if (nameAutocomplete) {
-    output += nameAutocomplete + '\n';
-    // Fix the last message's name and role in place
-    const last = messages.at(-1);
-    last.name += nameAutocomplete;
-    last.role = assignRole(last.name, user);
-  } else if (messages && messages.length > 0) {
-    const padding = getFinalMessagePadding(messages.at(-1).content);
-    output += padding;
-    if (padding) {
-      messages.at(-1).content = (messages.at(-1).content || '') + padding;
-    }
-  }
+  // Check for incomplete decorator on the last message
+  const last = messages.length > 0 ? messages.at(-1) : null;
+  const incomplete = last ? getIncompleteDecorator(last.name) : null;
 
-  const nextSpeaker = pqutils.guessNextSpeaker(messages, user);
-  if (nextSpeaker) {
-    output += `@${nextSpeaker}\n`;
-    messages.push({
-      name: nextSpeaker,
-      role: assignRole(nextSpeaker, user),
-      content: null,
-      decorators: []
-    });
+  if (incomplete) {
+    const decoratorsMap = pqutils.loadDecorators(resolvedConfig, basePath);
+    const configDecoratorNames = Object.keys(decoratorsMap);
+    const match = getDecoratorAutocomplete(messages.slice(0, -1), incomplete.partial, configDecoratorNames);
+    if (match) {
+      output += match.substring(incomplete.partial.length) + ']\n';
+    } else {
+      output += ']\n';
+    }
+    // Fix the last message in place
+    last.name = incomplete.charName;
+    last.role = assignRole(last.name, user);
+    last.decorators = [match || incomplete.partial];
+    last.content = null;
+  } else if (last && last.decorators && last.decorators.length > 0 && last.content === null) {
+    // Complete decorator present, just add newline padding
+    output += '\n';
+    last.content = null;
+  } else {
+    const nameAutocomplete = getNameAutocomplete(messages, [user, ...pqutils.PROMPT_ROLES]);
+    if (nameAutocomplete) {
+      output += nameAutocomplete + '\n';
+      // Fix the last message's name and role in place
+      const last = messages.at(-1);
+      last.name += nameAutocomplete;
+      last.role = assignRole(last.name, user);
+    } else if (messages && messages.length > 0) {
+      const padding = getFinalMessagePadding(messages.at(-1).content);
+      output += padding;
+      if (padding) {
+        messages.at(-1).content = (messages.at(-1).content || '') + padding;
+      }
+    }
+
+    const nextSpeaker = pqutils.guessNextSpeaker(messages, user);
+    if (nextSpeaker) {
+      output += `@${nextSpeaker}\n`;
+      messages.push({
+        name: nextSpeaker,
+        role: assignRole(nextSpeaker, user),
+        content: null,
+        decorators: []
+      });
+    }
   }
 
   return output;

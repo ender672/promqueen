@@ -41,7 +41,7 @@ async function executePipeline(document, progress, abortController, options) {
     const text = getDocumentText(document);
     const doc = pqutils.parseConfigAndMessages(text);
     const resolvedConfig = pqutils.resolveConfig(doc.config, projectRoot, {});
-    const preOutput = precompletionLint(doc.messages, resolvedConfig);
+    const preOutput = precompletionLint(doc.messages, resolvedConfig, templateLoaderPath);
 
     if (preOutput) {
         await applyEdit(preOutput);
@@ -203,7 +203,8 @@ function registerPipelineCommands(context) {
             const text = getDocumentText(document);
             const doc = pqutils.parseConfigAndMessages(text);
             const resolvedConfig = pqutils.resolveConfig(doc.config, projectRoot, {});
-            const preOutput = precompletionLint(doc.messages, resolvedConfig);
+            const templateLoaderPath = path.dirname(document.uri.fsPath);
+            const preOutput = precompletionLint(doc.messages, resolvedConfig, templateLoaderPath);
 
             if (preOutput) {
                 await editor.edit(editBuilder => {

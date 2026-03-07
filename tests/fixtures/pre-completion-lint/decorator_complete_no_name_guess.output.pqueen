@@ -1,0 +1,14 @@
+---
+roleplay_user: User
+dot_config_loading: false
+---
+@User
+Hello
+
+@Jim [Cheerful]
+Hey there!
+
+@User
+What's up?
+
+@Jim [Cheerful]

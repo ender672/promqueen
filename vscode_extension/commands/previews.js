@@ -25,7 +25,7 @@ function registerPreviewCommands(context) {
             const text = getDocumentText(document);
             const parsedDoc = pqutils.parseConfigAndMessages(text);
             const resolvedConfig = pqutils.resolveConfig(parsedDoc.config, projectRoot, {});
-            precompletionLint(parsedDoc.messages, resolvedConfig);
+            precompletionLint(parsedDoc.messages, resolvedConfig, templateLoaderPath);
 
             // 2. Prepare prompt
             const apiMessages = preparePrompt(parsedDoc.messages, resolvedConfig, templateLoaderPath, projectRoot);

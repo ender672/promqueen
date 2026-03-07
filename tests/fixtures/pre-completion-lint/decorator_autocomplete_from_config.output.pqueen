@@ -1,0 +1,15 @@
+---
+roleplay_user: User
+dot_config_loading: false
+decorators: test_decorators.yaml
+---
+@User
+Hello
+
+@Jim
+Hey there!
+
+@User
+What's up?
+
+@Jim [Sarcastic]

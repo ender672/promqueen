@@ -27,7 +27,7 @@ inputFiles.forEach(inputFile => {
     const doc = parseConfigAndMessages(input);
     const baseDir = path.resolve(__dirname, '../..');
     const resolvedConfig = resolveConfig(doc.config, baseDir);
-    const output = precompletionLint(doc.messages, resolvedConfig);
+    const output = precompletionLint(doc.messages, resolvedConfig, fixturesDir);
     const expectedOutput = fs.readFileSync(outputPath, 'utf8');
 
     assert.strictEqual(input + output, expectedOutput, `Output for ${testName} should match expected output`);
