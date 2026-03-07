@@ -115,6 +115,13 @@ connection_profiles:
       cost_uncached: 20
       cost_cached: 5
       cost_output: 200
+  llama-cpp:
+    api_url: http://localhost:8080/v1/chat/completions
+    api_call_headers:
+      content-type: application/json
+    api_call_props:
+      stream: true
+      max_tokens: 4096
   glm-4.7-flash:
     requires_env: ZAI_API_KEY
     api_url: https://api.z.ai/api/paas/v4/chat/completions

@@ -22,24 +22,23 @@ function filterUsableProfiles(profiles) {
     return result;
 }
 
-function promptConnectionSelection(profiles) {
-    const names = Object.keys(profiles);
+function promptSelection(items, header) {
     let selected = 0;
 
     const draw = () => {
         // Move cursor up to redraw (except first draw)
-        process.stderr.write(`\x1b[${names.length}A`);
-        for (let i = 0; i < names.length; i++) {
+        process.stderr.write(`\x1b[${items.length}A`);
+        for (let i = 0; i < items.length; i++) {
             const marker = i === selected ? '\x1b[36m> ' : '  ';
             const reset = i === selected ? '\x1b[0m' : '';
-            process.stderr.write(`\x1b[2K${marker}${names[i]}${reset}\n`);
+            process.stderr.write(`\x1b[2K${marker}${items[i]}${reset}\n`);
         }
     };
 
     return new Promise((resolve) => {
-        process.stderr.write('\nNo connection profile selected. Choose one:\n\n');
+        process.stderr.write(`\n${header}\n\n`);
         // Print initial blank lines so draw() can overwrite them
-        for (let i = 0; i < names.length; i++) {
+        for (let i = 0; i < items.length; i++) {
             process.stderr.write('\n');
         }
         draw();
@@ -62,19 +61,35 @@ function promptConnectionSelection(profiles) {
                 process.stdin.removeListener('data', onData);
                 process.stdin.pause();
                 process.stderr.write('\n');
-                resolve(names[selected]);
+                resolve(items[selected]);
                 return;
             }
             // Arrow keys: ESC [ A (up) / ESC [ B (down)
             if (key[0] === 0x1b && key[1] === 0x5b) {
-                if (key[2] === 0x41) selected = (selected - 1 + names.length) % names.length; // up
-                if (key[2] === 0x42) selected = (selected + 1) % names.length;                // down
+                if (key[2] === 0x41) selected = (selected - 1 + items.length) % items.length; // up
+                if (key[2] === 0x42) selected = (selected + 1) % items.length;                // down
                 draw();
             }
         };
 
         process.stdin.on('data', onData);
     });
+}
+
+async function fetchModelList(profile) {
+    const modelsUrl = profile.api_url.replace(/\/chat\/completions$/, '/models');
+    const headers = pqutils.expandEnvVars(profile.api_call_headers);
+
+    const response = await fetch(modelsUrl, { headers });
+    if (!response.ok) {
+        throw new Error(`Failed to fetch models from ${modelsUrl}: ${response.status} ${response.statusText}`);
+    }
+    const body = await response.json();
+    const models = body.data || body;
+    if (!Array.isArray(models)) {
+        throw new Error(`Unexpected response from ${modelsUrl}: expected array of models`);
+    }
+    return models.map(m => m.id).sort();
 }
 
 function writeStatusLine(text) {
@@ -277,10 +292,36 @@ async function main() {
         }
         const selected = usableNames.length === 1
             ? usableNames[0]
-            : await promptConnectionSelection(usableProfiles);
+            : await promptSelection(usableNames, 'No connection profile selected. Choose one:');
         cliConfig.connection = selected;
         // Re-resolve so the connection is validated
         pqutils.resolveConfig(doc.config, cwd, cliConfig);
+    }
+
+    // If the selected profile doesn't specify a model, fetch available models and prompt
+    const activeConfig = pqutils.resolveConfig(doc.config, cwd, cliConfig);
+    const connectionName = activeConfig.connection;
+    const profile = pqutils.getConnectionProfile(activeConfig);
+    if (!profile.api_call_props || !profile.api_call_props.model) {
+        process.stderr.write(`\nFetching models from ${connectionName}...\n`);
+        try {
+            const modelIds = await fetchModelList(profile);
+            if (modelIds.length === 0) {
+                console.error('No models returned by the API.');
+                process.exit(1);
+            }
+            const selectedModel = modelIds.length === 1
+                ? modelIds[0]
+                : await promptSelection(modelIds, 'Select a model:');
+            // Inject the selected model into the connection profile
+            if (!cliConfig.connection_profiles) cliConfig.connection_profiles = {};
+            cliConfig.connection_profiles[connectionName] = {
+                api_call_props: { model: selectedModel }
+            };
+        } catch (err) {
+            console.error(`Failed to fetch models: ${err.message}`);
+            process.exit(1);
+        }
     }
 
     const userName = resolvedConfig.roleplay_user || 'user';

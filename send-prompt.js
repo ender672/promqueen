@@ -29,7 +29,7 @@ async function responseToOutput(response, connProfile, outputStream) {
                 pricingResult = usageToPricing(connProfile.pricing, json.usage);
             }
 
-            let content = json.choices[0]?.delta?.content || '';
+            let content = json.choices?.[0]?.delta?.content || '';
             if (content && isFirstEvent) {
                 isFirstEvent = false;
                 if (content[0] == "\n" || content[0] == " ") {
