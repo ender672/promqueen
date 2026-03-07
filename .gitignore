@@ -3,6 +3,7 @@
 /node_modules
 /vscode_extension/node_modules
 /vscode_extension/dist
+/vscode_extension/defaults.yaml
 /vscode_extension/promqueen-extension-*.vsix
 /not-for-coding-agents
 /.chat.pqueen
