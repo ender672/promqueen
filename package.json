@@ -16,6 +16,7 @@
     "charcard-png-to-openings": "charcard-png-to-openings.js",
     "charcard-png-get-field": "charcard-png-get-field.js",
     "pqueen-chat": "chat.js",
+    "pqueen-setup": "setup.js",
     "pqueen-apply-lorebook": "apply-lorebook.js",
     "pqueen-rp-to-html": "rp-to-html.js",
     "pqueen-send-raw-prompt": "send-raw-prompt.js",

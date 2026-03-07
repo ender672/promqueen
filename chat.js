@@ -13,16 +13,7 @@ const { extractAiCardData } = require('./lib/card-utils.js');
 const { renderCharcardTemplate } = require('./charcard-png-to-txt.js');
 const yaml = require('js-yaml');
 const pqutils = require('./lib/pq-utils.js');
-
-function promptTextInput(question) {
-    return new Promise((resolve) => {
-        const rl = readline.createInterface({ input: process.stdin, output: process.stderr });
-        rl.question(question, (answer) => {
-            rl.close();
-            resolve(answer.trim());
-        });
-    });
-}
+const { promptTextInput, promptSelection, filterUsableProfiles, fetchModelList } = require('./lib/tui.js');
 
 async function ensureRoleplayUser(dotConfig) {
     if (dotConfig.roleplay_user) return dotConfig;
@@ -47,122 +38,6 @@ async function ensureRoleplayUser(dotConfig) {
     process.stderr.write(`Saved roleplay_user "${name}" to ${dotConfigPath}\n`);
 
     return dotConfig;
-}
-
-function filterUsableProfiles(profiles) {
-    const result = {};
-    for (const [name, profile] of Object.entries(profiles)) {
-        if (!profile.requires_env || process.env[profile.requires_env]) {
-            result[name] = profile;
-        }
-    }
-    return result;
-}
-
-function promptSelection(items, header, { previews } = {}) {
-    let selected = 0;
-    const cols = process.stderr.columns || 80;
-    const maxPreviewLines = 12;
-
-    function wrapText(text, width) {
-        const lines = [];
-        for (const rawLine of text.split('\n')) {
-            if (rawLine.length <= width) {
-                lines.push(rawLine);
-            } else {
-                for (let i = 0; i < rawLine.length; i += width) {
-                    lines.push(rawLine.slice(i, i + width));
-                }
-            }
-        }
-        return lines;
-    }
-
-    function getPreviewLines() {
-        if (!previews) return [];
-        const wrapped = wrapText(previews[selected], cols - 2);
-        const truncated = wrapped.slice(0, maxPreviewLines);
-        if (wrapped.length > maxPreviewLines) truncated.push('...');
-        return truncated;
-    }
-
-    // Fixed total height: items + separator + maxPreviewLines
-    const totalLines = items.length + (previews ? 1 + maxPreviewLines : 0);
-
-    const draw = () => {
-        // Move cursor up to redraw
-        process.stderr.write(`\x1b[${totalLines}A`);
-
-        for (let i = 0; i < items.length; i++) {
-            const marker = i === selected ? '\x1b[36m> ' : '  ';
-            const reset = i === selected ? '\x1b[0m' : '';
-            process.stderr.write(`\x1b[2K${marker}${items[i]}${reset}\n`);
-        }
-
-        if (previews) {
-            const previewLines = getPreviewLines();
-            process.stderr.write(`\x1b[2K\x1b[90m${'─'.repeat(Math.min(40, cols))}\x1b[0m\n`);
-            for (let i = 0; i < maxPreviewLines; i++) {
-                process.stderr.write(`\x1b[2K${i < previewLines.length ? '  ' + previewLines[i] : ''}\n`);
-            }
-        }
-    };
-
-    return new Promise((resolve) => {
-        process.stderr.write(`\n${header}\n\n`);
-        // Print initial blank lines so draw() can overwrite them
-        for (let i = 0; i < totalLines; i++) {
-            process.stderr.write('\n');
-        }
-        draw();
-
-        const wasRaw = process.stdin.isRaw;
-        process.stdin.setRawMode(true);
-        process.stdin.resume();
-
-        const onData = (key) => {
-            // Ctrl+C
-            if (key[0] === 0x03) {
-                process.stdin.setRawMode(wasRaw);
-                process.stdin.removeListener('data', onData);
-                process.stderr.write('\n');
-                process.exit(0);
-            }
-            // Enter
-            if (key[0] === 0x0d) {
-                process.stdin.setRawMode(wasRaw);
-                process.stdin.removeListener('data', onData);
-                process.stdin.pause();
-                process.stderr.write('\n');
-                resolve(selected);
-                return;
-            }
-            // Arrow keys: ESC [ A (up) / ESC [ B (down)
-            if (key[0] === 0x1b && key[1] === 0x5b) {
-                if (key[2] === 0x41) selected = (selected - 1 + items.length) % items.length; // up
-                if (key[2] === 0x42) selected = (selected + 1) % items.length;                // down
-                draw();
-            }
-        };
-
-        process.stdin.on('data', onData);
-    });
-}
-
-async function fetchModelList(profile) {
-    const modelsUrl = profile.api_url.replace(/\/chat\/completions$/, '/models');
-    const headers = pqutils.expandEnvVars(profile.api_call_headers);
-
-    const response = await fetch(modelsUrl, { headers });
-    if (!response.ok) {
-        throw new Error(`Failed to fetch models from ${modelsUrl}: ${response.status} ${response.statusText}`);
-    }
-    const body = await response.json();
-    const models = body.data || body;
-    if (!Array.isArray(models)) {
-        throw new Error(`Unexpected response from ${modelsUrl}: expected array of models`);
-    }
-    return models.map(m => m.id).sort();
 }
 
 function writeStatusLine(text) {
