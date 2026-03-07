@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const readline = require('readline');
 const { Command } = require('commander');
 const { precompletionLint } = require('./pre-completion-lint.js');
@@ -10,7 +11,43 @@ const { preparePrompt, dispatchSendPrompt } = require('./lib/pipeline.js');
 const { pricingToString } = require('./lib/send-prompt-common.js');
 const { extractAiCardData } = require('./lib/card-utils.js');
 const { renderCharcardTemplate } = require('./charcard-png-to-txt.js');
+const yaml = require('js-yaml');
 const pqutils = require('./lib/pq-utils.js');
+
+function promptTextInput(question) {
+    return new Promise((resolve) => {
+        const rl = readline.createInterface({ input: process.stdin, output: process.stderr });
+        rl.question(question, (answer) => {
+            rl.close();
+            resolve(answer.trim());
+        });
+    });
+}
+
+async function ensureRoleplayUser(dotConfig) {
+    if (dotConfig.roleplay_user) return dotConfig;
+
+    const dotConfigPath = path.join(os.homedir(), '.promqueen');
+    const name = await promptTextInput('Enter your roleplay username: ');
+    if (!name) {
+        console.error('A roleplay username is required for character card chats.');
+        process.exit(1);
+    }
+
+    dotConfig.roleplay_user = name;
+
+    // Read existing file content (if any) and merge, or create new
+    let existing = {};
+    if (fs.existsSync(dotConfigPath)) {
+        existing = yaml.load(fs.readFileSync(dotConfigPath, 'utf8')) || {};
+    }
+    existing.roleplay_user = name;
+
+    fs.writeFileSync(dotConfigPath, yaml.dump(existing), 'utf8');
+    process.stderr.write(`Saved roleplay_user "${name}" to ${dotConfigPath}\n`);
+
+    return dotConfig;
+}
 
 function filterUsableProfiles(profiles) {
     const result = {};
@@ -22,23 +59,59 @@ function filterUsableProfiles(profiles) {
     return result;
 }
 
-function promptSelection(items, header) {
+function promptSelection(items, header, { previews } = {}) {
     let selected = 0;
+    const cols = process.stderr.columns || 80;
+    const maxPreviewLines = 12;
+
+    function wrapText(text, width) {
+        const lines = [];
+        for (const rawLine of text.split('\n')) {
+            if (rawLine.length <= width) {
+                lines.push(rawLine);
+            } else {
+                for (let i = 0; i < rawLine.length; i += width) {
+                    lines.push(rawLine.slice(i, i + width));
+                }
+            }
+        }
+        return lines;
+    }
+
+    function getPreviewLines() {
+        if (!previews) return [];
+        const wrapped = wrapText(previews[selected], cols - 2);
+        const truncated = wrapped.slice(0, maxPreviewLines);
+        if (wrapped.length > maxPreviewLines) truncated.push('...');
+        return truncated;
+    }
+
+    // Fixed total height: items + separator + maxPreviewLines
+    const totalLines = items.length + (previews ? 1 + maxPreviewLines : 0);
 
     const draw = () => {
-        // Move cursor up to redraw (except first draw)
-        process.stderr.write(`\x1b[${items.length}A`);
+        // Move cursor up to redraw
+        process.stderr.write(`\x1b[${totalLines}A`);
+
         for (let i = 0; i < items.length; i++) {
             const marker = i === selected ? '\x1b[36m> ' : '  ';
             const reset = i === selected ? '\x1b[0m' : '';
             process.stderr.write(`\x1b[2K${marker}${items[i]}${reset}\n`);
+        }
+
+        if (previews) {
+            const previewLines = getPreviewLines();
+            process.stderr.write(`\x1b[2K\x1b[90m${'─'.repeat(Math.min(40, cols))}\x1b[0m\n`);
+            for (let i = 0; i < maxPreviewLines; i++) {
+                process.stderr.write(`\x1b[2K${i < previewLines.length ? '  ' + previewLines[i] : ''}\n`);
+            }
         }
     };
 
     return new Promise((resolve) => {
         process.stderr.write(`\n${header}\n\n`);
         // Print initial blank lines so draw() can overwrite them
-        for (let i = 0; i < items.length; i++) {
+        for (let i = 0; i < totalLines; i++) {
             process.stderr.write('\n');
         }
         draw();
@@ -61,7 +134,7 @@ function promptSelection(items, header) {
                 process.stdin.removeListener('data', onData);
                 process.stdin.pause();
                 process.stderr.write('\n');
-                resolve(items[selected]);
+                resolve(selected);
                 return;
             }
             // Arrow keys: ESC [ A (up) / ESC [ B (down)
@@ -265,11 +338,25 @@ async function main() {
 
     let store;
     if (absolutePath.endsWith('.png')) {
-        const dotConfig = pqutils.loadDotConfig();
+        const dotConfig = await ensureRoleplayUser(pqutils.loadDotConfig());
         const templatePath = path.join(__dirname, 'templates', 'charcard-prompt-charcard-complete.jinja');
         const templateText = fs.readFileSync(templatePath, 'utf8');
         const aiCardData = extractAiCardData(absolutePath);
-        const pqueenContent = renderCharcardTemplate(aiCardData, templateText, { roleplayUser: dotConfig.roleplay_user });
+
+        let altGreeting;
+        const alternateGreetings = aiCardData.alternate_greetings || [];
+        if (alternateGreetings.length > 0) {
+            const charName = (aiCardData.name || 'Character').trim();
+            const formatPreview = (text) => text.replaceAll('{{char}}', charName);
+            const labels = ['First Message', ...alternateGreetings.map((_, i) => `Alternate Greeting ${i + 1}`)];
+            const previews = [formatPreview(aiCardData.first_mes || ''), ...alternateGreetings.map(g => formatPreview(g))];
+            const selectedIdx = await promptSelection(labels, 'Please select your opening message:', { previews });
+            if (selectedIdx > 0) {
+                altGreeting = selectedIdx - 1;
+            }
+        }
+
+        const pqueenContent = renderCharcardTemplate(aiCardData, templateText, { altGreeting, roleplayUser: dotConfig.roleplay_user });
         store = createMemoryStore(pqueenContent + '\n');
     } else if (opts.save === false) {
         store = createMemoryStore(fs.readFileSync(absolutePath, 'utf8'));
@@ -290,10 +377,10 @@ async function main() {
             console.error('No usable connection profiles found. Set the required environment variable for at least one profile.');
             process.exit(1);
         }
-        const selected = usableNames.length === 1
-            ? usableNames[0]
+        const selectedIdx = usableNames.length === 1
+            ? 0
             : await promptSelection(usableNames, 'No connection profile selected. Choose one:');
-        cliConfig.connection = selected;
+        cliConfig.connection = usableNames[selectedIdx];
         // Re-resolve so the connection is validated
         pqutils.resolveConfig(doc.config, cwd, cliConfig);
     }
@@ -310,9 +397,10 @@ async function main() {
                 console.error('No models returned by the API.');
                 process.exit(1);
             }
-            const selectedModel = modelIds.length === 1
-                ? modelIds[0]
+            const selectedModelIdx = modelIds.length === 1
+                ? 0
                 : await promptSelection(modelIds, 'Select a model:');
+            const selectedModel = modelIds[selectedModelIdx];
             // Inject the selected model into the connection profile
             if (!cliConfig.connection_profiles) cliConfig.connection_profiles = {};
             cliConfig.connection_profiles[connectionName] = {
