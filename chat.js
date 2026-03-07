@@ -6,14 +6,7 @@ const readline = require('readline');
 const { Command } = require('commander');
 const { precompletionLint } = require('./pre-completion-lint.js');
 const { postCompletionLint } = require('./post-completion-lint.js');
-const { applyTemplate } = require('./apply-template.js');
-const { injectInstructions } = require('./inject-instructions.js');
-const { formatNames } = require('./format-names.js');
-const { sendPrompt } = require('./send-prompt.js');
-const { sendPromptAnthropic } = require('./send-prompt-anthropic.js');
-const { sendRawPrompt } = require('./send-raw-prompt.js');
-const { applyLorebook, resolveLorebookPath } = require('./apply-lorebook.js');
-const { combineAdjacentMessages } = require('./combine-messages.js');
+const { preparePrompt, dispatchSendPrompt } = require('./lib/pipeline.js');
 const { extractAiCardData } = require('./lib/card-utils.js');
 const { createChatmlPrompt } = require('./charcard-png-to-txt.js');
 const pqutils = require('./lib/pq-utils.js');
@@ -103,26 +96,8 @@ async function runChatTurn(store, cwd, rl) {
         doc = pqutils.parseConfigAndMessages(content);
     }
 
-    // Ephemeral transforms (clone to avoid mutating parsed data)
-    let apiMessages = structuredClone(doc.messages);
-
-    let lorebookPath = resolveLorebookPath(resolvedConfig, templateLoaderPath);
-    if (!lorebookPath) {
-        const defaultPath = path.resolve(templateLoaderPath, 'character_book.json');
-        if (fs.existsSync(defaultPath)) lorebookPath = defaultPath;
-    }
-    if (lorebookPath) {
-        const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
-        apiMessages = applyLorebook(apiMessages, resolvedConfig, lorebook);
-    }
-
-    apiMessages = applyTemplate(apiMessages, resolvedConfig, {
-        messageTemplateLoaderPath: templateLoaderPath, cwd
-    });
-
-    apiMessages = injectInstructions(apiMessages, resolvedConfig, cwd);
-    apiMessages = formatNames(apiMessages, resolvedConfig);
-    apiMessages = combineAdjacentMessages(apiMessages);
+    // Ephemeral transforms
+    const apiMessages = preparePrompt(doc.messages, resolvedConfig, templateLoaderPath, cwd);
 
     // Send to API — tee output to both stdout and store
     const appendStream = store.createAppendStream();
@@ -145,13 +120,7 @@ async function runChatTurn(store, cwd, rl) {
     process.on('SIGINT', onSigint);
 
     try {
-        if (resolvedConfig.api_url && resolvedConfig.api_url.endsWith('/v1/completions')) {
-            await sendRawPrompt(apiMessages, resolvedConfig, teeStream, templateLoaderPath, { signal: controller.signal });
-        } else if (resolvedConfig.api_url && resolvedConfig.api_url.includes('anthropic.com')) {
-            await sendPromptAnthropic(apiMessages, resolvedConfig, teeStream, { signal: controller.signal });
-        } else {
-            await sendPrompt(apiMessages, resolvedConfig, teeStream, { signal: controller.signal });
-        }
+        await dispatchSendPrompt(apiMessages, resolvedConfig, teeStream, templateLoaderPath, { signal: controller.signal });
     } catch (err) {
         if (err.name === 'AbortError') {
             process.stderr.write('\n[cancelled]\n');

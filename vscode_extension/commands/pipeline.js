@@ -1,11 +1,9 @@
 const vscode = require('vscode');
 const path = require('path');
 const { precompletionLint } = require('../../pre-completion-lint.js');
-const { sendPrompt } = require('../../send-prompt.js');
-const { sendPromptAnthropic } = require('../../send-prompt-anthropic.js');
-const { sendRawPrompt } = require('../../send-raw-prompt.js');
 const { pricingToString } = require('../../lib/send-prompt-common.js');
 const { postCompletionLint } = require('../../post-completion-lint.js');
+const { dispatchSendPrompt } = require('../../lib/pipeline.js');
 const pqutils = require('../../lib/pq-utils.js');
 const { getDocumentText, preparePrompt } = require('./helpers');
 
@@ -84,15 +82,7 @@ async function executePipeline(document, progress, abortController, options) {
         end: () => { }
     };
 
-    const sendOptions = { signal: abortController.signal };
-    let pricing;
-    if (resolvedConfig.api_url && resolvedConfig.api_url.endsWith('/v1/completions')) {
-        pricing = await sendRawPrompt(apiMessages, resolvedConfig, outputStream, templateLoaderPath, sendOptions);
-    } else if (resolvedConfig.api_url && resolvedConfig.api_url.includes('anthropic.com')) {
-        pricing = await sendPromptAnthropic(apiMessages, resolvedConfig, outputStream, sendOptions);
-    } else {
-        pricing = await sendPrompt(apiMessages, resolvedConfig, outputStream, sendOptions);
-    }
+    const pricing = await dispatchSendPrompt(apiMessages, resolvedConfig, outputStream, templateLoaderPath, { signal: abortController.signal });
     if (pricing) {
         errorStream.write(pricingToString(pricing) + '\n');
     }

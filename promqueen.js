@@ -3,16 +3,9 @@
 const fs = require('fs');
 const path = require('path');
 const { precompletionLint } = require('./pre-completion-lint.js');
-const { applyTemplate } = require('./apply-template.js');
-const { injectInstructions } = require('./inject-instructions.js');
-const { formatNames } = require('./format-names.js');
-const { sendPrompt } = require('./send-prompt.js');
-const { sendPromptAnthropic } = require('./send-prompt-anthropic.js');
-const { sendRawPrompt } = require('./send-raw-prompt.js');
 const { pricingToString } = require('./lib/send-prompt-common.js');
 const { postCompletionLint } = require('./post-completion-lint.js');
-const { applyLorebook, resolveLorebookPath } = require('./apply-lorebook.js');
-const { combineAdjacentMessages } = require('./combine-messages.js');
+const { preparePrompt, dispatchSendPrompt } = require('./lib/pipeline.js');
 const pqutils = require('./lib/pq-utils.js');
 
 async function runPipeline(filePath, { cwd = process.cwd(), stderr = process.stderr, fileSystem = fs, quiet = false } = {}) {
@@ -38,32 +31,11 @@ async function runPipeline(filePath, { cwd = process.cwd(), stderr = process.std
         }
 
         // 4. Ephemeral transforms (each copies messages before transforming)
-        let apiMessages = doc.messages;
-
-        const lorebookPath = resolveLorebookPath(resolvedConfig, templateLoaderPath);
-        if (lorebookPath) {
-            const lorebook = JSON.parse(fileSystem.readFileSync(lorebookPath, 'utf8'));
-            apiMessages = applyLorebook(apiMessages, resolvedConfig, lorebook);
-        }
-
-        apiMessages = applyTemplate(apiMessages, resolvedConfig, {
-            messageTemplateLoaderPath: templateLoaderPath, cwd
-        });
-
-        apiMessages = injectInstructions(apiMessages, resolvedConfig, cwd);
-        apiMessages = formatNames(apiMessages, resolvedConfig);
-        apiMessages = combineAdjacentMessages(apiMessages);
+        const apiMessages = preparePrompt(doc.messages, resolvedConfig, templateLoaderPath, cwd);
 
         // 5. Send to API (streams response to file)
         const fileStream = fileSystem.createWriteStream(absolutePath, { flags: 'a' });
-        let pricing;
-        if (resolvedConfig.api_url && resolvedConfig.api_url.endsWith('/v1/completions')) {
-            pricing = await sendRawPrompt(apiMessages, resolvedConfig, fileStream, templateLoaderPath);
-        } else if (resolvedConfig.api_url && resolvedConfig.api_url.includes('anthropic.com')) {
-            pricing = await sendPromptAnthropic(apiMessages, resolvedConfig, fileStream);
-        } else {
-            pricing = await sendPrompt(apiMessages, resolvedConfig, fileStream);
-        }
+        const pricing = await dispatchSendPrompt(apiMessages, resolvedConfig, fileStream, templateLoaderPath);
         if (pricing) {
             stderr.write(pricingToString(pricing) + '\n');
         }
