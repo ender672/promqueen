@@ -1,7 +1,10 @@
 ---
-api_url: https://api.deepseek.com/v1/chat/completions
-api_call_props:
-  model: deepseek-chat
+connection: test
+connection_profiles:
+  test:
+    api_url: https://api.deepseek.com/v1/chat/completions
+    api_call_props:
+      model: deepseek-chat
 dot_config_loading: false
 ---
 @user

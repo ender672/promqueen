@@ -3,13 +3,14 @@ const {
     getStream, unescapeMessages, escapeContent, escapeContentBlock,
     calculatePricing, pricingToString, debugLogBody, sendRequest,
 } = require('./lib/send-prompt-common.js');
+const { getConnectionProfile } = require('./lib/pq-utils.js');
 
 function usageToPricing(pricing, usage) {
     const cachedTokens = usage["prompt_tokens_details"]["cached_tokens"];
     return calculatePricing(pricing, usage["prompt_tokens"], cachedTokens, usage["completion_tokens"]);
 }
 
-async function responseToOutput(response, fullConfig, outputStream) {
+async function responseToOutput(response, connProfile, outputStream) {
     const contentType = response.headers.get('content-type');
     const isStreaming = contentType && contentType.includes('text/event-stream');
     let pricingResult = null;
@@ -24,8 +25,8 @@ async function responseToOutput(response, fullConfig, outputStream) {
             }
 
             const json = JSON.parse(event.data);
-            if (fullConfig.pricing && json.usage) {
-                pricingResult = usageToPricing(fullConfig.pricing, json.usage);
+            if (connProfile.pricing && json.usage) {
+                pricingResult = usageToPricing(connProfile.pricing, json.usage);
             }
 
             let content = json.choices[0]?.delta?.content || '';
@@ -57,8 +58,8 @@ async function responseToOutput(response, fullConfig, outputStream) {
         }
     } else {
         const json = await response.json();
-        if (fullConfig.pricing && json.usage) {
-            pricingResult = usageToPricing(fullConfig.pricing, json.usage);
+        if (connProfile.pricing && json.usage) {
+            pricingResult = usageToPricing(connProfile.pricing, json.usage);
         }
         let content = json.choices?.[0]?.message?.content || '';
         outputStream.write(escapeContentBlock(content));
@@ -68,6 +69,7 @@ async function responseToOutput(response, fullConfig, outputStream) {
 }
 
 async function sendPrompt(messages, resolvedConfig, outputStream = process.stdout, options = {}) {
+    const connProfile = getConnectionProfile(resolvedConfig);
     const promptMessages = unescapeMessages(messages);
 
     const lastMessage = promptMessages.at(-1);
@@ -81,12 +83,12 @@ async function sendPrompt(messages, resolvedConfig, outputStream = process.stdou
     }
 
     const body = {
-        ...resolvedConfig.api_call_props,
+        ...connProfile.api_call_props,
         messages: promptMessages,
     };
     debugLogBody(resolvedConfig, body);
-    const response = await sendRequest(resolvedConfig, body, options);
-    return await responseToOutput(response, resolvedConfig, outputStream);
+    const response = await sendRequest(connProfile, body, options);
+    return await responseToOutput(response, connProfile, outputStream);
 }
 
 module.exports = { sendPrompt, pricingToString };

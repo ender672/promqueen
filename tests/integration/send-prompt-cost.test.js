@@ -37,14 +37,19 @@ test('sendprompt returns pricing object when pricing and usage are present', asy
         const outputStream = new StringStream();
 
         const resolvedConfig = {
-            pricing: {
-                cost_uncached: 10,
-                cost_cached: 5,
-                cost_output: 20
+            connection: 'test',
+            connection_profiles: {
+                test: {
+                    pricing: {
+                        cost_uncached: 10,
+                        cost_cached: 5,
+                        cost_output: 20
+                    },
+                    api_url: 'http://example.com',
+                    api_call_headers: {},
+                    api_call_props: {},
+                }
             },
-            api_url: 'http://example.com',
-            api_call_headers: {},
-            api_call_props: {},
         };
 
         const messages = [{ role: 'user', content: 'hi' }];
@@ -90,14 +95,19 @@ test('sendprompt cost calculation with zero prompt tokens avoids division by zer
         const outputStream = new StringStream();
 
         const resolvedConfig = {
-            pricing: {
-                cost_uncached: 10,
-                cost_cached: 5,
-                cost_output: 20
+            connection: 'test',
+            connection_profiles: {
+                test: {
+                    pricing: {
+                        cost_uncached: 10,
+                        cost_cached: 5,
+                        cost_output: 20
+                    },
+                    api_url: 'http://example.com',
+                    api_call_headers: {},
+                    api_call_props: {},
+                }
             },
-            api_url: 'http://example.com',
-            api_call_headers: {},
-            api_call_props: {},
         };
 
         const messages = [{ role: 'user', content: 'hi' }];

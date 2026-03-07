@@ -1,7 +1,10 @@
 ---
-api_url: http://localhost:8080/v1/completions
-api_call_props:
-  model: local-model
+connection: test
+connection_profiles:
+  test:
+    api_url: http://localhost:8080/v1/completions
+    api_call_props:
+      model: local-model
 dot_config_loading: false
 ---
 @user

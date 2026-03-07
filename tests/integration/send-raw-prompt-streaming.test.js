@@ -60,7 +60,10 @@ function mockStreamingResponse(chunks) {
 }
 
 const promptText = `---
-api_url: http://dummy
+connection: test
+connection_profiles:
+  test:
+    api_url: http://dummy
 dot_config_loading: false
 ---
 @user

@@ -1,5 +1,19 @@
 roleplay_user: user
 roleplay_combined_group_chat: false
-api_call_headers: {}
-api_call_props: {}
 dot_config_loading: true
+connection: claude-haiku-4-5
+connection_profiles:
+  claude-haiku-4-5:
+    api_url: https://api.anthropic.com/v1/messages
+    api_call_headers:
+      content-type: application/json
+      x-api-key: $ANTHROPIC_API_KEY
+      anthropic-version: "2023-06-01"
+    api_call_props:
+      model: claude-haiku-4-5-20251001
+      stream: true
+      max_tokens: 4096
+    pricing:
+      cost_uncached: 100
+      cost_cached: 10
+      cost_output: 500

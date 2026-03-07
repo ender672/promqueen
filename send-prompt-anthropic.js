@@ -3,13 +3,14 @@ const {
     getStream, unescapeMessages, escapeContent, escapeContentBlock,
     calculatePricing, pricingToString, debugLogBody, sendRequest,
 } = require('./lib/send-prompt-common.js');
+const { getConnectionProfile } = require('./lib/pq-utils.js');
 
 function usageToPricing(pricing, usage) {
     const cachedTokens = usage.cache_read_input_tokens || 0;
     return calculatePricing(pricing, usage.input_tokens, cachedTokens, usage.output_tokens);
 }
 
-async function responseToOutput(response, fullConfig, outputStream) {
+async function responseToOutput(response, connProfile, outputStream) {
     const contentType = response.headers.get('content-type');
     const isStreaming = contentType && contentType.includes('text/event-stream');
     let pricingResult = null;
@@ -25,8 +26,8 @@ async function responseToOutput(response, fullConfig, outputStream) {
 
             const json = JSON.parse(event.data);
 
-            if (fullConfig.pricing && json.usage) {
-                pricingResult = usageToPricing(fullConfig.pricing, json.usage);
+            if (connProfile.pricing && json.usage) {
+                pricingResult = usageToPricing(connProfile.pricing, json.usage);
             }
 
             if (event.event !== 'content_block_delta') {
@@ -62,8 +63,8 @@ async function responseToOutput(response, fullConfig, outputStream) {
         }
     } else {
         const json = await response.json();
-        if (fullConfig.pricing && json.usage) {
-            pricingResult = usageToPricing(fullConfig.pricing, json.usage);
+        if (connProfile.pricing && json.usage) {
+            pricingResult = usageToPricing(connProfile.pricing, json.usage);
         }
         let content = json.content?.[0]?.text || '';
         outputStream.write(escapeContentBlock(content));
@@ -73,6 +74,7 @@ async function responseToOutput(response, fullConfig, outputStream) {
 }
 
 async function sendPromptAnthropic(messages, resolvedConfig, outputStream = process.stdout, options = {}) {
+    const connProfile = getConnectionProfile(resolvedConfig);
     const promptMessages = unescapeMessages(messages);
 
     // Extract system messages into a top-level system parameter
@@ -87,7 +89,7 @@ async function sendPromptAnthropic(messages, resolvedConfig, outputStream = proc
     }
 
     const body = {
-        ...resolvedConfig.api_call_props,
+        ...connProfile.api_call_props,
         messages: nonSystemMessages,
     };
 
@@ -96,8 +98,8 @@ async function sendPromptAnthropic(messages, resolvedConfig, outputStream = proc
     }
 
     debugLogBody(resolvedConfig, body);
-    const response = await sendRequest(resolvedConfig, body, options);
-    return await responseToOutput(response, resolvedConfig, outputStream);
+    const response = await sendRequest(connProfile, body, options);
+    return await responseToOutput(response, connProfile, outputStream);
 }
 
 module.exports = { sendPromptAnthropic, pricingToString };

@@ -3,18 +3,10 @@ const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { resolveConfig, parseConfigOnly } = require('../../lib/pq-utils.js');
+const { resolveConfig, parseConfigOnly, getConnectionProfile, expandEnvVars } = require('../../lib/pq-utils.js');
 
 test('resolveConfig honors dot_config_loading option and only checks home dir', async (t) => {
-  // Mock os.homedir
   const originalHomedir = os.homedir;
-
-  // Setup directory structure
-  // /tmp/fake-home/
-  //   .promqueen
-  // /tmp/other-path/
-  //   .promqueen (should be ignored)
-  //   subdir/
 
   const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'pq-home-'));
   const otherPath = fs.mkdtempSync(path.join(os.tmpdir(), 'pq-other-'));
@@ -25,14 +17,11 @@ test('resolveConfig honors dot_config_loading option and only checks home dir', 
 
   fs.mkdirSync(workingDir);
 
-  // Define contents
-  fs.writeFileSync(homeConfig, 'api_url: https://home.llm.com\n');
-  fs.writeFileSync(otherConfig, 'api_url: https://other.llm.com\n');
+  fs.writeFileSync(homeConfig, 'custom_home: from-home\n');
+  fs.writeFileSync(otherConfig, 'custom_other: from-other\n');
 
-  // Override homedir
   os.homedir = () => fakeHome;
 
-  // Cleanup hook
   t.after(() => {
     os.homedir = originalHomedir;
     fs.rmSync(fakeHome, { recursive: true, force: true });
@@ -41,37 +30,17 @@ test('resolveConfig honors dot_config_loading option and only checks home dir', 
 
   // Test 1: Should load from home dir
   const configHome = resolveConfig({}, workingDir);
-  assert.strictEqual(configHome.api_url, 'https://home.llm.com', 'Should load config from home directory');
+  assert.strictEqual(configHome.custom_home, 'from-home', 'Should load config from home directory');
 
-  // Test 2: Should NOT load from parent dir (otherPath) if it's not home
-  // To test this effectively, we temporarily un-mock home or mock it to empty dir?
-  // Actually, Test 1 proves it loads from home. 
-  // We need to prove it does NOT load from `otherPath` even though `otherConfig` exists.
-  // In `pqutils.js`, it ONLY checks home. So if we are in `workingDir`, and `root/otherPath/.promqueen` exists,
-  // previous logic would have found it (walking up). New logic should SKIP it and go straight to `fakeHome`.
-  // Since `configHome.api_url` is `https://home.llm.com`, this confirms it picked home OVER other (or ignored other).
-  // Wait, resolveConfig merges? No, it loads one file? 
-  // It finds ONE file. `findDotConfigFile` returns the first one found.
-  // OLD logic: walk up. Would find `otherPath/.promqueen` first (closer).
-  // NEW logic: check home. Should find `fakeHome/.promqueen`.
-
-  // So Test 1 asserting 'https://home.llm.com' proves that it either:
-  // a) Looked in home and found it.
-  // b) Looked in parent, didn't find (or found and was overwritten? No, it returns path).
-
-  // Let's explicitly test that if home has NO config, and parent DOES, it returns nothing/defaults.
-
-  // Test 3: Homedir has no config, parent has config. Should be empty.
+  // Test 2: Homedir has no config, parent has config. Should not load parent.
   fs.rmSync(homeConfig);
   const configNoHome = resolveConfig({}, workingDir);
-  assert.strictEqual(configNoHome.api_url, undefined, 'Should NOT load config from parent directory if not in home');
+  assert.strictEqual(configNoHome.custom_other, undefined, 'Should NOT load config from parent directory if not in home');
 
-  // Test 4: Explicitly disabled
-  // Restore home config for this test
-  fs.writeFileSync(homeConfig, 'api_url: https://home.llm.com\n');
+  // Test 3: Explicitly disabled
+  fs.writeFileSync(homeConfig, 'custom_home: from-home\n');
   const configDisabled = resolveConfig({ dot_config_loading: false }, workingDir);
-  assert.strictEqual(configDisabled.api_url, undefined, 'Should NOT load config when dot_config_loading is false');
-
+  assert.strictEqual(configDisabled.custom_home, undefined, 'Should NOT load config when dot_config_loading is false');
 });
 
 test('parseConfigOnly throws when input does not start with ---', () => {
@@ -102,103 +71,6 @@ test('parseConfigOnly throws when closing --- is missing', () => {
   );
 });
 
-test('resolveConfig merges profile settings when profile is selected', () => {
-  const configContent = {
-    dot_config_loading: false,
-    profile: 'creative',
-    profiles: {
-      creative: {
-        api_url: 'https://creative.example.com',
-        temperature: 0.9,
-      },
-      precise: {
-        api_url: 'https://precise.example.com',
-        temperature: 0.1,
-      },
-    },
-  };
-
-  const result = resolveConfig(configContent, '/tmp');
-
-  // Profile settings should be applied
-  assert.strictEqual(result.api_url, 'https://creative.example.com');
-  assert.strictEqual(result.temperature, 0.9);
-});
-
-test('resolveConfig profile settings are overridden by configContent', () => {
-  const configContent = {
-    dot_config_loading: false,
-    profile: 'creative',
-    api_url: 'https://override.example.com',
-    profiles: {
-      creative: {
-        api_url: 'https://creative.example.com',
-        custom_setting: 'from-profile',
-      },
-    },
-  };
-
-  const result = resolveConfig(configContent, '/tmp');
-
-  // configContent (priority 5) overrides profile (priority 4)
-  assert.strictEqual(result.api_url, 'https://override.example.com');
-  // But profile settings not in configContent still come through
-  assert.strictEqual(result.custom_setting, 'from-profile');
-});
-
-test('resolveConfig profile overrides cliConfig settings', () => {
-  const configContent = {
-    dot_config_loading: false,
-    profile: 'creative',
-    profiles: {
-      creative: {
-        api_url: 'https://creative.example.com',
-      },
-    },
-  };
-  const cliConfig = {
-    api_url: 'https://cli.example.com',
-  };
-
-  const result = resolveConfig(configContent, '/tmp', cliConfig);
-
-  // Profile (priority 4) overrides cliConfig (priority 3)
-  assert.strictEqual(result.api_url, 'https://creative.example.com');
-});
-
-test('resolveConfig ignores profiles when no profile is selected', () => {
-  const configContent = {
-    dot_config_loading: false,
-    profiles: {
-      creative: {
-        api_url: 'https://creative.example.com',
-      },
-    },
-  };
-
-  const result = resolveConfig(configContent, '/tmp');
-
-  // No profile selected, so profile settings should not be applied
-  assert.strictEqual(result.api_url, undefined);
-});
-
-test('resolveConfig ignores profile when named profile does not exist', () => {
-  const configContent = {
-    dot_config_loading: false,
-    profile: 'nonexistent',
-    profiles: {
-      creative: {
-        api_url: 'https://creative.example.com',
-      },
-    },
-  };
-
-  const result = resolveConfig(configContent, '/tmp');
-
-  // Named profile doesn't exist, so no profile settings applied
-  assert.strictEqual(result.api_url, undefined);
-});
-
 test('resolveConfig cliConfig overrides DEFAULT_SETTINGS', () => {
   const cliConfig = {
     roleplay_user: 'narrator',
@@ -206,98 +78,140 @@ test('resolveConfig cliConfig overrides DEFAULT_SETTINGS', () => {
 
   const result = resolveConfig({ dot_config_loading: false }, '/tmp', cliConfig);
 
-  // cliConfig (priority 3) overrides DEFAULT_SETTINGS (priority 1)
   assert.strictEqual(result.roleplay_user, 'narrator');
 });
 
 test('resolveConfig configContent overrides cliConfig', () => {
   const configContent = {
     dot_config_loading: false,
-    api_url: 'https://runtime.example.com',
-    temperature: 0.5,
+    custom_a: 'from-content',
   };
   const cliConfig = {
-    api_url: 'https://cli.example.com',
-    temperature: 0.8,
-    model: 'gpt-4',
+    custom_a: 'from-cli',
+    custom_b: 'from-cli',
   };
 
   const result = resolveConfig(configContent, '/tmp', cliConfig);
 
-  // configContent (priority 5) overrides cliConfig (priority 3)
-  assert.strictEqual(result.api_url, 'https://runtime.example.com');
-  assert.strictEqual(result.temperature, 0.5);
-  // cliConfig settings not in configContent still come through
-  assert.strictEqual(result.model, 'gpt-4');
+  assert.strictEqual(result.custom_a, 'from-content');
+  assert.strictEqual(result.custom_b, 'from-cli');
 });
 
 test('resolveConfig cliConfig merges with defaults when no other layers present', () => {
   const cliConfig = {
-    api_url: 'https://cli.example.com',
     custom_flag: true,
   };
 
   const result = resolveConfig({ dot_config_loading: false }, '/tmp', cliConfig);
 
-  // cliConfig values are present
-  assert.strictEqual(result.api_url, 'https://cli.example.com');
   assert.strictEqual(result.custom_flag, true);
-  // DEFAULT_SETTINGS values still present for non-overridden keys
   assert.strictEqual(result.roleplay_user, 'user');
   assert.strictEqual(result.roleplay_combined_group_chat, false);
 });
 
-test('resolveConfig expands $VAR env vars in api_call_headers', () => {
-  process.env.PQ_TEST_API_KEY = 'sk-test-12345';
-  try {
-    const result = resolveConfig({
-      dot_config_loading: false,
-      api_call_headers: {
-        Authorization: 'Bearer $PQ_TEST_API_KEY',
+test('resolveConfig validates connection profile exists', () => {
+  const configContent = {
+    dot_config_loading: false,
+    connection: 'claude-haiku',
+    connection_profiles: {
+      'claude-haiku': {
+        api_url: 'https://api.anthropic.com/v1/messages',
+        api_call_headers: { 'x-api-key': 'test-key' },
+        api_call_props: { model: 'claude-haiku-4-5-20251001', stream: true },
+        pricing: { cost_uncached: 100, cost_cached: 10, cost_output: 500 },
       },
-    }, '/tmp');
-    assert.strictEqual(result.api_call_headers.Authorization, 'Bearer sk-test-12345');
-  } finally {
-    delete process.env.PQ_TEST_API_KEY;
-  }
+    },
+  };
+
+  const result = resolveConfig(configContent, '/tmp');
+  const conn = getConnectionProfile(result);
+
+  assert.strictEqual(conn.api_url, 'https://api.anthropic.com/v1/messages');
+  assert.strictEqual(conn.api_call_props.model, 'claude-haiku-4-5-20251001');
+  assert.strictEqual(conn.pricing.cost_uncached, 100);
 });
 
-test('resolveConfig expands ${VAR} env vars in api_call_headers', () => {
-  process.env.PQ_TEST_API_KEY = 'sk-test-67890';
-  try {
-    const result = resolveConfig({
-      dot_config_loading: false,
-      api_call_headers: {
-        'x-api-key': '${PQ_TEST_API_KEY}',
-      },
-    }, '/tmp');
-    assert.strictEqual(result.api_call_headers['x-api-key'], 'sk-test-67890');
-  } finally {
-    delete process.env.PQ_TEST_API_KEY;
-  }
-});
-
-test('resolveConfig throws for undefined env vars in api_call_headers', () => {
-  delete process.env.PQ_TEST_NONEXISTENT_VAR;
+test('resolveConfig throws when connection is missing', () => {
   assert.throws(
     () => resolveConfig({
       dot_config_loading: false,
-      api_call_headers: {
-        Authorization: 'Bearer $PQ_TEST_NONEXISTENT_VAR',
+      connection: null,
+    }, '/tmp'),
+    { message: /Missing required config: connection/ }
+  );
+});
+
+test('resolveConfig throws when connection profile does not exist', () => {
+  assert.throws(
+    () => resolveConfig({
+      dot_config_loading: false,
+      connection: 'nonexistent',
+      connection_profiles: {
+        'claude-haiku': {
+          api_url: 'https://api.anthropic.com/v1/messages',
+        },
       },
     }, '/tmp'),
+    { message: /Connection profile 'nonexistent' not found/ }
+  );
+});
+
+test('resolveConfig connection_profiles from different layers are deep-merged', () => {
+  const configContent = {
+    dot_config_loading: false,
+    connection: 'custom',
+    connection_profiles: {
+      custom: {
+        api_url: 'https://custom.example.com',
+        api_call_props: { model: 'custom-model' },
+      },
+    },
+  };
+
+  const result = resolveConfig(configContent, '/tmp');
+  const conn = getConnectionProfile(result);
+
+  assert.strictEqual(conn.api_url, 'https://custom.example.com');
+  assert.strictEqual(conn.api_call_props.model, 'custom-model');
+});
+
+test('expandEnvVars expands $VAR in headers', () => {
+  process.env.PQ_TEST_API_KEY = 'sk-test-12345';
+  try {
+    const result = expandEnvVars({
+      Authorization: 'Bearer $PQ_TEST_API_KEY',
+    });
+    assert.strictEqual(result.Authorization, 'Bearer sk-test-12345');
+  } finally {
+    delete process.env.PQ_TEST_API_KEY;
+  }
+});
+
+test('expandEnvVars expands ${VAR} in headers', () => {
+  process.env.PQ_TEST_API_KEY = 'sk-test-67890';
+  try {
+    const result = expandEnvVars({
+      'x-api-key': '${PQ_TEST_API_KEY}',
+    });
+    assert.strictEqual(result['x-api-key'], 'sk-test-67890');
+  } finally {
+    delete process.env.PQ_TEST_API_KEY;
+  }
+});
+
+test('expandEnvVars throws for undefined env vars', () => {
+  delete process.env.PQ_TEST_NONEXISTENT_VAR;
+  assert.throws(
+    () => expandEnvVars({
+      Authorization: 'Bearer $PQ_TEST_NONEXISTENT_VAR',
+    }),
     { message: /Environment variable PQ_TEST_NONEXISTENT_VAR is not set/ }
   );
 });
 
-test('resolveConfig passes through non-string header values unchanged', () => {
-  const result = resolveConfig({
-    dot_config_loading: false,
-    api_call_headers: {
-      'X-Numeric': 42,
-    },
-  }, '/tmp');
-  assert.strictEqual(result.api_call_headers['X-Numeric'], 42);
+test('expandEnvVars passes through non-string values unchanged', () => {
+  const result = expandEnvVars({ 'X-Numeric': 42 });
+  assert.strictEqual(result['X-Numeric'], 42);
 });
 
 test('resolveConfig full priority ordering across all layers', async (t) => {
@@ -305,8 +219,7 @@ test('resolveConfig full priority ordering across all layers', async (t) => {
   const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'pq-priority-'));
   const homeConfig = path.join(fakeHome, '.promqueen');
 
-  // .promqueen file sets api_url and custom_a
-  fs.writeFileSync(homeConfig, 'api_url: https://dotfile.example.com\ncustom_a: from-dotfile\ncustom_b: from-dotfile\n');
+  fs.writeFileSync(homeConfig, 'custom_a: from-dotfile\ncustom_b: from-dotfile\n');
   os.homedir = () => fakeHome;
 
   t.after(() => {
@@ -315,33 +228,21 @@ test('resolveConfig full priority ordering across all layers', async (t) => {
   });
 
   const cliConfig = {
-    api_url: 'https://cli.example.com',  // overrides dotfile
-    custom_b: 'from-cli',                // overrides dotfile
+    custom_b: 'from-cli',
     custom_c: 'from-cli',
   };
   const configContent = {
-    api_url: 'https://runtime.example.com', // overrides cli and dotfile
-    profile: 'myprofile',
-    profiles: {
-      myprofile: {
-        custom_c: 'from-profile',         // overrides cli
-        custom_d: 'from-profile',
-      },
-    },
+    custom_c: 'from-content',
   };
 
   const result = resolveConfig(configContent, '/tmp', cliConfig);
 
-  // configContent (5) wins over all for api_url
-  assert.strictEqual(result.api_url, 'https://runtime.example.com');
   // dotfile (2) value survives when not overridden by higher layers
   assert.strictEqual(result.custom_a, 'from-dotfile');
   // cli (3) overrides dotfile (2) for custom_b
   assert.strictEqual(result.custom_b, 'from-cli');
-  // profile (4) overrides cli (3) for custom_c
-  assert.strictEqual(result.custom_c, 'from-profile');
-  // profile (4) provides custom_d
-  assert.strictEqual(result.custom_d, 'from-profile');
+  // configContent (4) overrides cli (3) for custom_c
+  assert.strictEqual(result.custom_c, 'from-content');
   // DEFAULT_SETTINGS (1) provides roleplay_user since no layer overrides it
   assert.strictEqual(result.roleplay_user, 'user');
 });

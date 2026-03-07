@@ -56,7 +56,10 @@ function mockStreamingResponse(chunks) {
 }
 
 const promptText = `---
-api_url: http://dummy
+connection: test
+connection_profiles:
+  test:
+    api_url: http://dummy
 dot_config_loading: false
 ---
 @user
@@ -169,13 +172,11 @@ test('sendprompt returns pricing on streaming response with usage', async () => 
     try {
         const outputStream = new StringStream();
 
-        const configWithPricing = {
-            ...resolved,
-            pricing: {
-                cost_uncached: 10,
-                cost_cached: 5,
-                cost_output: 20
-            }
+        const configWithPricing = structuredClone(resolved);
+        configWithPricing.connection_profiles.test.pricing = {
+            cost_uncached: 10,
+            cost_cached: 5,
+            cost_output: 20
         };
 
         const pricing = await sendPrompt(messages, configWithPricing, outputStream);

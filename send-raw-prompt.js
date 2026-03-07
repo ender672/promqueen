@@ -6,6 +6,7 @@ const {
     getStream, unescapeMessages, escapeContent, escapeContentBlock,
     calculatePricing, pricingToString, debugLogBody, sendRequest,
 } = require('./lib/send-prompt-common.js');
+const { getConnectionProfile } = require('./lib/pq-utils.js');
 
 function usageToPricing(pricing, usage) {
     const cachedTokens = usage["prompt_tokens_details"]["cached_tokens"];
@@ -34,7 +35,7 @@ function applyChatTemplate(messages, templateString, config) {
     return root.render(ctx);
 }
 
-async function responseToOutput(response, fullConfig, outputStream) {
+async function responseToOutput(response, connProfile, outputStream) {
     const contentType = response.headers.get('content-type');
     const isStreaming = contentType && contentType.includes('text/event-stream');
     let pricingResult = null;
@@ -49,8 +50,8 @@ async function responseToOutput(response, fullConfig, outputStream) {
             }
 
             const json = JSON.parse(event.data);
-            if (fullConfig.pricing && json.usage) {
-                pricingResult = usageToPricing(fullConfig.pricing, json.usage);
+            if (connProfile.pricing && json.usage) {
+                pricingResult = usageToPricing(connProfile.pricing, json.usage);
             }
 
             let content = json.choices[0]?.text || '';
@@ -82,8 +83,8 @@ async function responseToOutput(response, fullConfig, outputStream) {
         }
     } else {
         const json = await response.json();
-        if (fullConfig.pricing && json.usage) {
-            pricingResult = usageToPricing(fullConfig.pricing, json.usage);
+        if (connProfile.pricing && json.usage) {
+            pricingResult = usageToPricing(connProfile.pricing, json.usage);
         }
         let content = json.choices?.[0]?.text || '';
         outputStream.write(escapeContentBlock(content));
@@ -93,6 +94,7 @@ async function responseToOutput(response, fullConfig, outputStream) {
 }
 
 async function sendRawPrompt(messages, resolvedConfig, outputStream = process.stdout, fileBasePath = process.cwd(), options = {}) {
+    const connProfile = getConnectionProfile(resolvedConfig);
     const chatTemplatePath = resolvedConfig.chat_template_path;
     if (!chatTemplatePath) {
         throw new Error('chat_template_path is required for sendrawprompt (set via --chat-template, config file, or frontmatter)');
@@ -112,12 +114,12 @@ async function sendRawPrompt(messages, resolvedConfig, outputStream = process.st
     const promptString = applyChatTemplate(promptMessages, templateString, resolvedConfig);
 
     const body = {
-        ...resolvedConfig.api_call_props,
+        ...connProfile.api_call_props,
         prompt: promptString,
     };
     debugLogBody(resolvedConfig, body);
-    const response = await sendRequest(resolvedConfig, body, options);
-    return await responseToOutput(response, resolvedConfig, outputStream);
+    const response = await sendRequest(connProfile, body, options);
+    return await responseToOutput(response, connProfile, outputStream);
 }
 
 module.exports = { sendRawPrompt, pricingToString };
