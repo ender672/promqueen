@@ -1,9 +1,9 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { createChatmlPrompt } = require('../../charcard-png-to-txt.js');
+const { renderCharcardTemplate } = require('../../charcard-png-to-txt.js');
 
-test('createChatmlPrompt assembles description, personality, and scenario', () => {
-    const result = createChatmlPrompt({
+test('renderCharcardTemplate assembles description, personality, and scenario', () => {
+    const result = renderCharcardTemplate({
         name: 'Luna',
         description: 'A mysterious sorceress',
         personality: 'Wise and enigmatic',
@@ -16,8 +16,8 @@ test('createChatmlPrompt assembles description, personality, and scenario', () =
     );
 });
 
-test('createChatmlPrompt parses mes_example with <START> delimiters', () => {
-    const result = createChatmlPrompt({
+test('renderCharcardTemplate parses mes_example with <START> delimiters', () => {
+    const result = renderCharcardTemplate({
         name: 'Luna',
         description: 'A sorceress',
         mes_example: '<START>\nHello traveler\n<START>\nWelcome to my tower',
@@ -29,16 +29,16 @@ test('createChatmlPrompt parses mes_example with <START> delimiters', () => {
     );
 });
 
-test('createChatmlPrompt with missing optional fields', () => {
+test('renderCharcardTemplate with missing optional fields', () => {
     // Only description, no personality, no scenario, no mes_example
-    const descOnly = createChatmlPrompt({
+    const descOnly = renderCharcardTemplate({
         name: 'Luna',
         description: 'A sorceress',
     });
     assert.strictEqual(descOnly, 'A sorceress');
 
     // No personality
-    const noPersonality = createChatmlPrompt({
+    const noPersonality = renderCharcardTemplate({
         name: 'Luna',
         description: 'A sorceress',
         scenario: 'A dark forest',
@@ -46,7 +46,7 @@ test('createChatmlPrompt with missing optional fields', () => {
     assert.strictEqual(noPersonality, 'A sorceress\nScenario: A dark forest');
 
     // No scenario
-    const noScenario = createChatmlPrompt({
+    const noScenario = renderCharcardTemplate({
         name: 'Luna',
         description: 'A sorceress',
         personality: 'Wise',
@@ -54,7 +54,7 @@ test('createChatmlPrompt with missing optional fields', () => {
     assert.strictEqual(noScenario, 'A sorceress\nWise');
 
     // No description
-    const noDescription = createChatmlPrompt({
+    const noDescription = renderCharcardTemplate({
         name: 'Luna',
         personality: 'Wise',
         scenario: 'A dark forest',
@@ -62,16 +62,16 @@ test('createChatmlPrompt with missing optional fields', () => {
     assert.strictEqual(noDescription, 'Wise\nScenario: A dark forest');
 
     // All optional fields missing — only name provided
-    const nameOnly = createChatmlPrompt({ name: 'Luna' });
+    const nameOnly = renderCharcardTemplate({ name: 'Luna' });
     assert.strictEqual(nameOnly, '');
 
     // Empty object — name defaults to 'Character'
-    const empty = createChatmlPrompt({});
+    const empty = renderCharcardTemplate({});
     assert.strictEqual(empty, '');
 });
 
-test('createChatmlPrompt replaces {{char}} in the final output', () => {
-    const result = createChatmlPrompt({
+test('renderCharcardTemplate replaces {{char}} in the final output', () => {
+    const result = renderCharcardTemplate({
         name: 'Luna',
         description: '{{char}} is a mysterious sorceress',
         personality: '{{char}} is wise and enigmatic',
@@ -87,7 +87,7 @@ test('createChatmlPrompt replaces {{char}} in the final output', () => {
     assert.ok(result.includes('Luna waves hello'), 'mes_example should have name substituted');
 });
 
-test('createChatmlPrompt passes all charcard fields to template', () => {
+test('renderCharcardTemplate passes all charcard fields to template', () => {
     const { buildTemplateView } = require('../../charcard-png-to-txt.js');
     const view = buildTemplateView({
         name: 'Luna',

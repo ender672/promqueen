@@ -9,7 +9,7 @@ const { postCompletionLint } = require('./post-completion-lint.js');
 const { preparePrompt, dispatchSendPrompt } = require('./lib/pipeline.js');
 const { pricingToString } = require('./lib/send-prompt-common.js');
 const { extractAiCardData } = require('./lib/card-utils.js');
-const { createChatmlPrompt } = require('./charcard-png-to-txt.js');
+const { renderCharcardTemplate } = require('./charcard-png-to-txt.js');
 const pqutils = require('./lib/pq-utils.js');
 
 function filterUsableProfiles(profiles) {
@@ -269,7 +269,7 @@ async function main() {
         const templatePath = path.join(__dirname, 'templates', 'charcard-prompt-charcard-complete.jinja');
         const templateText = fs.readFileSync(templatePath, 'utf8');
         const aiCardData = extractAiCardData(absolutePath);
-        const pqueenContent = createChatmlPrompt(aiCardData, templateText, { roleplayUser: dotConfig.roleplay_user });
+        const pqueenContent = renderCharcardTemplate(aiCardData, templateText, { roleplayUser: dotConfig.roleplay_user });
         store = createMemoryStore(pqueenContent + '\n');
     } else if (opts.save === false) {
         store = createMemoryStore(fs.readFileSync(absolutePath, 'utf8'));

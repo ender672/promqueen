@@ -47,7 +47,7 @@ function buildTemplateView(characterData, { altGreeting } = {}) {
     return { charcard };
 }
 
-function createChatmlPrompt(characterData, templateText, { altGreeting, roleplayUser } = {}) {
+function renderCharcardTemplate(characterData, templateText, { altGreeting, roleplayUser } = {}) {
     if (!templateText) {
         templateText = fs.readFileSync(defaultTemplatePath, 'utf8');
     }
@@ -87,7 +87,7 @@ function main() {
     const dotConfig = loadDotConfig();
     const roleplayUser = dotConfig.roleplay_user;
     const aiCardData = extractAiCardData(pngPath);
-    const result = createChatmlPrompt(aiCardData, templateText, { altGreeting: opts.altGreeting, roleplayUser });
+    const result = renderCharcardTemplate(aiCardData, templateText, { altGreeting: opts.altGreeting, roleplayUser });
     process.stdout.write(result + "\n");
 }
 
@@ -95,4 +95,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { createChatmlPrompt, buildTemplateView };
+module.exports = { renderCharcardTemplate, buildTemplateView };
