@@ -87,6 +87,20 @@ connection_profiles:
       cost_uncached: 10
       cost_cached: 5
       cost_output: 10
+  command-r7b:
+    requires_env: COHERE_API_KEY
+    api_url: https://api.cohere.ai/compatibility/v1/chat/completions
+    api_call_headers:
+      content-type: application/json
+      authorization: Bearer $COHERE_API_KEY
+    api_call_props:
+      model: command-r7b-12-2024
+      stream: true
+      max_tokens: 4096
+    pricing:
+      cost_uncached: 3.75
+      cost_cached: 1.88
+      cost_output: 15
   moonshot-v1-8k:
     requires_env: MOONSHOT_API_KEY
     api_url: https://api.moonshot.ai/v1/chat/completions
