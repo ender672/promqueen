@@ -14,37 +14,37 @@ const BUILTIN_TEMPLATES = {
 const defaultTemplatePath = path.join(__dirname, 'templates', BUILTIN_TEMPLATES['char-sheet']);
 
 function buildTemplateView(characterData, { altGreeting } = {}) {
-    const name = (characterData.name || 'Character').trim();
+    const charcard = { ...characterData };
+    if (!charcard.name) charcard.name = 'Character';
+    charcard.name = charcard.name.trim();
 
-    const parts = [];
-    if (characterData.description) parts.push(characterData.description);
-    if (characterData.personality) parts.push(characterData.personality);
-    if (characterData.scenario) parts.push(`Scenario: ${characterData.scenario}`);
-
-    const examples = [];
-    if (characterData.mes_example) {
-        const parsed = characterData.mes_example
+    if (charcard.mes_example) {
+        charcard.mes_example = charcard.mes_example
             .split('<START>')
             .map(x => x.trim())
             .filter(x => x.length > 0);
-        examples.push(...parsed);
+    } else {
+        charcard.mes_example = [];
     }
 
-    let openingMessage = characterData.first_mes || '';
     if (altGreeting != null) {
-        const alts = characterData.alternate_greetings || [];
+        const alts = charcard.alternate_greetings || [];
         if (altGreeting < 0 || altGreeting >= alts.length) {
             throw new Error(`Alternate greeting ${altGreeting} out of range (${alts.length} available)`);
         }
-        openingMessage = alts[altGreeting];
+        charcard.first_mes = alts[altGreeting];
     }
 
-    return {
-        name,
-        parts: parts.map(p => p.replaceAll('{{char}}', name)),
-        examples: examples.map(e => e.replaceAll('{{char}}', name)),
-        opening_message: openingMessage.replaceAll('{{char}}', name),
-    };
+    // Replace {{char}} with the character name in all string fields
+    for (const [key, value] of Object.entries(charcard)) {
+        if (typeof value === 'string') {
+            charcard[key] = value.replaceAll('{{char}}', charcard.name);
+        } else if (Array.isArray(value)) {
+            charcard[key] = value.map(v => typeof v === 'string' ? v.replaceAll('{{char}}', charcard.name) : v);
+        }
+    }
+
+    return { charcard };
 }
 
 function createChatmlPrompt(characterData, templateText, { altGreeting, roleplayUser } = {}) {

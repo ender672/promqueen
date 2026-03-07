@@ -86,3 +86,24 @@ test('createChatmlPrompt replaces {{char}} in the final output', () => {
     assert.ok(result.includes('Luna stands in a dark forest'), 'scenario should have name substituted');
     assert.ok(result.includes('Luna waves hello'), 'mes_example should have name substituted');
 });
+
+test('createChatmlPrompt passes all charcard fields to template', () => {
+    const { buildTemplateView } = require('../../charcard-png-to-txt.js');
+    const view = buildTemplateView({
+        name: 'Luna',
+        description: 'A sorceress',
+        personality: 'Wise',
+        scenario: 'A forest',
+        first_mes: 'Hello there',
+        creator_notes: 'Test notes',
+        tags: ['fantasy', 'magic'],
+    });
+
+    assert.strictEqual(view.charcard.name, 'Luna');
+    assert.strictEqual(view.charcard.description, 'A sorceress');
+    assert.strictEqual(view.charcard.personality, 'Wise');
+    assert.strictEqual(view.charcard.scenario, 'A forest');
+    assert.strictEqual(view.charcard.first_mes, 'Hello there');
+    assert.strictEqual(view.charcard.creator_notes, 'Test notes');
+    assert.deepStrictEqual(view.charcard.tags, ['fantasy', 'magic']);
+});
