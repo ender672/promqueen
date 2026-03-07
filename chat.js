@@ -207,9 +207,10 @@ async function runChatTurn(store, cwd, rl, opts, cliConfig) {
 
     if (opts.status) {
         const cur = store.read();
-        const statusPad = cur.endsWith('\n') ? '\n' : '\n\n';
+        const statusPad = cur.endsWith('\n') ? '' : '\n';
         process.stdout.write(statusPad);
-        writeStatusLine(pricingResult ? pricingToString(pricingResult) : 'no pricing data');
+        const statusParts = [resolvedConfig.connection, pricingResult ? pricingToString(pricingResult) : 'no pricing data'];
+        writeStatusLine(statusParts.join(' | '));
     }
 
     // Post-completion lint: add padding and next speaker tag

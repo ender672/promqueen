@@ -59,3 +59,17 @@ connection_profiles:
       cost_uncached: 27
       cost_cached: 7
       cost_output: 110
+  grok-4.1-fast:
+    requires_env: XAI_API_KEY
+    api_url: https://api.x.ai/v1/chat/completions
+    api_call_headers:
+      content-type: application/json
+      authorization: Bearer $XAI_API_KEY
+    api_call_props:
+      model: grok-4-1-fast-non-reasoning
+      stream: true
+      max_tokens: 4096
+    pricing:
+      cost_uncached: 20
+      cost_cached: 10
+      cost_output: 50
