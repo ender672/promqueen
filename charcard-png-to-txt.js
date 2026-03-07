@@ -47,12 +47,14 @@ function buildTemplateView(characterData, { altGreeting } = {}) {
     return { charcard };
 }
 
-function renderCharcardTemplate(characterData, templateText, { altGreeting, roleplayUser } = {}) {
+function renderCharcardTemplate(characterData, templateText, { altGreeting, roleplayUser, roleplayUserDescription, roleplayGuidelines } = {}) {
     if (!templateText) {
         templateText = fs.readFileSync(defaultTemplatePath, 'utf8');
     }
     const view = buildTemplateView(characterData, { altGreeting });
     if (roleplayUser) view.user = roleplayUser;
+    if (roleplayUserDescription) view.user_description = roleplayUserDescription;
+    if (roleplayGuidelines) view.roleplay_guidelines = roleplayGuidelines;
     const root = Parser.parse(templateText);
     const ctx = Context.make(view);
     return root.render(ctx).trimEnd();
@@ -86,8 +88,10 @@ function main() {
     const templateText = fs.readFileSync(templatePath, 'utf8');
     const dotConfig = loadDotConfig();
     const roleplayUser = dotConfig.roleplay_user;
+    const roleplayUserDescription = dotConfig.roleplay_user_description;
+    const roleplayGuidelines = dotConfig.roleplay_guidelines;
     const aiCardData = extractAiCardData(pngPath);
-    const result = renderCharcardTemplate(aiCardData, templateText, { altGreeting: opts.altGreeting, roleplayUser });
+    const result = renderCharcardTemplate(aiCardData, templateText, { altGreeting: opts.altGreeting, roleplayUser, roleplayUserDescription, roleplayGuidelines });
     process.stdout.write(result + "\n");
 }
 

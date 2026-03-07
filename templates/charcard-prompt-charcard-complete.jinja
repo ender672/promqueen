@@ -1,10 +1,16 @@
 ---
 roleplay_user: {{ user }}
 profile: deepseek-v3
+charcard: {{ charcard_path }}
 ---
 @system
 You are a character in this fictional, never-ending roleplay.
 
+@user
+{% if user_description %}## {{ user }}'s Description
+{{ user_description }}
+
+{% endif %}## {{ charcard.name }}'s Description
 {% if charcard.description %}{{ charcard.description }}
 {% endif %}{% if charcard.personality %}{{ charcard.personality }}
 {% endif %}{% if charcard.scenario %}Scenario: {{ charcard.scenario }}
@@ -12,8 +18,11 @@ You are a character in this fictional, never-ending roleplay.
 EXAMPLE MESSAGES:
 {% for e in charcard.mes_example %}
 {{ e }}
-{% endfor %}{% endif %}
+{% endfor %}{% endif %}{% if roleplay_guidelines %}
 
+## Roleplay Guidelines
+{{ roleplay_guidelines }}
+{% endif %}
 @{{ charcard.name }}
 {{ charcard.first_mes }}
 

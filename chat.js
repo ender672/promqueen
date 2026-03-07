@@ -231,8 +231,24 @@ async function main() {
             }
         }
 
-        const pqueenContent = renderCharcardTemplate(aiCardData, templateText, { altGreeting, roleplayUser: dotConfig.roleplay_user });
-        store = createMemoryStore(pqueenContent + '\n');
+        const pqueenContent = renderCharcardTemplate(aiCardData, templateText, { altGreeting, roleplayUser: dotConfig.roleplay_user, roleplayUserDescription: dotConfig.roleplay_user_description, roleplayGuidelines: dotConfig.roleplay_guidelines });
+
+        if (opts.save === false) {
+            store = createMemoryStore(pqueenContent + '\n');
+        } else {
+            // Derive .pqueen filename from character name or PNG basename
+            const charName = (aiCardData.name || path.basename(absolutePath, '.png')).trim();
+            const safeName = charName.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-').toLowerCase();
+            let pqueenPath = path.join(cwd, `${safeName}.pqueen`);
+            let suffix = 1;
+            while (fs.existsSync(pqueenPath)) {
+                pqueenPath = path.join(cwd, `${safeName}-${suffix}.pqueen`);
+                suffix++;
+            }
+            fs.writeFileSync(pqueenPath, pqueenContent + '\n', 'utf8');
+            process.stderr.write(`Created ${pqueenPath}\n`);
+            store = createFileStore(pqueenPath);
+        }
     } else if (opts.save === false) {
         store = createMemoryStore(fs.readFileSync(absolutePath, 'utf8'));
     } else {
