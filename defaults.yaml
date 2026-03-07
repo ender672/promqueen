@@ -73,3 +73,17 @@ connection_profiles:
       cost_uncached: 20
       cost_cached: 10
       cost_output: 50
+  glm-4.7-flash:
+    requires_env: ZAI_API_KEY
+    api_url: https://api.z.ai/api/paas/v4/chat/completions
+    api_call_headers:
+      content-type: application/json
+      authorization: Bearer $ZAI_API_KEY
+    api_call_props:
+      model: glm-4.7-flash
+      stream: true
+      max_tokens: 4096
+    pricing:
+      cost_uncached: 6
+      cost_cached: 0
+      cost_output: 40
