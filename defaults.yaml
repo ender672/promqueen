@@ -17,3 +17,42 @@ connection_profiles:
       cost_uncached: 100
       cost_cached: 10
       cost_output: 500
+  gpt-4o-mini:
+    api_url: https://api.openai.com/v1/chat/completions
+    api_call_headers:
+      content-type: application/json
+      authorization: Bearer $OPENAI_API_KEY
+    api_call_props:
+      model: gpt-4o-mini
+      stream: true
+      max_tokens: 4096
+    pricing:
+      cost_uncached: 15
+      cost_cached: 7.5
+      cost_output: 60
+  gemini-2.5-flash-lite:
+    api_url: https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+    api_call_headers:
+      content-type: application/json
+      authorization: Bearer $GOOGLE_API_KEY
+    api_call_props:
+      model: gemini-2.5-flash-lite
+      stream: true
+      max_tokens: 4096
+    pricing:
+      cost_uncached: 10
+      cost_cached: 1
+      cost_output: 40
+  deepseek-chat:
+    api_url: https://api.deepseek.com/v1/chat/completions
+    api_call_headers:
+      content-type: application/json
+      authorization: Bearer $DEEPSEEK_API_KEY
+    api_call_props:
+      model: deepseek-chat
+      stream: true
+      max_tokens: 4096
+    pricing:
+      cost_uncached: 27
+      cost_cached: 7
+      cost_output: 110
