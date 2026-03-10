@@ -414,6 +414,42 @@ function createPqueenFile(pngPath, aiCardData, connectionName, userName, userDes
     return pqueenPath;
 }
 
+// ─── Connection helpers ─────────────────────────────────────────────────────
+
+async function testExistingConnection(pqueenPath, cliConfig) {
+    const cwd = path.dirname(pqueenPath);
+    const content = fs.readFileSync(pqueenPath, 'utf8');
+    const doc = pqutils.parseConfigAndMessages(content);
+    let resolvedConfig;
+    try {
+        resolvedConfig = pqutils.resolveConfig(doc.config, cwd, cliConfig);
+    } catch {
+        return false;
+    }
+
+    if (!resolvedConfig.connection) return false;
+
+    const profile = pqutils.getConnectionProfile(resolvedConfig);
+    if (!profile) return false;
+
+    process.stderr.write(`Testing connection ${resolvedConfig.connection}...`);
+    try {
+        await fetchModelList(profile);
+        process.stderr.write(' ok\n');
+        return true;
+    } catch {
+        process.stderr.write(' failed\n');
+        return false;
+    }
+}
+
+function updatePqueenConnection(pqueenPath, connectionName) {
+    const content = fs.readFileSync(pqueenPath, 'utf8');
+    const doc = pqutils.parseConfigAndMessages(content);
+    doc.config.connection = connectionName;
+    fs.writeFileSync(pqueenPath, pqutils.serializeDocument(doc.config, doc.messages), 'utf8');
+}
+
 // ─── Main ───────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -445,28 +481,32 @@ async function main() {
         pqueenPath = await selectExistingOrNew(existingFiles);
     }
 
-    // Phase 2: Create new .pqueen file
+    // Phase 2: Create new .pqueen file (without connection)
     if (!pqueenPath) {
         const aiCardData = extractAiCardData(pngPath);
         const charName = (aiCardData.name || 'Character').trim();
         process.stderr.write(`\nNew chat with ${charName}\n`);
         process.stderr.write('─'.repeat(Math.min(40, (process.stderr.columns || 80))) + '\n');
 
-        const connResult = await wizardSelectConnection(dotConfig);
-        cliConfig = connResult.cliConfig;
-        const connectionName = connResult.connectionName;
-
         const { userName, userDescription } = await wizardGetUserIdentity(dotConfig);
         const altGreeting = await wizardSelectOpeningMessage(aiCardData);
 
         pqueenPath = createPqueenFile(
-            pngPath, aiCardData, connectionName,
+            pngPath, aiCardData, null,
             userName, userDescription, altGreeting,
             dotConfig.roleplay_guidelines
         );
     }
 
-    // Phase 3: Enter chat
+    // Phase 3: Test existing connection or set one up
+    const connectionOk = await testExistingConnection(pqueenPath, cliConfig);
+    if (!connectionOk) {
+        const connResult = await wizardSelectConnection(dotConfig);
+        cliConfig = connResult.cliConfig;
+        updatePqueenConnection(pqueenPath, connResult.connectionName);
+    }
+
+    // Phase 4: Enter chat
     enterChat(pqueenPath, cliConfig, opts);
 }
 

@@ -1,6 +1,8 @@
 ---
 roleplay_user: {{ user }}
+{%- if connection %}
 connection: {{ connection }}
+{%- endif %}
 charcard: {{ charcard_path }}
 ---
 @system
