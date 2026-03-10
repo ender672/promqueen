@@ -15,7 +15,7 @@
     "charcard-png-to-txt": "charcard-png-to-txt.js",
     "charcard-png-to-openings": "charcard-png-to-openings.js",
     "charcard-png-get-field": "charcard-png-get-field.js",
-    "pqueen-chat": "chat.js",
+    "pqueen-chat": "chat.mjs",
     "pqueen-setup": "setup.js",
     "pqueen-apply-lorebook": "apply-lorebook.js",
     "pqueen-rp-to-html": "rp-to-html.js",

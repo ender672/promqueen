@@ -125,7 +125,7 @@ const { runSetup } = require('./lib/chat-setup.js');
 async function main() {
     const inputPath = process.argv[2];
     if (!inputPath) {
-        console.error('Usage: chat-ink.mjs <file.png | file.pqueen>');
+        console.error('Usage: chat.mjs <file.png | file.pqueen>');
         process.exit(1);
     }
 

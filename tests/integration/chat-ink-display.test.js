@@ -52,7 +52,7 @@ function computeInitialDisplayPos(content) {
     return content.length;
 }
 
-// ─── displayConversation (matches chat-ink.mjs) ─────────────────────────────
+// ─── displayConversation (matches chat.mjs) ─────────────────────────────
 
 function displayConversation(content, doc) {
     const lastMsg = doc.messages.at(-1);
@@ -73,7 +73,7 @@ function displayConversation(content, doc) {
     return screen;
 }
 
-// ─── runChatTurn (matches chat-ink.mjs) ─────────────────────────────────────
+// ─── runChatTurn (matches chat.mjs) ─────────────────────────────────────
 
 async function runChatTurn(store, cwd, writeFn, cliConfig) {
     const snapshotSize = store.size();
