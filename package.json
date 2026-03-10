@@ -23,7 +23,7 @@
     "pqueen-send-prompt-anthropic": "send-prompt-anthropic.js"
   },
   "scripts": {
-    "test": "node --test tests/integration/*.test.js",
+    "test": "node --test tests/integration/*.test.js tests/integration/*.test.mjs",
     "lint": "eslint ."
   },
   "keywords": [],
@@ -46,6 +46,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "eslint": "^9.39.2",
-    "globals": "^17.0.0"
+    "globals": "^17.0.0",
+    "ink-testing-library": "^4.0.0"
   }
 }

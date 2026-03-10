@@ -1,0 +1,14 @@
+{
+  "messages": [
+    {
+      "name": "Tom",
+      "content": "Hello\n"
+    }
+  ],
+  "streamName": "Bilinda",
+  "streamBuf": "I am responding...",
+  "pendingMsg": null,
+  "busy": true,
+  "connectionName": "test",
+  "costInfo": ""
+}
