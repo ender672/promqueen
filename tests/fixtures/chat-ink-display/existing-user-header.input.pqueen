@@ -1,0 +1,12 @@
+---
+connection: test
+connection_profiles:
+  test:
+    api_url: http://dummy
+dot_config_loading: false
+roleplay_user: Tom
+---
+@Bilinda
+Hello! I'm Bilinda, your surf instructor.
+
+@Tom

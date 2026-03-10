@@ -1,0 +1,15 @@
+@Bilinda
+Hello! I'm Bilinda, your surf instructor.
+
+@Tom
+Hey, nice to meet you.
+
+@Bilinda
+Nice to meet you too!
+
+@Tom
+What do I need to know about surfing?
+
+@Bilinda
+First thing: respect the ocean.
+

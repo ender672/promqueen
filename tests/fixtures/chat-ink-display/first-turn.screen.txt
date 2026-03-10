@@ -1,0 +1,9 @@
+@Bilinda
+Hello! I'm Bilinda, your surf instructor.
+
+@Tom
+Hey, I'm Tom. Nice to meet you.
+
+@Bilinda
+Nice to meet you too, Tom! Ready to catch some waves?
+
