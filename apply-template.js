@@ -24,7 +24,7 @@ function applyTemplate(messages, resolvedConfig, options = {}) {
     const templateLoaderPath = resolvedConfig.message_template_loader_path || options.messageTemplateLoaderPath || cwd;
 
     const fullMessageTemplateContext = {
-        ...buildTemplateContext(resolvedConfig, messages),
+        ...buildTemplateContext(resolvedConfig, messages, { cwd }),
     };
 
     return messages.map((message, i) => {
