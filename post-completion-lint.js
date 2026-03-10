@@ -40,6 +40,15 @@ function postCompletionLint(messages, resolvedConfig) {
   const nextSpeaker = pqutils.guessNextSpeaker(messages, user);
   if (nextSpeaker) {
     output += `@${nextSpeaker}\n`;
+    const role = pqutils.PROMPT_ROLES.includes(nextSpeaker) ? nextSpeaker
+      : nextSpeaker === user ? 'user'
+      : 'assistant';
+    messages.push({
+      name: nextSpeaker,
+      role,
+      content: null,
+      decorators: []
+    });
   }
 
   return output;

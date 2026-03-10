@@ -9,6 +9,7 @@ const require = createRequire(import.meta.url);
 const fs = require('fs');
 const path = require('path');
 const { precompletionLint } = require('./pre-completion-lint.js');
+const { postCompletionLint } = require('./post-completion-lint.js');
 const { preparePrompt, dispatchSendPrompt } = require('./lib/pipeline.js');
 const { pricingToString } = require('./lib/send-prompt-common.js');
 const pqutils = require('./lib/pq-utils.js');
@@ -17,7 +18,7 @@ const h = React.createElement;
 
 // ─── App ────────────────────────────────────────────────────────────────────
 
-function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig }) {
+function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig, rawConfig }) {
     const { exit } = useApp();
     const initial = splitMessages(initialMessages);
     const [messages, setMessages] = useState(initial.completed);
@@ -27,12 +28,17 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig 
     const [streamBuf, setStreamBuf] = useState('');
     const [streamName, setStreamName] = useState('');
 
+    const saveFile = useCallback((msgs) => {
+        fs.writeFileSync(pqueenPath, pqutils.serializeDocument(rawConfig, msgs));
+    }, [pqueenPath, rawConfig]);
+
     const handleSubmit = useCallback((text) => {
         // Fill the pending message and promote it to completed
         const filled = { ...pendingMsg, content: (pendingMsg.content || '') + text + '\n' };
         const allMessages = [...messages, filled];
         setMessages(allMessages);
         setPendingMsg(null);
+        saveFile(allMessages);
 
         // Clone and run precompletionLint to set up the assistant's empty message
         const msgsForApi = structuredClone(allMessages);
@@ -67,17 +73,20 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig 
                     decorators: [],
                 };
 
-                // Add assistant response to completed, set up next pending user slot
                 const afterTurn = [...allMessages, assistantMsg];
-                const next = splitMessages(afterTurn);
                 setMessages(prev => [...prev, assistantMsg]);
-                // Guess next speaker for the pending slot
+
+                // Run post-completion lint to determine next speaker
                 const postConfig = { ...resolvedConfig, user: resolvedConfig.user || resolvedConfig.roleplay_user };
-                const nextSpeaker = pqutils.guessNextSpeaker(afterTurn, postConfig.user);
-                if (nextSpeaker) {
-                    const nextRole = pqutils.PROMPT_ROLES.includes(nextSpeaker) ? nextSpeaker : 'user';
-                    setPendingMsg({ name: nextSpeaker, role: nextRole, content: null, decorators: [] });
+                postCompletionLint(afterTurn, postConfig);
+
+                // If postCompletionLint pushed a next speaker, use it as pending
+                const lastMsg = afterTurn[afterTurn.length - 1];
+                if (lastMsg.content === null) {
+                    setPendingMsg(lastMsg);
                 }
+
+                saveFile(afterTurn);
 
                 if (pricingResult) setCostInfo(pricingToString(pricingResult));
             } catch (err) {
@@ -91,10 +100,12 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig 
             setStreamName('');
             setBusy(false);
         })();
-    }, [messages, pendingMsg, resolvedConfig, cwd]);
+    }, [messages, pendingMsg, resolvedConfig, cwd, saveFile]);
 
     useInput((_input, key) => {
         if (key.escape && !busy) {
+            const allMsgs = pendingMsg ? [...messages, pendingMsg] : messages;
+            saveFile(allMsgs);
             process.stdout.write(`\nSaved to ${pqueenPath}\n`);
             exit();
         }
@@ -109,27 +120,48 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig 
 
 // ─── Main ───────────────────────────────────────────────────────────────────
 
-const pqueenPath = process.argv[2];
-if (!pqueenPath) {
-    console.error('Usage: chat-ink.mjs <file.pqueen>');
-    process.exit(1);
+const { runSetup } = require('./lib/chat-setup.js');
+
+async function main() {
+    const inputPath = process.argv[2];
+    if (!inputPath) {
+        console.error('Usage: chat-ink.mjs <file.png | file.pqueen>');
+        process.exit(1);
+    }
+
+    const resolved = path.resolve(inputPath);
+    if (!fs.existsSync(resolved)) {
+        console.error(`File not found: ${resolved}`);
+        process.exit(1);
+    }
+
+    let pqueenPath;
+    let cliConfig = {};
+
+    if (resolved.endsWith('.png')) {
+        const result = await runSetup(resolved);
+        pqueenPath = result.pqueenPath;
+        cliConfig = result.cliConfig;
+    } else if (resolved.endsWith('.pqueen')) {
+        pqueenPath = resolved;
+    } else {
+        console.error('Expected a .png or .pqueen file.');
+        process.exit(1);
+    }
+
+    const cwd = path.dirname(pqueenPath);
+    const content = fs.readFileSync(pqueenPath, 'utf8');
+    const doc = pqutils.parseConfigAndMessages(content);
+    const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, cliConfig);
+
+    render(h(App, {
+        pqueenPath,
+        cwd,
+        connectionName: resolvedConfig.connection || '',
+        initialMessages: doc.messages,
+        resolvedConfig,
+        rawConfig: doc.config,
+    }));
 }
 
-const resolved = path.resolve(pqueenPath);
-if (!fs.existsSync(resolved)) {
-    console.error(`File not found: ${resolved}`);
-    process.exit(1);
-}
-
-const cwd = path.dirname(resolved);
-const content = fs.readFileSync(resolved, 'utf8');
-const doc = pqutils.parseConfigAndMessages(content);
-const resolvedConfig = pqutils.resolveConfig(doc.config, cwd);
-
-render(h(App, {
-    pqueenPath: resolved,
-    cwd,
-    connectionName: resolvedConfig.connection || '',
-    initialMessages: doc.messages,
-    resolvedConfig,
-}));
+main();
