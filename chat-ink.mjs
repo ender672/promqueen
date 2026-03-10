@@ -320,12 +320,16 @@ const userName = resolvedConfig.roleplay_user || 'user';
 
 displayConversation(store, cwd);
 
-// Run precompletionLint to prepare the file for user input (padding,
-// name autocomplete, next-speaker header).
-const preOutput = precompletionLint(doc.messages, resolvedConfig, cwd);
-if (preOutput) {
-    store.append(preOutput);
-    process.stdout.write(preOutput.replace(/@(\S+)/g, '\x1b[36m@$1\x1b[0m'));
+// Run postCompletionLint to prepare the file for user input (padding,
+// next-speaker header).
+const postConfig = { ...resolvedConfig, user: resolvedConfig.user || resolvedConfig.roleplay_user };
+const postOutput = postCompletionLint(doc.messages, postConfig);
+if (postOutput) {
+    store.append(postOutput);
+    const paddingMatch = postOutput.match(/^(\n+)/);
+    if (paddingMatch) {
+        process.stdout.write(paddingMatch[1]);
+    }
 }
 
 const initialDisplayPos = store.read().length;
