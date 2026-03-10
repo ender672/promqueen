@@ -105,29 +105,30 @@ function TextArea({ onSubmit, height, disabled }) {
 
 // ─── App ────────────────────────────────────────────────────────────────────
 
+function splitMessages(msgs) {
+    const last = msgs[msgs.length - 1];
+    if (last && (!last.content || last.content.trim() === '')) {
+        return { completed: msgs.slice(0, -1), pending: last };
+    }
+    return { completed: msgs, pending: null };
+}
+
 function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig }) {
     const { exit } = useApp();
-    const [messages, setMessages] = useState(initialMessages);
+    const initial = splitMessages(initialMessages);
+    const [messages, setMessages] = useState(initial.completed);
+    const [pendingMsg, setPendingMsg] = useState(initial.pending);
     const [busy, setBusy] = useState(false);
     const [costInfo, setCostInfo] = useState('');
     const [streamBuf, setStreamBuf] = useState('');
     const [streamName, setStreamName] = useState('');
 
     const handleSubmit = useCallback((text) => {
-        const userName = resolvedConfig.roleplay_user || 'user';
-        const userRole = pqutils.PROMPT_ROLES.includes(userName) ? userName : 'user';
-
-        // If the last message is an empty slot for this user, fill it instead of creating a new one
-        const last = messages[messages.length - 1];
-        let allMessages;
-        if (last && last.name === userName && (!last.content || last.content.trim() === '')) {
-            allMessages = [...messages];
-            allMessages[allMessages.length - 1] = { ...last, content: text + '\n' };
-        } else {
-            const userMsg = { name: userName, role: userRole, content: text + '\n', decorators: [] };
-            allMessages = [...messages, userMsg];
-        }
+        // Fill the pending message and promote it to completed
+        const filled = { ...pendingMsg, content: (pendingMsg.content || '') + text + '\n' };
+        const allMessages = [...messages, filled];
         setMessages(allMessages);
+        setPendingMsg(null);
 
         // Clone and run precompletionLint to set up the assistant's empty message
         const msgsForApi = structuredClone(allMessages);
@@ -155,12 +156,24 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig 
                 let content = chunks.join('');
                 if (content && !content.endsWith('\n')) content += '\n';
 
-                setMessages(prev => [...prev, {
+                const assistantMsg = {
                     name: assistantName,
                     role: assistantRole,
                     content,
                     decorators: [],
-                }]);
+                };
+
+                // Add assistant response to completed, set up next pending user slot
+                const afterTurn = [...allMessages, assistantMsg];
+                const next = splitMessages(afterTurn);
+                setMessages(prev => [...prev, assistantMsg]);
+                // Guess next speaker for the pending slot
+                const postConfig = { ...resolvedConfig, user: resolvedConfig.user || resolvedConfig.roleplay_user };
+                const nextSpeaker = pqutils.guessNextSpeaker(afterTurn, postConfig.user);
+                if (nextSpeaker) {
+                    const nextRole = pqutils.PROMPT_ROLES.includes(nextSpeaker) ? nextSpeaker : 'user';
+                    setPendingMsg({ name: nextSpeaker, role: nextRole, content: null, decorators: [] });
+                }
 
                 if (pricingResult) setCostInfo(pricingToString(pricingResult));
             } catch (err) {
@@ -174,7 +187,7 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig 
             setStreamName('');
             setBusy(false);
         })();
-    }, [messages, resolvedConfig, cwd]);
+    }, [messages, pendingMsg, resolvedConfig, cwd]);
 
     useInput((_input, key) => {
         if (key.escape && !busy) {
@@ -199,6 +212,7 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig 
             h(Text, { color: 'cyan' }, `@${streamName}`),
             streamBuf ? h(Text, null, streamBuf) : null,
         ) : null,
+        pendingMsg && pendingMsg.name ? h(Box, { marginTop: 1 }, h(Text, { color: 'cyan' }, `@${pendingMsg.name}`)) : null,
         h(Box, {
             borderStyle: 'round',
             borderColor: busy ? 'gray' : 'cyan',
