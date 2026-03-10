@@ -27,16 +27,22 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
     const [costInfo, setCostInfo] = useState('');
     const [streamBuf, setStreamBuf] = useState('');
     const [streamName, setStreamName] = useState('');
+    const [error, setError] = useState('');
+    const [prefill, setPrefill] = useState('');
+    const [sentMsg, setSentMsg] = useState(null);
 
     const saveFile = useCallback((msgs) => {
         fs.writeFileSync(pqueenPath, pqutils.serializeDocument(rawConfig, msgs));
     }, [pqueenPath, rawConfig]);
 
     const handleSubmit = useCallback((text) => {
-        // Fill the pending message and promote it to completed
+        setError('');
+        setPrefill('');
+
+        // Fill the pending message but don't commit to messages yet (Static can't undo)
         const filled = { ...pendingMsg, content: (pendingMsg.content || '') + text + '\n' };
         const allMessages = [...messages, filled];
-        setMessages(allMessages);
+        setSentMsg(filled);
         setPendingMsg(null);
         saveFile(allMessages);
 
@@ -74,7 +80,7 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
                 };
 
                 const afterTurn = [...allMessages, assistantMsg];
-                setMessages(prev => [...prev, assistantMsg]);
+                setMessages(prev => [...prev, filled, assistantMsg]);
 
                 // Run post-completion lint to determine next speaker
                 const postConfig = { ...resolvedConfig, user: resolvedConfig.user || resolvedConfig.roleplay_user };
@@ -90,12 +96,17 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
 
                 if (pricingResult) setCostInfo(pricingToString(pricingResult));
             } catch (err) {
+                // Restore pre-submit state and prefill the input for retry
+                setPendingMsg(pendingMsg);
+                saveFile(pendingMsg ? [...messages, pendingMsg] : messages);
+                setPrefill(text);
                 if (err.name === 'AbortError') {
-                    setStreamBuf('[cancelled]');
+                    setError('Request cancelled');
                 } else {
-                    setStreamBuf(`Error: ${err.message}`);
+                    setError(`Error: ${err.message}`);
                 }
             }
+            setSentMsg(null);
             setStreamBuf('');
             setStreamName('');
             setBusy(false);
@@ -112,9 +123,11 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
     });
 
     return h(ChatView, {
-        messages, streamName, streamBuf, pendingMsg,
+        messages, streamName, streamBuf, pendingMsg, sentMsg,
         busy, connectionName, costInfo,
         onSubmit: handleSubmit,
+        errorBanner: error,
+        initialText: prefill,
     });
 }
 

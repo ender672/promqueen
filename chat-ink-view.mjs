@@ -5,11 +5,21 @@ const h = React.createElement;
 
 // ─── Multi-line TextArea component ──────────────────────────────────────────
 
-export function TextArea({ onSubmit, height, disabled }) {
+export function TextArea({ onSubmit, height, disabled, initialText }) {
     const bufRef = useRef({ lines: [''], row: 0, col: 0 });
+    const prevInitialRef = useRef('');
     const [, forceRender] = useState(0);
     const kick = () => forceRender(n => n + 1);
     const buf = bufRef.current;
+
+    if (initialText && initialText !== prevInitialRef.current) {
+        buf.lines = initialText.split('\n');
+        buf.row = buf.lines.length - 1;
+        buf.col = buf.lines[buf.row].length;
+        prevInitialRef.current = initialText;
+    } else if (!initialText && prevInitialRef.current) {
+        prevInitialRef.current = '';
+    }
 
     useInput((input, key) => {
         if (disabled || key.escape) return;
@@ -102,7 +112,7 @@ export function splitMessages(msgs) {
     return { completed: msgs, pending: null };
 }
 
-export function ChatView({ messages, streamName, streamBuf, pendingMsg, busy, connectionName, costInfo, onSubmit }) {
+export function ChatView({ messages, streamName, streamBuf, pendingMsg, sentMsg, busy, connectionName, costInfo, onSubmit, errorBanner, initialText }) {
     const statusParts = ['Ctrl+D send', 'Enter newline', 'Esc quit'];
     if (connectionName) statusParts.push(connectionName);
     if (costInfo) statusParts.push(costInfo);
@@ -115,18 +125,23 @@ export function ChatView({ messages, streamName, streamBuf, pendingMsg, busy, co
                 msg.content ? h(Text, null, msg.content.replace(/\n$/, '')) : null,
             )
         ),
+        sentMsg ? h(Box, { flexDirection: 'column', marginTop: 1 },
+            sentMsg.name ? h(Text, { color: 'cyan' }, `@${sentMsg.name}`) : null,
+            sentMsg.content ? h(Text, null, sentMsg.content.replace(/\n$/, '')) : null,
+        ) : null,
         streamName ? h(Box, { flexDirection: 'column', marginTop: 1 },
             h(Text, { color: 'cyan' }, `@${streamName}`),
             streamBuf ? h(Text, null, streamBuf) : null,
         ) : null,
         pendingMsg && pendingMsg.name ? h(Box, { marginTop: 1 }, h(Text, { color: 'cyan' }, `@${pendingMsg.name}`)) : null,
+        errorBanner ? h(Text, { color: 'red' }, errorBanner) : null,
         h(Box, {
             borderStyle: 'round',
-            borderColor: busy ? 'gray' : 'cyan',
+            borderColor: errorBanner ? 'red' : busy ? 'gray' : 'cyan',
             paddingLeft: 1,
             paddingRight: 1,
         },
-            h(TextArea, { onSubmit, height: 3, disabled: busy })
+            h(TextArea, { onSubmit, height: 3, disabled: busy, initialText })
         ),
         h(Text, { dimColor: true }, hint)
     );
