@@ -48,6 +48,8 @@ function createFileStore(absolutePath) {
         read() { return fs.readFileSync(absolutePath, 'utf8'); },
         append(text) { fs.appendFileSync(absolutePath, text); },
         createAppendStream() { return fs.createWriteStream(absolutePath, { flags: 'a' }); },
+        size() { return fs.statSync(absolutePath).size; },
+        truncate(byteLength) { fs.truncateSync(absolutePath, byteLength); },
     };
 }
 
@@ -73,24 +75,28 @@ function ensureReadyForUserInput(store, userName) {
 }
 
 async function runChatTurn(store, cwd, rl, opts, cliConfig) {
+    const snapshotSize = store.size();
+
     let content = store.read();
     let doc = pqutils.parseConfigAndMessages(content);
     const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, cliConfig);
 
+    let preLintLines = 0;
     const preOutput = precompletionLint(doc.messages, resolvedConfig);
     if (preOutput) {
         store.append(preOutput);
         const displayOutput = preOutput.replace(/^\s+/, '\n').replace(/@(\S+)/g, '\x1b[36m@$1\x1b[0m');
         process.stdout.write(displayOutput);
+        preLintLines = displayOutput.split('\n').filter(l => l.length > 0).length;
     }
 
     const apiMessages = preparePrompt(doc.messages, resolvedConfig, cwd, cwd);
 
-    const appendStream = store.createAppendStream();
+    const chunks = [];
     const teeStream = {
         write(chunk) {
             process.stdout.write(chunk);
-            appendStream.write(chunk);
+            chunks.push(chunk);
         }
     };
 
@@ -104,20 +110,33 @@ async function runChatTurn(store, cwd, rl, opts, cliConfig) {
     process.on('SIGINT', onSigint);
 
     let pricingResult;
+    let failed = false;
+    let errorLines = 0;
     try {
         pricingResult = await dispatchSendPrompt(apiMessages, resolvedConfig, teeStream, cwd, { signal: controller.signal });
     } catch (err) {
+        failed = true;
         if (err.name === 'AbortError') {
             process.stderr.write('\n[cancelled]\n');
+            errorLines = 1;
         } else {
-            process.stderr.write(`\nError: ${err.message}\n`);
+            const errMsg = `Error: ${err.message}`;
+            const cols = process.stderr.columns || 80;
+            errorLines = Math.ceil(errMsg.length / cols);
+            process.stderr.write(`\n${errMsg}\n`);
         }
+        errorLines += preLintLines;
     } finally {
         process.removeListener('SIGINT', onSigint);
-        appendStream.end();
-        await new Promise((resolve) => appendStream.on('finish', resolve));
         rl.resume();
     }
+
+    if (failed) {
+        store.truncate(snapshotSize);
+        return { failed: true, errorLines };
+    }
+
+    store.append(chunks.join(''));
 
     if (opts.status) {
         const cur = store.read();
@@ -139,7 +158,7 @@ async function runChatTurn(store, cwd, rl, opts, cliConfig) {
         store.append(postOutput);
     }
 
-    return pricingResult;
+    return { failed: false, pricingResult };
 }
 
 function enterChat(pqueenPath, cliConfig, opts) {
@@ -164,6 +183,59 @@ function enterChat(pqueenPath, cliConfig, opts) {
 
     let activeTurn = null;
 
+    const eraseLines = (n) => {
+        for (let i = 0; i < n; i++) {
+            process.stderr.write('\x1b[A\x1b[2K');
+        }
+    };
+
+    const rewindToLastNonEmpty = () => {
+        const content = store.read();
+        const doc = pqutils.parseConfigAndMessages(content);
+        while (doc.messages.length > 0) {
+            const last = doc.messages.at(-1);
+            if (!last.content || !last.content.trim()) {
+                doc.messages.pop();
+            } else {
+                break;
+            }
+        }
+        const rewound = pqutils.serializeDocument(doc.config, doc.messages);
+        store.truncate(0);
+        store.append(rewound);
+    };
+
+    let prefillText = null;
+
+    const doTurn = async (preInputSize, userLine) => {
+        activeTurn = runChatTurn(store, cwd, rl, opts, cliConfig);
+        const result = await activeTurn;
+        activeTurn = null;
+
+        if (result && result.failed) {
+            process.stderr.write('[press any key to dismiss]');
+            return new Promise((resolve) => {
+                rl.pause();
+                process.stdin.setRawMode(true);
+                process.stdin.resume();
+                process.stdin.once('data', (key) => {
+                    process.stdin.setRawMode(false);
+                    if (key[0] === 3) { // Ctrl+C
+                        rl.close();
+                        return;
+                    }
+                    eraseLines(result.errorLines + 2);
+                    store.truncate(preInputSize);
+                    rewindToLastNonEmpty();
+                    ensureReadyForUserInput(store, userName);
+                    prefillText = userLine;
+                    rl.resume();
+                    resolve();
+                });
+            });
+        }
+    };
+
     const promptForInput = () => {
         rl.question('', async (line) => {
             if (!line.trim()) {
@@ -171,12 +243,15 @@ function enterChat(pqueenPath, cliConfig, opts) {
                 return;
             }
 
+            const preInputSize = store.size();
             store.append(line);
-            activeTurn = runChatTurn(store, cwd, rl, opts, cliConfig);
-            await activeTurn;
-            activeTurn = null;
+            await doTurn(preInputSize, line);
             promptForInput();
         });
+        if (prefillText) {
+            rl.write(prefillText);
+            prefillText = null;
+        }
     };
 
     rl.on('close', async () => {
@@ -420,14 +495,15 @@ async function testExistingConnection(pqueenPath, cliConfig) {
     const cwd = path.dirname(pqueenPath);
     const content = fs.readFileSync(pqueenPath, 'utf8');
     const doc = pqutils.parseConfigAndMessages(content);
+
+    if (!doc.config.connection) return false;
+
     let resolvedConfig;
     try {
         resolvedConfig = pqutils.resolveConfig(doc.config, cwd, cliConfig);
     } catch {
         return false;
     }
-
-    if (!resolvedConfig.connection) return false;
 
     const profile = pqutils.getConnectionProfile(resolvedConfig);
     if (!profile) return false;
