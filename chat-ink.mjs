@@ -33,14 +33,7 @@ function displayConversation(store, cwd) {
     const { buildTemplateContext, renderTemplate } = require('./lib/render-template.js');
     const context = buildTemplateContext(resolvedConfig, doc.messages, { cwd });
 
-    // Skip the last message if it has no content — the effect will display it
-    // so Ink's input-box clearing can't create a gap between @header and user text
-    const lastMsg = doc.messages.at(-1);
-    const displayCount = (lastMsg && !lastMsg.content)
-        ? doc.messages.length - 1
-        : doc.messages.length;
-
-    for (let i = 0; i < displayCount; i++) {
+    for (let i = 0; i < doc.messages.length; i++) {
         const msg = doc.messages[i];
         if (i > 0) process.stdout.write('\n');
         if (msg.name) process.stdout.write(`\x1b[36m@${msg.name}\x1b[0m\n`);
@@ -310,27 +303,22 @@ if (!fs.existsSync(resolved)) {
     process.exit(1);
 }
 
-// Initialize before Ink mounts — display conversation to raw stdout
+// Initialize before Ink mounts
 const store = createFileStore(resolved);
 const cwd = path.dirname(resolved);
-const content = store.read();
-const doc = pqutils.parseConfigAndMessages(content);
+let content = store.read();
+let doc = pqutils.parseConfigAndMessages(content);
 const resolvedConfig = pqutils.resolveConfig(doc.config, cwd);
 const userName = resolvedConfig.roleplay_user || 'user';
 
-displayConversation(store, cwd);
-
-// Run postCompletionLint to prepare the file for user input (padding,
-// next-speaker header).
+// Clean up file state before displaying
 const postConfig = { ...resolvedConfig, user: resolvedConfig.user || resolvedConfig.roleplay_user };
 const postOutput = postCompletionLint(doc.messages, postConfig);
 if (postOutput) {
     store.append(postOutput);
-    const paddingMatch = postOutput.match(/^(\n+)/);
-    if (paddingMatch) {
-        process.stdout.write(paddingMatch[1]);
-    }
 }
+
+displayConversation(store, cwd);
 
 const initialDisplayPos = store.read().length;
 
