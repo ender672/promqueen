@@ -34,11 +34,14 @@
     "chokidar": "^3.6.0",
     "commander": "^14.0.2",
     "eventsource-parser": "^3.0.6",
+    "ink": "^6.8.0",
+    "ink-text-input": "^6.0.0",
     "js-yaml": "^4.1.1",
     "marked": "^17.0.3",
     "mustache": "^4.2.0",
     "png-chunk-text": "^1.0.0",
-    "png-chunks-extract": "^1.0.0"
+    "png-chunks-extract": "^1.0.0",
+    "react": "^19.2.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
