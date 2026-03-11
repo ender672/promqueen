@@ -252,7 +252,7 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
             return;
         }
 
-        if (text.trim() === '/delete-previous') {
+        if (text.trim() === '/delete-last') {
             if (messages.length === 0) return;
             const remaining = messages.slice(0, -1);
             const lastRemaining = remaining[remaining.length - 1];
@@ -267,6 +267,16 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
                 setPendingMsg(null);
                 saveFile([]);
             }
+            refreshScreen();
+            return;
+        }
+
+        if (text.trim() === '/edit-last') {
+            if (messages.length === 0) return;
+            const lastMsg = messages[messages.length - 1];
+            setMessages(messages.slice(0, -1));
+            setPendingMsg({ ...lastMsg, content: null, decorators: [] });
+            setPrefill(lastMsg.content || '');
             refreshScreen();
             return;
         }
