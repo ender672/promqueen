@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 import React, { useState, useCallback } from 'react';
 import { render, useInput, useApp } from 'ink';
@@ -131,6 +132,8 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
     });
 }
 
+export { App };
+
 // ─── Main ───────────────────────────────────────────────────────────────────
 
 const { runSetup } = require('./lib/chat-setup.js');
@@ -177,4 +180,7 @@ async function main() {
     }));
 }
 
-main();
+const __filename = fileURLToPath(import.meta.url);
+if (process.argv[1] && __filename === path.resolve(process.argv[1])) {
+    main();
+}
