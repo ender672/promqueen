@@ -10,7 +10,7 @@ import { createRequire } from 'module';
 const require_ = createRequire(import.meta.url);
 const pqutils = require_('../../lib/pq-utils.js');
 
-import { App } from '../../chat.mjs';
+import { App } from '../../pqueen';
 
 // Each App mounts a resize listener on process.stdout; ink cleanup is async
 // so listeners accumulate across tests in the same process.

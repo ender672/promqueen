@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const chokidar = require('chokidar');
-const { runPipeline } = require('./promqueen.js');
+const { runPipeline } = require('./pqueen-run.js');
 
 function watchFiles(watchPath) {
   console.log(`Initializing watcher for: ${watchPath}`);

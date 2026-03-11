@@ -1,6 +1,6 @@
 ## Architecture
 
-PromQueen is an LLM prompt engineering tool. It processes `.pqueen` prompt files to make LLM API calls. It has a VS Code extension in `vscode_extension/`, a one-shot runner in `promqueen.js` and an interactive CLI in `chat.mjs`.
+PromQueen is an LLM prompt engineering tool. It processes `.pqueen` prompt files to make LLM API calls. It has a VS Code extension in `vscode_extension/`, a one-shot runner in `pqueen-run.js` and an interactive CLI in `pqueen`.
 
 ### Prompt Format
 

@@ -77,7 +77,7 @@ The LLM API endpoint URL. Determines which send path is used: if the URL ends wi
 
 - **Type:** String (URL)
 - **Default:** none (required)
-- **Used by:** `sendprompt.js`, `sendrawprompt.js`, `promqueen.js`
+- **Used by:** `sendprompt.js`, `sendrawprompt.js`, `pqueen-run.js`
 
 ```yaml
 api_url: https://api.openai.com/v1/chat/completions
@@ -321,7 +321,7 @@ Path to a JSON lorebook (character book) file. When set, the `apply-lorebook` st
 
 - **Type:** String (file path)
 - **Default:** none (lorebook stage is skipped)
-- **Used by:** `apply-lorebook.js`, `promqueen.js`
+- **Used by:** `apply-lorebook.js`, `pqueen-run.js`
 
 ```yaml
 lorebook: character_book.json

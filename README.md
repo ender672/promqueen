@@ -20,13 +20,13 @@ export ANTHROPIC_API_KEY=sk-ant-...
 ## Usage
 
 ```
-./chat.mjs examples/simple_prompt.pqueen
+./pqueen examples/simple_prompt.pqueen
 ```
 
 You can set up roleplay scenarios with named characters:
 
 ```
-./chat.mjs examples/creative_prompt.pqueen
+./pqueen examples/creative_prompt.pqueen
 ```
 
 ## Character Cards
