@@ -14,7 +14,16 @@ import { App } from '../../chat.mjs';
 
 const h = React.createElement;
 const stripAnsi = s => s.replace(/\x1b\[[0-9;]*m/g, '');
-const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
+const tick = (ms = 0) => new Promise(r => setTimeout(r, ms));
+
+async function waitFor(lastFrame, predicate, timeout = 2000) {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+        if (predicate(stripAnsi(lastFrame()))) return;
+        await new Promise(r => setTimeout(r, 5));
+    }
+    throw new Error('waitFor timed out: ' + JSON.stringify(stripAnsi(lastFrame())));
+}
 
 const INPUT_CONTENT = `---
 connection: test
@@ -115,7 +124,7 @@ test('App: submit sends API call and displays response', async () => {
                 stdin.write('Hey there!');
                 await tick();
                 stdin.write('\x04'); // Ctrl+D submits
-                await tick(500);
+                await waitFor(lastFrame, f => f.includes('Nice to meet you'));
 
                 const frame = stripAnsi(lastFrame());
                 assert.ok(frame.includes('Nice to meet you'), 'API response should appear in frame');
@@ -144,7 +153,7 @@ test('App: API error shows banner, preserves conversation, and restores file', a
                 stdin.write('Hey there!');
                 await tick();
                 stdin.write('\x04');
-                await tick(500);
+                await waitFor(lastFrame, f => f.includes('Error:'));
 
                 const frame = stripAnsi(lastFrame());
                 assert.ok(frame.includes('Error:'), 'Error banner should appear');
@@ -176,7 +185,7 @@ test('App: API error prefills input for retry', async () => {
                 stdin.write('my important message');
                 await tick();
                 stdin.write('\x04');
-                await tick(500);
+                await waitFor(lastFrame, f => f.includes('Error:'));
 
                 const frame = stripAnsi(lastFrame());
                 assert.ok(frame.includes('my important message'),
@@ -197,7 +206,7 @@ test('App: escape saves file and exits', async () => {
         await tick();
 
         stdin.write('\x1b'); // Escape
-        await tick(200); // ink needs time to distinguish standalone Esc from sequences
+        await tick(150); // ink needs time to distinguish standalone Esc from sequences
 
         const saved = fs.readFileSync(tmpFile, 'utf8');
         assert.ok(saved.includes('Bilinda'), 'File should contain original messages after save');
@@ -221,7 +230,7 @@ test('App: multi-chunk streaming accumulates response', async () => {
                 stdin.write('Hi');
                 await tick();
                 stdin.write('\x04');
-                await tick(500);
+                await waitFor(lastFrame, f => f.includes('Hello there Tom!'));
 
                 const frame = stripAnsi(lastFrame());
                 assert.ok(frame.includes('Hello there Tom!'),
@@ -251,7 +260,7 @@ test('App: postCompletionLint adds next speaker after response', async () => {
                 stdin.write('Teach me to surf');
                 await tick();
                 stdin.write('\x04');
-                await tick(500);
+                await waitFor(lastFrame, f => f.includes('Catch some waves!'));
 
                 const frame = stripAnsi(lastFrame());
                 // After Bilinda responds, postCompletionLint should add @Tom as next pending speaker
@@ -283,7 +292,7 @@ test('App: AbortError shows cancellation message', async () => {
                 stdin.write('Hello');
                 await tick();
                 stdin.write('\x04');
-                await tick(500);
+                await waitFor(lastFrame, f => f.includes('Request cancelled'));
 
                 const frame = stripAnsi(lastFrame());
                 assert.ok(frame.includes('Request cancelled'),
@@ -323,7 +332,7 @@ test('App: mid-stream API failure restores state and prefills input', async () =
                 stdin.write('my message');
                 await tick();
                 stdin.write('\x04');
-                await tick(500);
+                await waitFor(lastFrame, f => f.includes('Connection reset'));
 
                 const frame = stripAnsi(lastFrame());
                 assert.ok(frame.includes('Error:'), 'Error banner should appear');
@@ -375,7 +384,7 @@ test('App: writeFileSync failure on save shows error and preserves state', async
                     stdin.write('Hello');
                     await tick();
                     stdin.write('\x04');
-                    await tick(500);
+                    await waitFor(lastFrame, f => f.includes('EACCES'));
 
                     const frame = stripAnsi(lastFrame());
                     assert.ok(frame.includes('EACCES'),
@@ -403,7 +412,7 @@ test('App: escape during busy state is ignored', async () => {
                 async *[Symbol.asyncIterator]() {
                     const data = JSON.stringify({ choices: [{ delta: { content: 'streaming...' } }] });
                     yield new TextEncoder().encode(`data: ${data}\n\n`);
-                    await new Promise(r => setTimeout(r, 300));
+                    await new Promise(r => setTimeout(r, 50));
                     yield new TextEncoder().encode(`data: [DONE]\n\n`);
                 }
             }
@@ -418,19 +427,20 @@ test('App: escape during busy state is ignored', async () => {
                 stdin.write('Hi');
                 await tick();
                 stdin.write('\x04');
-                await tick(100); // mid-stream
+                await waitFor(lastFrame, f => f.includes('streaming'));
 
-                // Press escape while busy
+                // Press escape while busy (stream hasn't finished yet)
                 stdin.write('\x1b');
-                await tick(200);
+                await tick(150); // ink Esc disambiguation delay
 
                 // Should still be running — verify the frame still shows streaming content
                 const frameDuring = stripAnsi(lastFrame());
                 assert.ok(frameDuring.includes('streaming'),
                     'Stream should continue despite escape press');
 
-                // Wait for stream to finish
-                await tick(500);
+                // Wait for stream to finish and file to be saved
+                await waitFor(lastFrame, f => !f.includes('Sending'), 2000);
+                await tick();
 
                 // File should contain the response, not be in a saved-and-exited state
                 const saved = fs.readFileSync(tmpFile, 'utf8');

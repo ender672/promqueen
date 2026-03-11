@@ -6,7 +6,7 @@ import { TextArea } from '../../chat-ink-view.mjs';
 
 const h = React.createElement;
 const stripAnsi = s => s.replace(/\x1b\[[0-9;]*m/g, '');
-const tick = () => new Promise(r => setTimeout(r, 50));
+const tick = () => new Promise(r => setTimeout(r, 0));
 
 function renderTextArea(props = {}) {
     let submitted = null;
