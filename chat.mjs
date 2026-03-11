@@ -56,9 +56,13 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
     const [streamName, setStreamName] = useState('');
     const [error, setError] = useState('');
     const [prefill, setPrefill] = useState(initPrefill);
-    const [sentMsg, setSentMsg] = useState(null);
     const [staticKey, setStaticKey] = useState(0);
     const abortRef = useRef(null);
+
+    const refreshScreen = useCallback(() => {
+        process.stdout.write('\x1b[2J\x1b[H');
+        setStaticKey(k => k + 1);
+    }, []);
 
     // Returns { writer, flush } — writer batches chunks, flushing to
     // setStreamBuf at most once per animation frame to avoid jumpy redraws.
@@ -119,13 +123,10 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
     }, [messages, pendingMsg]);
 
     useEffect(() => {
-        const onResize = () => {
-            process.stdout.write('\x1b[2J\x1b[H');
-            setStaticKey(k => k + 1);
-        };
+        const onResize = () => refreshScreen();
         process.stdout.on('resize', onResize);
         return () => process.stdout.off('resize', onResize);
-    }, []);
+    }, [refreshScreen]);
 
     const saveFile = useCallback((msgs) => {
         fs.writeFileSync(pqueenPath, pqutils.serializeDocument(rawConfig, msgs));
@@ -164,12 +165,12 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
                     setError(`Error: ${err.message}`);
                 }
             }
-            setSentMsg(null);
+            refreshScreen();
             setStreamBuf('');
             setStreamName('');
             setBusy(false);
         })();
-    }, [resolvedConfig, streamCompletion, accumulateTokens, makeThrottledWriter, saveFile]);
+    }, [resolvedConfig, streamCompletion, accumulateTokens, makeThrottledWriter, saveFile, refreshScreen]);
 
     const handleSubmit = useCallback((text) => {
         if (busy) return;
@@ -228,11 +229,9 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
             const rollbackMessages = messages;
             const rollbackPending = pendingMsg;
 
-            process.stdout.write('\x1b[2J\x1b[H');
-            setStaticKey(k => k + 1);
             setMessages(messages.slice(0, -1));
             setPendingMsg(null);
-            setSentMsg(null);
+            refreshScreen();
             saveFile(priorMessages);
 
             runGeneration({
@@ -258,10 +257,12 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
         const filled = { ...pendingMsg, content: (pendingMsg.content || '') + text };
         const allMessages = [...messages, filled];
         // Capture rollback state before optimistic updates
+        const rollbackMessages = messages;
         const rollbackPending = pendingMsg;
 
-        setSentMsg(filled);
+        setMessages(allMessages);
         setPendingMsg(null);
+        refreshScreen();
         saveFile(allMessages);
 
         const turn = prepareTurn(allMessages, resolvedConfig, cwd);
@@ -270,7 +271,6 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
         // precompletionLint decided the next speaker — if it's a user role,
         // show the edit box instead of generating.
         if (nextEntry.role === 'user') {
-            setMessages(prev => [...prev, filled]);
             setPendingMsg(nextEntry);
             saveFile([...allMessages, nextEntry]);
             return;
@@ -281,17 +281,18 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
             streamName: nextEntry.name,
             onSuccess(content) {
                 const completed = { ...nextEntry, content };
-                setMessages(prev => [...prev, filled, completed]);
+                setMessages(prev => [...prev, completed]);
                 return [...allMessages, completed];
             },
             onError() {
+                setMessages(rollbackMessages);
                 setPendingMsg(rollbackPending);
-                saveFile(rollbackPending ? [...messages, rollbackPending] : messages);
+                saveFile(rollbackPending ? [...rollbackMessages, rollbackPending] : rollbackMessages);
                 setPrefill(text);
             },
         });
     }, [messages, pendingMsg, allMsgs, busy, resolvedConfig, cwd, saveFile,
-        runGeneration]);
+        runGeneration, refreshScreen]);
 
     useInput((_input, key) => {
         if (key.escape && busy) {
@@ -305,7 +306,7 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
     });
 
     return h(ChatView, {
-        messages, streamName, streamBuf, pendingMsg, sentMsg,
+        messages, streamName, streamBuf, pendingMsg,
         busy, connectionName: resolvedConfig.connection || '', costInfo, staticKey,
         onSubmit: handleSubmit,
         errorBanner: error,

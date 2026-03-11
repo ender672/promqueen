@@ -172,7 +172,7 @@ function truncateStreamHead(buf) {
     return lines.slice(-maxLines).join('\n');
 }
 
-export function ChatView({ messages, streamName, streamBuf, pendingMsg, sentMsg, busy, connectionName, costInfo, onSubmit, errorBanner, initialText, staticKey }) {
+export function ChatView({ messages, streamName, streamBuf, pendingMsg, busy, connectionName, costInfo, onSubmit, errorBanner, initialText, staticKey }) {
     const [inputText, setInputText] = useState('');
     const [selectedIdx, setSelectedIdx] = useState(0);
     const trimmed = inputText.trim();
@@ -197,10 +197,6 @@ export function ChatView({ messages, streamName, streamBuf, pendingMsg, sentMsg,
                 msg.content ? h(Text, null, msg.content) : null,
             )
         ),
-        sentMsg ? h(Box, { flexDirection: 'column', marginTop: 1 },
-            sentMsg.name ? h(Text, { color: 'cyan' }, `@${sentMsg.name}`) : null,
-            sentMsg.content ? h(Text, null, sentMsg.content) : null,
-        ) : null,
         streamName ? h(Box, { flexDirection: 'column', marginTop: 1 },
             h(Text, { color: 'cyan' }, `@${streamName}`),
             streamBuf ? h(Text, null, truncateStreamHead(streamBuf)) : null,
