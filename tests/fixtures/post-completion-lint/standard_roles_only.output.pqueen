@@ -1,0 +1,11 @@
+---
+roleplay_user: Alice
+dot_config_loading: false
+---
+@user
+Hello world
+
+@assistant
+Hi there!
+
+@user
