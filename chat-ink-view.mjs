@@ -1,11 +1,12 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Static, Box, Text, useInput } from 'ink';
+import { Static, Box, Text, useInput, useApp } from 'ink';
 
 const h = React.createElement;
 
 // ─── Multi-line TextArea component ──────────────────────────────────────────
 
 export function TextArea({ onSubmit, onChange, height, disabled, initialText, activeCommands, onCommandNav, onCommandAccept }) {
+    const { exit } = useApp();
     const bufRef = useRef({ lines: [''], row: 0, col: 0 });
     const prevInitialRef = useRef('');
     const [, forceRender] = useState(0);
@@ -26,6 +27,19 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
 
     useInput((input, key) => {
         if (disabled || key.escape) return;
+
+        if (input === 'c' && key.ctrl) {
+            const hasText = buf.lines.some(l => l.length > 0);
+            if (hasText) {
+                buf.lines = [''];
+                buf.row = 0;
+                buf.col = 0;
+                kick();
+            } else {
+                exit();
+            }
+            return;
+        }
 
         if (key.return) {
             const text = buf.lines.join('\n').trim();
@@ -69,8 +83,30 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
             return;
         }
 
-        if (key.leftArrow) { buf.col = Math.max(0, buf.col - 1); kick(); return; }
-        if (key.rightArrow) { buf.col = Math.min(buf.lines[buf.row].length, buf.col + 1); kick(); return; }
+        if (key.leftArrow) {
+            if (key.ctrl || key.meta) {
+                const line = buf.lines[buf.row];
+                let c = buf.col - 1;
+                while (c > 0 && /\s/.test(line[c])) c--;
+                while (c > 0 && !/\s/.test(line[c - 1])) c--;
+                buf.col = Math.max(0, c);
+            } else {
+                buf.col = Math.max(0, buf.col - 1);
+            }
+            kick(); return;
+        }
+        if (key.rightArrow) {
+            if (key.ctrl || key.meta) {
+                const line = buf.lines[buf.row];
+                let c = buf.col;
+                while (c < line.length && !/\s/.test(line[c])) c++;
+                while (c < line.length && /\s/.test(line[c])) c++;
+                buf.col = c;
+            } else {
+                buf.col = Math.min(buf.lines[buf.row].length, buf.col + 1);
+            }
+            kick(); return;
+        }
         if (key.upArrow && buf.row > 0) {
             buf.row--;
             buf.col = Math.min(buf.col, buf.lines[buf.row].length);
@@ -89,7 +125,7 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
             buf.col += input.length;
             kick();
         }
-    });
+    }, { isActive: !disabled, exitOnCtrlC: false });
 
     const minH = height || 3;
     const displayLines = [];

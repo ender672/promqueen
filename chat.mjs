@@ -354,7 +354,7 @@ async function main() {
         initialMessages: doc.messages,
         resolvedConfig,
         rawConfig: doc.config,
-    }));
+    }), { exitOnCtrlC: false });
 }
 
 const __filename = fileURLToPath(import.meta.url);
