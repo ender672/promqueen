@@ -267,6 +267,16 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
         const turn = prepareTurn(allMessages, resolvedConfig, cwd);
         const { apiMessages, assistantName, assistantRole } = turn;
 
+        // If precompletionLint added a user-role message, don't generate —
+        // let the user fill it in via the edit box instead.
+        if (assistantRole === 'user') {
+            const newPending = { name: assistantName, role: 'user', content: null, decorators: [] };
+            setMessages(prev => [...prev, filled]);
+            setPendingMsg(newPending);
+            saveFile([...allMessages, newPending]);
+            return;
+        }
+
         runGeneration({
             apiMessages,
             streamName: assistantName,
