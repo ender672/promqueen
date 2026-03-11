@@ -34,11 +34,11 @@ test('TextArea: Enter submits trimmed text', async () => {
     assert.strictEqual(getSubmitted(), 'hello world');
 });
 
-test('TextArea: Enter on empty input does not submit', async () => {
+test('TextArea: Enter on empty input submits empty string', async () => {
     const { stdin, getSubmitted } = renderTextArea();
     stdin.write('\r');
     await tick();
-    assert.strictEqual(getSubmitted(), null, 'Empty input should not submit');
+    assert.strictEqual(getSubmitted(), '', 'Empty input should submit empty string');
 });
 
 test('TextArea: backspace deletes character', async () => {

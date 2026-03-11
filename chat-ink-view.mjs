@@ -43,13 +43,11 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
 
         if (key.return) {
             const text = buf.lines.join('\n').trim();
-            if (text) {
-                onSubmit(text);
-                buf.lines = [''];
-                buf.row = 0;
-                buf.col = 0;
-                kick();
-            }
+            onSubmit(text);
+            buf.lines = [''];
+            buf.row = 0;
+            buf.col = 0;
+            kick();
             return;
         }
 

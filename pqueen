@@ -301,7 +301,7 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
             return;
         }
 
-        if (text.trim() === '/generate') {
+        if (text.trim() === '/generate' || text.trim() === '') {
             if (!pendingMsg) return;
 
             const turn = prepareTurn(allMsgs, resolvedConfig, cwd);
