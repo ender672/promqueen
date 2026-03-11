@@ -16,7 +16,7 @@ const vscodeMock = setupVscodeMock({
 
 // Helper to set up active document
 vscodeMock.window.activeTextEditor = {
-    document: new MockDocument("---\nfoo: bar\n---\nUser: Hello\n"),
+    document: new MockDocument("---\ndot_config_loading: false\nfoo: bar\n---\nUser: Hello\n"),
     edit: async (callback) => {
         const editBuilder = {
             insert: (_pos, _text) => { }
@@ -59,7 +59,7 @@ async function runTest() {
     // --- Test Case 2: CRLF line endings ---
 
     openTextDocumentSpy = null;
-    vscodeMock.window.activeTextEditor.document = new MockDocument("---\r\nfoo: bar\r\n---\r\nUser: Hello\r\n");
+    vscodeMock.window.activeTextEditor.document = new MockDocument("---\r\ndot_config_loading: false\r\nfoo: bar\r\n---\r\nUser: Hello\r\n");
 
     try {
         await vscodeMock.commands.executeCommand('promqueen.previewPrompt');

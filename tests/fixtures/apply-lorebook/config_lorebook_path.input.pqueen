@@ -1,4 +1,5 @@
 ---
+dot_config_loading: false
 api_url: https://api.example.com/v1/chat/completions
 lorebook: tests/fixtures/apply-lorebook/config_lorebook_path.lorebook.json
 ---

@@ -4,7 +4,7 @@ const vscodeMock = setupVscodeMock();
 
 // Helper to set up active document
 vscodeMock.window.activeTextEditor = {
-    document: new MockDocument("---\nfoo: bar\n---\nUser: Hello\n\n@Assistant\nOld response"),
+    document: new MockDocument("---\ndot_config_loading: false\nconnection: test\nconnection_profiles:\n  test:\n    api_url: http://dummy\n---\n@User\nHello\n\n@Assistant\nOld response"),
     edit: async (callback, _options) => {
         const editBuilder = {
             insert: (_pos, _text) => { },
