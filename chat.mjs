@@ -2,7 +2,7 @@
 
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { render, useInput, useApp } from 'ink';
 import { ChatView, splitMessages } from './chat-ink-view.mjs';
 
@@ -49,6 +49,15 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
     const [prefill, setPrefill] = useState('');
     const [sentMsg, setSentMsg] = useState(null);
     const [staticKey, setStaticKey] = useState(0);
+
+    useEffect(() => {
+        const onResize = () => {
+            process.stdout.write('\x1b[2J\x1b[H');
+            setStaticKey(k => k + 1);
+        };
+        process.stdout.on('resize', onResize);
+        return () => process.stdout.off('resize', onResize);
+    }, []);
 
     const saveFile = useCallback((msgs) => {
         fs.writeFileSync(pqueenPath, pqutils.serializeDocument(rawConfig, msgs));
