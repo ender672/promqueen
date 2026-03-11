@@ -2,7 +2,7 @@
 
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { render, useInput, useApp } from 'ink';
 import { ChatView, splitMessages } from './chat-ink-view.mjs';
 
@@ -49,6 +49,7 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
     const [prefill, setPrefill] = useState('');
     const [sentMsg, setSentMsg] = useState(null);
     const [staticKey, setStaticKey] = useState(0);
+    const abortRef = useRef(null);
 
     useEffect(() => {
         const onResize = () => {
@@ -127,6 +128,8 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
             saveFile(priorMessages);
 
             (async () => {
+                const ac = new AbortController();
+                abortRef.current = ac;
                 const chunks = [];
                 try {
                     const pricingResult = await dispatchSendPrompt(apiMessages, resolvedConfig, {
@@ -134,7 +137,7 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
                             setStreamBuf(buf => buf + chunk);
                             chunks.push(chunk);
                         }
-                    }, cwd, {});
+                    }, cwd, { signal: ac.signal });
 
                     let content = chunks.join('');
                     if (content && !content.endsWith('\n')) content += '\n';
@@ -199,6 +202,8 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
         setStreamBuf('');
 
         (async () => {
+            const ac = new AbortController();
+            abortRef.current = ac;
             const chunks = [];
             try {
                 const pricingResult = await dispatchSendPrompt(apiMessages, resolvedConfig, {
@@ -206,7 +211,7 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
                         setStreamBuf(buf => buf + chunk);
                         chunks.push(chunk);
                     }
-                }, cwd, {});
+                }, cwd, { signal: ac.signal });
 
                 let content = chunks.join('');
                 if (content && !content.endsWith('\n')) content += '\n';
@@ -262,7 +267,9 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
     }, [messages, pendingMsg, resolvedConfig, cwd, saveFile]);
 
     useInput((_input, key) => {
-        if (key.escape && !busy) {
+        if (key.escape && busy) {
+            if (abortRef.current) abortRef.current.abort();
+        } else if (key.escape && !busy) {
             const allMsgs = pendingMsg ? [...messages, pendingMsg] : messages;
             saveFile(allMsgs);
             if (process.stderr.isTTY) process.stderr.write(`\nSaved to ${pqueenPath}\n`);
