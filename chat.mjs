@@ -35,7 +35,7 @@ function findOpener() {
 
 // ─── App ────────────────────────────────────────────────────────────────────
 
-function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig, rawConfig }) {
+function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
     const { exit } = useApp();
     const initial = splitMessages(initialMessages);
     let initCompleted = initial.completed;
@@ -306,7 +306,7 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
 
     return h(ChatView, {
         messages, streamName, streamBuf, pendingMsg, sentMsg,
-        busy, connectionName, costInfo, staticKey,
+        busy, connectionName: resolvedConfig.connection || '', costInfo, staticKey,
         onSubmit: handleSubmit,
         errorBanner: error,
         initialText: prefill,
@@ -366,7 +366,6 @@ async function main() {
     render(h(App, {
         pqueenPath,
         cwd,
-        connectionName: resolvedConfig.connection || '',
         initialMessages: doc.messages,
         resolvedConfig,
         rawConfig: doc.config,
