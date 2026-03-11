@@ -6,10 +6,10 @@ connection: {{ connection }}
 charcard: {{ charcard_path }}
 lorebook: {{ charcard_path }}
 ---
-@system
+@system [pq:hidden]
 You are a character in this fictional, never-ending roleplay.
 
-@user
+@user [pq:hidden]
 {% if user_description %}## {{ user }}'s Description
 {{ user_description }}
 
