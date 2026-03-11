@@ -5,11 +5,14 @@ const h = React.createElement;
 
 // ─── Multi-line TextArea component ──────────────────────────────────────────
 
-export function TextArea({ onSubmit, height, disabled, initialText }) {
+export function TextArea({ onSubmit, onChange, height, disabled, initialText }) {
     const bufRef = useRef({ lines: [''], row: 0, col: 0 });
     const prevInitialRef = useRef('');
     const [, forceRender] = useState(0);
-    const kick = () => forceRender(n => n + 1);
+    const kick = () => {
+        forceRender(n => n + 1);
+        if (onChange) onChange(bufRef.current.lines.join('\n'));
+    };
     const buf = bufRef.current;
 
     if (initialText && initialText !== prevInitialRef.current) {
@@ -102,7 +105,20 @@ export function splitMessages(msgs) {
     return { completed: msgs, pending: null };
 }
 
+const COMMANDS = [
+    { name: '/exit', description: 'Save and quit' },
+    { name: '/show-prompt', description: 'Preview prepared prompt' },
+    { name: '/html', description: 'Preview as HTML in browser' },
+];
+
 export function ChatView({ messages, streamName, streamBuf, pendingMsg, sentMsg, busy, connectionName, costInfo, onSubmit, errorBanner, initialText }) {
+    const [inputText, setInputText] = useState('');
+    const trimmed = inputText.trim();
+    const showCommands = trimmed.startsWith('/') && !busy;
+    const filteredCommands = showCommands
+        ? COMMANDS.filter(c => c.name.startsWith(trimmed))
+        : [];
+
     const statusParts = ['Enter send', '/html preview', 'Esc quit'];
     if (connectionName) statusParts.push(connectionName);
     if (costInfo) statusParts.push(costInfo);
@@ -133,8 +149,18 @@ export function ChatView({ messages, streamName, streamBuf, pendingMsg, sentMsg,
             paddingLeft: 1,
             paddingRight: 1,
         },
-            h(TextArea, { onSubmit, height: 3, disabled: busy, initialText })
+            h(TextArea, { onSubmit, onChange: setInputText, height: 3, disabled: busy, initialText })
         ),
+        filteredCommands.length > 0
+            ? h(Box, { flexDirection: 'column', marginLeft: 1 },
+                ...filteredCommands.map(c =>
+                    h(Text, { key: c.name },
+                        h(Text, { color: 'cyan' }, c.name),
+                        h(Text, { dimColor: true }, `  ${c.description}`)
+                    )
+                )
+            )
+            : null,
         h(Text, { dimColor: true }, hint)
     );
 }
