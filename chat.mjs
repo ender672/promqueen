@@ -38,15 +38,24 @@ function findOpener() {
 function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig, rawConfig }) {
     const { exit } = useApp();
     const initial = splitMessages(initialMessages);
-    const [messages, setMessages] = useState(initial.completed);
-    const [pendingMsg, setPendingMsg] = useState(initial.pending);
+    let initCompleted = initial.completed;
+    let initPending = initial.pending;
+    let initPrefill = '';
+    if (!initPending && initCompleted.length > 0) {
+        const last = initCompleted[initCompleted.length - 1];
+        initCompleted = initCompleted.slice(0, -1);
+        initPrefill = last.content || '';
+        initPending = { ...last, content: null, decorators: [] };
+    }
+    const [messages, setMessages] = useState(initCompleted);
+    const [pendingMsg, setPendingMsg] = useState(initPending);
     const [busy, setBusy] = useState(false);
     const [costInfo, setCostInfo] = useState('');
     const [, setCumulativeTokens] = useState({ prompt: 0, cached: 0, completion: 0 });
     const [streamBuf, setStreamBuf] = useState('');
     const [streamName, setStreamName] = useState('');
     const [error, setError] = useState('');
-    const [prefill, setPrefill] = useState('');
+    const [prefill, setPrefill] = useState(initPrefill);
     const [sentMsg, setSentMsg] = useState(null);
     const [staticKey, setStaticKey] = useState(0);
     const abortRef = useRef(null);
