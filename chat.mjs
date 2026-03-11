@@ -222,7 +222,7 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
             const priorMessages = [...messages.slice(0, -1), hollow];
 
             const turn = prepareTurn(priorMessages, resolvedConfig, cwd);
-            const { apiMessages } = turn;
+            const { apiMessages, nextEntry } = turn;
 
             // Capture rollback state before optimistic updates
             const rollbackMessages = messages;
@@ -237,10 +237,10 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
 
             runGeneration({
                 apiMessages,
-                streamName: lastMsg.name || '',
+                streamName: nextEntry.name || '',
                 onSuccess(content) {
-                    const regenerated = { ...lastMsg, content, decorators: [] };
-                    const completedMessages = [...messages.slice(0, -1), regenerated];
+                    const completed = { ...nextEntry, content };
+                    const completedMessages = [...messages.slice(0, -1), completed];
                     setMessages(completedMessages);
                     return [...completedMessages];
                 },
@@ -265,30 +265,24 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
         saveFile(allMessages);
 
         const turn = prepareTurn(allMessages, resolvedConfig, cwd);
-        const { apiMessages, assistantName, assistantRole } = turn;
+        const { apiMessages, nextEntry } = turn;
 
-        // If precompletionLint added a user-role message, don't generate —
-        // let the user fill it in via the edit box instead.
-        if (assistantRole === 'user') {
-            const newPending = { name: assistantName, role: 'user', content: null, decorators: [] };
+        // precompletionLint decided the next speaker — if it's a user role,
+        // show the edit box instead of generating.
+        if (nextEntry.role === 'user') {
             setMessages(prev => [...prev, filled]);
-            setPendingMsg(newPending);
-            saveFile([...allMessages, newPending]);
+            setPendingMsg(nextEntry);
+            saveFile([...allMessages, nextEntry]);
             return;
         }
 
         runGeneration({
             apiMessages,
-            streamName: assistantName,
+            streamName: nextEntry.name,
             onSuccess(content) {
-                const assistantMsg = {
-                    name: assistantName,
-                    role: assistantRole,
-                    content,
-                    decorators: [],
-                };
-                setMessages(prev => [...prev, filled, assistantMsg]);
-                return [...allMessages, assistantMsg];
+                const completed = { ...nextEntry, content };
+                setMessages(prev => [...prev, filled, completed]);
+                return [...allMessages, completed];
             },
             onError() {
                 setPendingMsg(rollbackPending);
