@@ -1,11 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Static, Box, Text, useInput } from 'ink';
 
 const h = React.createElement;
 
 // ─── Multi-line TextArea component ──────────────────────────────────────────
 
-export function TextArea({ onSubmit, onChange, height, disabled, initialText }) {
+export function TextArea({ onSubmit, onChange, height, disabled, initialText, activeCommands, onCommandNav, onCommandAccept }) {
     const bufRef = useRef({ lines: [''], row: 0, col: 0 });
     const prevInitialRef = useRef('');
     const [, forceRender] = useState(0);
@@ -37,6 +37,21 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText }) 
                 kick();
             }
             return;
+        }
+
+        if (activeCommands && activeCommands.length > 0) {
+            if (key.upArrow) { onCommandNav(-1); return; }
+            if (key.downArrow) { onCommandNav(1); return; }
+            if (key.tab) {
+                const text = onCommandAccept();
+                if (text) {
+                    buf.lines = [text];
+                    buf.row = 0;
+                    buf.col = text.length;
+                    kick();
+                }
+                return;
+            }
         }
 
         if (key.backspace || key.delete) {
@@ -113,11 +128,14 @@ const COMMANDS = [
 
 export function ChatView({ messages, streamName, streamBuf, pendingMsg, sentMsg, busy, connectionName, costInfo, onSubmit, errorBanner, initialText }) {
     const [inputText, setInputText] = useState('');
+    const [selectedIdx, setSelectedIdx] = useState(0);
     const trimmed = inputText.trim();
     const showCommands = trimmed.startsWith('/') && !busy;
     const filteredCommands = showCommands
         ? COMMANDS.filter(c => c.name.startsWith(trimmed))
         : [];
+
+    useEffect(() => setSelectedIdx(0), [trimmed]);
 
     const statusParts = ['Enter send', '/html preview', 'Esc quit'];
     if (connectionName) statusParts.push(connectionName);
@@ -149,13 +167,21 @@ export function ChatView({ messages, streamName, streamBuf, pendingMsg, sentMsg,
             paddingLeft: 1,
             paddingRight: 1,
         },
-            h(TextArea, { onSubmit, onChange: setInputText, height: 3, disabled: busy, initialText })
+            h(TextArea, {
+                onSubmit, onChange: setInputText, height: 3, disabled: busy, initialText,
+                activeCommands: filteredCommands.length > 0 ? filteredCommands : null,
+                onCommandNav: (delta) => setSelectedIdx(i => {
+                    const n = filteredCommands.length;
+                    return ((i + delta) % n + n) % n;
+                }),
+                onCommandAccept: () => filteredCommands[selectedIdx]?.name,
+            })
         ),
         filteredCommands.length > 0
             ? h(Box, { flexDirection: 'column', marginLeft: 1 },
-                ...filteredCommands.map(c =>
+                ...filteredCommands.map((c, i) =>
                     h(Text, { key: c.name },
-                        h(Text, { color: 'cyan' }, c.name),
+                        i === selectedIdx ? h(Text, { color: 'cyan', bold: true }, `▸ ${c.name}`) : h(Text, { color: 'cyan' }, `  ${c.name}`),
                         h(Text, { dimColor: true }, `  ${c.description}`)
                     )
                 )
