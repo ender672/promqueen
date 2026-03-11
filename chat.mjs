@@ -28,7 +28,7 @@ function findOpener() {
     if (process.platform === 'darwin') return 'open';
     if (process.platform === 'win32') return 'start';
     for (const cmd of ['firefox', 'google-chrome', 'chromium', 'chromium-browser', 'xdg-open']) {
-        try { execFileSync('which', [cmd], { stdio: 'ignore' }); return cmd; } catch {}
+        try { execFileSync('which', [cmd], { stdio: 'ignore' }); return cmd; } catch { /* not found */ }
     }
     return null;
 }
@@ -42,7 +42,7 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
     const [pendingMsg, setPendingMsg] = useState(initial.pending);
     const [busy, setBusy] = useState(false);
     const [costInfo, setCostInfo] = useState('');
-    const [cumulativeTokens, setCumulativeTokens] = useState({ prompt: 0, cached: 0, completion: 0 });
+    const [, setCumulativeTokens] = useState({ prompt: 0, cached: 0, completion: 0 });
     const [streamBuf, setStreamBuf] = useState('');
     const [streamName, setStreamName] = useState('');
     const [error, setError] = useState('');
