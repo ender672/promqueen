@@ -63,9 +63,9 @@ require.cache[resolved] = {
         assert.ok(!stderr.includes('Expected a .png or .pqueen'), 'Should not show extension error');
         return; // timeout or ink error is expected in non-TTY
     } finally {
-        try { fs.unlinkSync(tmpPng); } catch {}
-        try { fs.unlinkSync(tmpPqueen); } catch {}
-        try { fs.unlinkSync(preloadPath); } catch {}
+        try { fs.unlinkSync(tmpPng); } catch { /* ignore */ }
+        try { fs.unlinkSync(tmpPqueen); } catch { /* ignore */ }
+        try { fs.unlinkSync(preloadPath); } catch { /* ignore */ }
     }
     // If it somehow exited cleanly, that's also fine
 });

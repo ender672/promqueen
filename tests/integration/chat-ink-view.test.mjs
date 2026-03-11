@@ -9,6 +9,7 @@ import { ChatView } from '../../chat-ink-view.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(__dirname, '../fixtures/chat-ink-view');
+// eslint-disable-next-line no-control-regex
 const stripAnsi = s => s.replace(/\x1b\[[0-9;]*m/g, '');
 
 const propFiles = fs.readdirSync(fixturesDir).filter(f => f.endsWith('.props.json'));

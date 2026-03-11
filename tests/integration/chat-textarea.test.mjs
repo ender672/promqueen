@@ -5,6 +5,7 @@ import { render } from 'ink-testing-library';
 import { TextArea } from '../../chat-ink-view.mjs';
 
 const h = React.createElement;
+// eslint-disable-next-line no-control-regex
 const stripAnsi = s => s.replace(/\x1b\[[0-9;]*m/g, '');
 const tick = () => new Promise(r => setTimeout(r, 0));
 

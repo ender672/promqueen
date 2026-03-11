@@ -13,6 +13,7 @@ const pqutils = require_('../../lib/pq-utils.js');
 import { App } from '../../chat.mjs';
 
 const h = React.createElement;
+// eslint-disable-next-line no-control-regex
 const stripAnsi = s => s.replace(/\x1b\[[0-9;]*m/g, '');
 const tick = (ms = 0) => new Promise(r => setTimeout(r, ms));
 
@@ -49,7 +50,7 @@ function setupApp() {
 
     return {
         tmpFile,
-        cleanup: () => { try { fs.unlinkSync(tmpFile); } catch {} },
+        cleanup: () => { try { fs.unlinkSync(tmpFile); } catch { /* ignore */ } },
         props: {
             pqueenPath: tmpFile,
             cwd,
