@@ -162,6 +162,9 @@ async function main() {
     const doc = pqutils.parseConfigAndMessages(content);
     const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, cliConfig);
 
+    // Clear any remaining setup output before starting the chat UI
+    if (process.stderr.isTTY) process.stderr.write('\x1b[2J\x1b[H');
+
     render(h(App, {
         pqueenPath,
         cwd,
