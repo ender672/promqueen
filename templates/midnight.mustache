@@ -157,6 +157,15 @@ document.querySelectorAll('.message .content').forEach(function(el) {
     node.parentNode.replaceChild(frag, node);
   }
 });
+document.querySelectorAll('.message .content img').forEach(function(img) {
+  if (img.parentElement.tagName !== 'A') {
+    var a = document.createElement('a');
+    a.href = img.src;
+    a.target = '_blank';
+    img.parentElement.insertBefore(a, img);
+    a.appendChild(img);
+  }
+});
 </script>
 </body>
 </html>
