@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const { postCompletionLint } = require('./post-completion-lint.js');
 const { prepareTurn, dispatchSendPrompt } = require('./lib/pipeline.js');
-const { pricingToString } = require('./lib/send-prompt-common.js');
+const { tokensToString } = require('./lib/send-prompt-common.js');
 const pqutils = require('./lib/pq-utils.js');
 const { rpToHtml } = require('./rp-to-html.js');
 const os = require('os');
@@ -42,6 +42,7 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
     const [pendingMsg, setPendingMsg] = useState(initial.pending);
     const [busy, setBusy] = useState(false);
     const [costInfo, setCostInfo] = useState('');
+    const [cumulativeTokens, setCumulativeTokens] = useState({ prompt: 0, cached: 0, completion: 0 });
     const [streamBuf, setStreamBuf] = useState('');
     const [streamName, setStreamName] = useState('');
     const [error, setError] = useState('');
@@ -145,7 +146,17 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
 
                 saveFile(afterTurn);
 
-                if (pricingResult) setCostInfo(pricingToString(pricingResult));
+                if (pricingResult) {
+                    setCumulativeTokens(prev => {
+                        const next = {
+                            prompt: prev.prompt + pricingResult.promptTokens,
+                            cached: prev.cached + pricingResult.cachedTokens,
+                            completion: prev.completion + pricingResult.completionTokens,
+                        };
+                        setCostInfo(tokensToString(next.prompt, next.cached, next.completion));
+                        return next;
+                    });
+                }
             } catch (err) {
                 // Restore pre-submit state and prefill the input for retry
                 setPendingMsg(pendingMsg);
