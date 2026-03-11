@@ -64,6 +64,23 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
             return;
         }
 
+        if (text.trim() === '/preview-prompt') {
+            const allMsgs = pendingMsg ? [...messages, pendingMsg] : messages;
+            const turn = prepareTurn(allMsgs, resolvedConfig, cwd);
+            const preview = pqutils.serializeDocument(resolvedConfig, turn.apiMessages);
+            const tmpFile = path.join(os.tmpdir(), `pq-preview-prompt-${Date.now()}.pqueen`);
+            fs.writeFileSync(tmpFile, preview);
+            const opener = findOpener();
+            if (!opener) {
+                setError('No file opener found');
+                return;
+            }
+            execFile(opener, [tmpFile], (err) => {
+                if (err) setError(`Could not open file: ${err.message}`);
+            });
+            return;
+        }
+
         if (text.trim() === '/html') {
             const allMsgs = pendingMsg ? [...messages, pendingMsg] : messages;
             const doc = { messages: allMsgs };
