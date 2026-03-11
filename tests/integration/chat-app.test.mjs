@@ -565,6 +565,34 @@ test('App: streaming content is visible before completion', async () => {
     }
 });
 
+test('App: unknown slash command is submitted as regular text', async () => {
+    const { props, tmpFile, cleanup } = setupApp();
+    try {
+        await withFetchMock(
+            async () => sseResponse('Got it!'),
+            async () => {
+                const { lastFrame, stdin, cleanup: inkCleanup } = render(h(App, props));
+                await tick();
+
+                stdin.write('/foo');
+                await tick();
+                stdin.write('\r');
+                await waitFor(lastFrame, f => f.includes('Got it!'), 'response to unknown command');
+
+                const saved = fs.readFileSync(tmpFile, 'utf8');
+                assert.ok(saved.includes('/foo'),
+                    'Unknown command should be submitted as literal message text');
+                assert.ok(saved.includes('Got it!'),
+                    'API response should be saved');
+
+                inkCleanup();
+            }
+        );
+    } finally {
+        cleanup();
+    }
+});
+
 test('App: escape during busy state is ignored', async () => {
     const { props, tmpFile, cleanup } = setupApp();
     try {
