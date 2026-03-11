@@ -1,0 +1,19 @@
+{
+  "messages": [
+    {
+      "name": "Bilinda",
+      "content": "Hello! I am Bilinda.\n"
+    }
+  ],
+  "streamName": "",
+  "streamBuf": "",
+  "pendingMsg": {
+    "name": "Tom"
+  },
+  "sentMsg": null,
+  "busy": false,
+  "connectionName": "",
+  "costInfo": "",
+  "errorBanner": "Error: API request failed: 500 - Internal Server Error",
+  "initialText": "Hey there!"
+}

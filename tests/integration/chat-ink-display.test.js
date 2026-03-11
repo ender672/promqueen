@@ -1,4 +1,4 @@
-const { test } = require('node:test');
+const { test, mock } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
@@ -7,6 +7,7 @@ const { precompletionLint } = require('../../pre-completion-lint.js');
 const { postCompletionLint } = require('../../post-completion-lint.js');
 const { preparePrompt, dispatchSendPrompt } = require('../../lib/pipeline.js');
 const pqutils = require('../../lib/pq-utils.js');
+const { displayConversation, computeInitialDisplayPos, ensureReadyForUserInput } = require('../../lib/chat-utils.js');
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -21,56 +22,6 @@ function createFileStore(absolutePath) {
         size() { return fs.statSync(absolutePath).size; },
         truncate(byteLength) { fs.truncateSync(absolutePath, byteLength); },
     };
-}
-
-function ensureReadyForUserInput(store, userName) {
-    const content = store.read();
-    const doc = pqutils.parseConfigAndMessages(content);
-    const lastMsg = doc.messages.at(-1);
-    if (lastMsg && lastMsg.name === userName && (lastMsg.content === null || lastMsg.content === '')) return;
-
-    let padding;
-    if (content.endsWith('\n\n')) padding = '';
-    else if (content.endsWith('\n')) padding = '\n';
-    else padding = '\n\n';
-    store.append(padding + `@${userName}\n`);
-}
-
-function computeInitialDisplayPos(content) {
-    const doc = pqutils.parseConfigAndMessages(content);
-    const lastMsg = doc.messages.at(-1);
-    if (lastMsg && !lastMsg.content) {
-        const marker = `@${lastMsg.name}`;
-        for (let pos = content.length; pos > 0;) {
-            pos = content.lastIndexOf(marker, pos - 1);
-            if (pos < 0) break;
-            if (pos === 0 || content[pos - 1] === '\n') {
-                return (pos > 0) ? pos - 1 : pos;
-            }
-        }
-    }
-    return content.length;
-}
-
-// ─── displayConversation (matches chat.mjs) ─────────────────────────────
-
-function displayConversation(content, doc) {
-    const lastMsg = doc.messages.at(-1);
-    const displayCount = (lastMsg && !lastMsg.content)
-        ? doc.messages.length - 1
-        : doc.messages.length;
-
-    let screen = '';
-    for (let i = 0; i < displayCount; i++) {
-        const msg = doc.messages[i];
-        if (i > 0) screen += '\n';
-        if (msg.name) screen += `@${msg.name}\n`;
-        if (msg.content) {
-            screen += msg.content;
-            if (!msg.content.endsWith('\n')) screen += '\n';
-        }
-    }
-    return screen;
 }
 
 // ─── runChatTurn (matches chat.mjs) ─────────────────────────────────────
@@ -136,7 +87,7 @@ async function runChatTurn(store, cwd, writeFn, cliConfig) {
 
 // ─── Full chat-ink session simulator ────────────────────────────────────────
 
-async function simulateSession(inputContent, userMessages, responseLines) {
+async function simulateSession(inputContent, userMessages, responseMaker) {
     const tmpFile = path.join(os.tmpdir(), `chat-ink-sim-${Date.now()}-${Math.random().toString(36).slice(2)}.pqueen`);
     fs.writeFileSync(tmpFile, inputContent);
 
@@ -153,39 +104,25 @@ async function simulateSession(inputContent, userMessages, responseLines) {
         let displayPos = computeInitialDisplayPos(content);
         ensureReadyForUserInput(store, userName);
 
-        // Mock fetch — serves one response line per turn
+        // Mock fetch
         let turnIdx = 0;
+        const fetchMock = mock.fn(async () => responseMaker(turnIdx++));
         const originalFetch = global.fetch;
-        global.fetch = async () => {
-            const line = responseLines[turnIdx++];
-            return {
-                ok: true, status: 200,
-                headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'text/event-stream' : null },
-                body: {
-                    async *[Symbol.asyncIterator]() {
-                        yield sseChunk(line);
-                        yield sseChunk('[DONE]');
-                    }
-                }
-            };
-        };
+        global.fetch = fetchMock;
 
         try {
             // Phase 2: simulate each user turn
             for (const userText of userMessages) {
-                // Effect logic: display undisplayed content + user text
                 const fileContent = store.read();
                 const undisplayed = fileContent.slice(displayPos);
                 screen += undisplayed;
                 screen += userText;
                 if (!userText.endsWith('\n')) screen += '\n';
 
-                // Append to file
                 store.append(userText);
                 if (!userText.endsWith('\n')) store.append('\n');
                 displayPos = store.read().length;
 
-                // Run chat turn
                 const turnOutput = [];
                 const result = await runChatTurn(store, cwd, (s) => turnOutput.push(s), {});
                 screen += turnOutput.join('');
@@ -199,10 +136,33 @@ async function simulateSession(inputContent, userMessages, responseLines) {
             global.fetch = originalFetch;
         }
 
-        return { screen, fileContent: store.read() };
+        return { screen, fileContent: store.read(), fetchMock };
     } finally {
         fs.unlinkSync(tmpFile);
     }
+}
+
+// ─── Response helpers ───────────────────────────────────────────────────────
+
+function sseResponseMaker(responseLines) {
+    return (turnIdx) => ({
+        ok: true, status: 200,
+        headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'text/event-stream' : null },
+        body: {
+            async *[Symbol.asyncIterator]() {
+                yield sseChunk(responseLines[turnIdx]);
+                yield sseChunk('[DONE]');
+            }
+        }
+    });
+}
+
+function errorResponseMaker(statusCode, errorBody) {
+    return () => ({
+        ok: false,
+        status: statusCode,
+        text: async () => errorBody,
+    });
 }
 
 // ─── Fixture-driven tests ───────────────────────────────────────────────────
@@ -224,7 +184,7 @@ for (const inputFile of inputFiles) {
         const responseLines = fs.readFileSync(responsesFile, 'utf8').trim().split('\n');
         const expectedScreen = fs.readFileSync(screenFile, 'utf8');
 
-        const { screen } = await simulateSession(inputContent, userMessages, responseLines);
+        const { screen } = await simulateSession(inputContent, userMessages, sseResponseMaker(responseLines));
 
         assert.strictEqual(screen, expectedScreen,
             `Screen output mismatch for ${baseName}.\n` +
@@ -233,3 +193,63 @@ for (const inputFile of inputFiles) {
         );
     });
 }
+
+// ─── Error path tests ───────────────────────────────────────────────────────
+
+test('chat-ink display: api-error rolls back and shows error', async () => {
+    const inputContent = `---
+connection: test
+connection_profiles:
+  test:
+    api_url: http://dummy
+dot_config_loading: false
+roleplay_user: Tom
+---
+@Bilinda
+Hello! I'm Bilinda, your surf instructor.
+`;
+    const userMessages = ['Hey there!'];
+
+    const { screen, fileContent } = await simulateSession(
+        inputContent,
+        userMessages,
+        errorResponseMaker(500, 'Internal Server Error')
+    );
+
+    // Screen should show the error message
+    assert.ok(screen.includes('Error:'), 'Screen should contain error message');
+    assert.ok(screen.includes('500'), 'Screen should contain status code');
+
+    // User text persists (it's appended before the API call), but the
+    // assistant turn is rolled back — no assistant content in the file.
+    assert.ok(fileContent.includes('Hey there!'),
+        'User text should persist in the file');
+    assert.ok(!fileContent.includes('Internal Server Error'),
+        'API error text should not be written to the file');
+});
+
+test('chat-ink display: api-error preserves prior conversation', async () => {
+    const inputContent = `---
+connection: test
+connection_profiles:
+  test:
+    api_url: http://dummy
+dot_config_loading: false
+roleplay_user: Tom
+---
+@Bilinda
+Hello! I'm Bilinda, your surf instructor.
+`;
+    const userMessages = ['Hey there!'];
+
+    const { screen } = await simulateSession(
+        inputContent,
+        userMessages,
+        errorResponseMaker(429, 'Rate limit exceeded')
+    );
+
+    // The original conversation should still be visible
+    assert.ok(screen.includes('@Bilinda'), 'Original messages should remain on screen');
+    assert.ok(screen.includes('Hello! I\'m Bilinda'), 'Original content should remain on screen');
+    assert.ok(screen.includes('429'), 'Error should mention status code');
+});
