@@ -290,10 +290,8 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
 
         if (text.trim() === '/generate') {
             if (!pendingMsg) return;
-            const hollow = { ...pendingMsg, content: null, decorators: pendingMsg.decorators || [] };
-            const priorMessages = [...messages, hollow];
 
-            const turn = prepareTurn(priorMessages, resolvedConfig, cwd);
+            const turn = prepareTurn(allMsgs, resolvedConfig, cwd);
             const { apiMessages, nextEntry } = turn;
 
             const rollbackMessages = messages;
