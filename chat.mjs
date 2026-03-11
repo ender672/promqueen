@@ -122,6 +122,46 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
         fs.writeFileSync(pqueenPath, pqutils.serializeDocument(rawConfig, msgs));
     }, [pqueenPath, rawConfig]);
 
+    // Stream a generation and run the post-completion pipeline.  Callers
+    // control what happens on success/error via callbacks:
+    //   onSuccess(content) → must return the full afterTurn message array
+    //   onError(err)       → rollback state however the caller needs
+    const runGeneration = useCallback(({ apiMessages, streamName: name, onSuccess, onError }) => {
+        setStreamName(name);
+        setBusy(true);
+        setStreamBuf('');
+
+        (async () => {
+            try {
+                const ac = new AbortController();
+                const { content, pricingResult } = await streamCompletion(
+                    apiMessages, ac, makeThrottledWriter());
+
+                const afterTurn = onSuccess(content);
+                postCompletionLint(afterTurn, resolvedConfig);
+
+                const lastMsg = afterTurn[afterTurn.length - 1];
+                if (lastMsg.content === null) {
+                    setPendingMsg(lastMsg);
+                }
+
+                saveFile(afterTurn);
+                accumulateTokens(pricingResult);
+            } catch (err) {
+                if (onError) onError(err);
+                if (err.name === 'AbortError') {
+                    setError('Request cancelled');
+                } else {
+                    setError(`Error: ${err.message}`);
+                }
+            }
+            setSentMsg(null);
+            setStreamBuf('');
+            setStreamName('');
+            setBusy(false);
+        })();
+    }, [resolvedConfig, streamCompletion, accumulateTokens, makeThrottledWriter, saveFile]);
+
     const handleSubmit = useCallback((text) => {
         if (busy) return;
         setError('');
@@ -184,44 +224,23 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
             setMessages(messages.slice(0, -1));
             setPendingMsg(null);
             setSentMsg(null);
-            setStreamName(lastMsg.name || '');
-            setBusy(true);
-            setStreamBuf('');
             saveFile(priorMessages);
 
-            (async () => {
-                try {
-                    const { content, pricingResult } = await streamCompletion(
-                        apiMessages, new AbortController(), makeThrottledWriter());
-
+            runGeneration({
+                apiMessages,
+                streamName: lastMsg.name || '',
+                onSuccess(content) {
                     const regenerated = { ...lastMsg, content, decorators: [] };
                     const completedMessages = [...messages.slice(0, -1), regenerated];
                     setMessages(completedMessages);
-
-                    const afterTurn = [...completedMessages];
-                    postCompletionLint(afterTurn, resolvedConfig);
-
-                    const newLast = afterTurn[afterTurn.length - 1];
-                    if (newLast.content === null) {
-                        setPendingMsg(newLast);
-                    }
-
-                    saveFile(afterTurn);
-                    accumulateTokens(pricingResult);
-                } catch (err) {
+                    return [...completedMessages];
+                },
+                onError() {
                     setMessages(rollbackMessages);
                     setPendingMsg(rollbackPending);
                     saveFile(rollbackPending ? [...rollbackMessages, rollbackPending] : rollbackMessages);
-                    if (err.name === 'AbortError') {
-                        setError('Request cancelled');
-                    } else {
-                        setError(`Error: ${err.message}`);
-                    }
-                }
-                setStreamBuf('');
-                setStreamName('');
-                setBusy(false);
-            })();
+                },
+            });
             return;
         }
 
@@ -239,51 +258,27 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
         const turn = prepareTurn(allMessages, resolvedConfig, cwd);
         const { apiMessages, assistantName, assistantRole } = turn;
 
-        setStreamName(assistantName);
-        setBusy(true);
-        setStreamBuf('');
-
-        (async () => {
-            try {
-                const { content, pricingResult } = await streamCompletion(
-                    apiMessages, new AbortController(), makeThrottledWriter());
-
+        runGeneration({
+            apiMessages,
+            streamName: assistantName,
+            onSuccess(content) {
                 const assistantMsg = {
                     name: assistantName,
                     role: assistantRole,
                     content,
                     decorators: [],
                 };
-
-                const afterTurn = [...allMessages, assistantMsg];
                 setMessages(prev => [...prev, filled, assistantMsg]);
-
-                postCompletionLint(afterTurn, resolvedConfig);
-
-                const lastMsg = afterTurn[afterTurn.length - 1];
-                if (lastMsg.content === null) {
-                    setPendingMsg(lastMsg);
-                }
-
-                saveFile(afterTurn);
-                accumulateTokens(pricingResult);
-            } catch (err) {
+                return [...allMessages, assistantMsg];
+            },
+            onError() {
                 setPendingMsg(rollbackPending);
                 saveFile(rollbackPending ? [...messages, rollbackPending] : messages);
                 setPrefill(text);
-                if (err.name === 'AbortError') {
-                    setError('Request cancelled');
-                } else {
-                    setError(`Error: ${err.message}`);
-                }
-            }
-            setSentMsg(null);
-            setStreamBuf('');
-            setStreamName('');
-            setBusy(false);
-        })();
+            },
+        });
     }, [messages, pendingMsg, allMsgs, busy, resolvedConfig, cwd, saveFile,
-        streamCompletion, accumulateTokens, makeThrottledWriter]);
+        runGeneration]);
 
     useInput((_input, key) => {
         if (key.escape && busy) {
