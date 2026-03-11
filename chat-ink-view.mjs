@@ -127,6 +127,15 @@ const COMMANDS = [
     { name: '/show-prompt', description: 'Preview prepared prompt' },
 ];
 
+function truncateStreamHead(buf) {
+    // Keep only the tail of the streaming buffer so Ink's dynamic area
+    // stays within the terminal height and doesn't cause jumpy re-renders.
+    const maxLines = Math.max((process.stdout.rows || 24) - 10, 8);
+    const lines = buf.split('\n');
+    if (lines.length <= maxLines) return buf;
+    return lines.slice(-maxLines).join('\n');
+}
+
 export function ChatView({ messages, streamName, streamBuf, pendingMsg, sentMsg, busy, connectionName, costInfo, onSubmit, errorBanner, initialText, staticKey }) {
     const [inputText, setInputText] = useState('');
     const [selectedIdx, setSelectedIdx] = useState(0);
@@ -158,7 +167,7 @@ export function ChatView({ messages, streamName, streamBuf, pendingMsg, sentMsg,
         ) : null,
         streamName ? h(Box, { flexDirection: 'column', marginTop: 1 },
             h(Text, { color: 'cyan' }, `@${streamName}`),
-            streamBuf ? h(Text, null, streamBuf) : null,
+            streamBuf ? h(Text, null, truncateStreamHead(streamBuf)) : null,
         ) : null,
         pendingMsg && pendingMsg.name ? h(Box, { marginTop: 1 }, h(Text, { color: 'cyan' }, `@${pendingMsg.name}`)) : null,
         errorBanner ? h(Text, { color: 'red' }, errorBanner) : null,
