@@ -52,14 +52,16 @@ function setupApp() {
     };
 }
 
-function sseResponse(content) {
-    const data = JSON.stringify({ choices: [{ delta: { content } }] });
+function sseResponse(...chunks) {
     return {
         ok: true, status: 200,
         headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'text/event-stream' : null },
         body: {
             async *[Symbol.asyncIterator]() {
-                yield new TextEncoder().encode(`data: ${data}\n\n`);
+                for (const chunk of chunks) {
+                    const data = JSON.stringify({ choices: [{ delta: { content: chunk } }] });
+                    yield new TextEncoder().encode(`data: ${data}\n\n`);
+                }
                 yield new TextEncoder().encode(`data: [DONE]\n\n`);
             }
         }
@@ -227,6 +229,149 @@ test('App: escape saves file and exits', async () => {
         assert.ok(saved.includes('Hello'), 'File should contain message content');
 
         inkCleanup();
+    } finally {
+        cleanup();
+    }
+});
+
+test('App: multi-chunk streaming accumulates response', async () => {
+    const { props, tmpFile, cleanup } = setupApp();
+    try {
+        await withFetchMock(
+            async () => sseResponse('Hello ', 'there ', 'Tom!'),
+            async () => {
+                const { lastFrame, stdin, cleanup: inkCleanup } = render(h(App, props));
+                await tick();
+
+                stdin.write('Hi');
+                await tick();
+                stdin.write('\x04');
+                await tick(500);
+
+                const frame = stripAnsi(lastFrame());
+                assert.ok(frame.includes('Hello there Tom!'),
+                    'All chunks should be accumulated into the final response');
+
+                const saved = fs.readFileSync(tmpFile, 'utf8');
+                assert.ok(saved.includes('Hello there Tom!'),
+                    'Accumulated response should be saved to file');
+
+                inkCleanup();
+            }
+        );
+    } finally {
+        cleanup();
+    }
+});
+
+test('App: postCompletionLint adds next speaker after response', async () => {
+    const { props, tmpFile, cleanup } = setupApp();
+    try {
+        await withFetchMock(
+            async () => sseResponse('Catch some waves!'),
+            async () => {
+                const { lastFrame, stdin, cleanup: inkCleanup } = render(h(App, props));
+                await tick();
+
+                stdin.write('Teach me to surf');
+                await tick();
+                stdin.write('\x04');
+                await tick(500);
+
+                const frame = stripAnsi(lastFrame());
+                // After Bilinda responds, postCompletionLint should add @Tom as next pending speaker
+                assert.ok(frame.includes('Catch some waves!'), 'Response should appear');
+
+                const saved = fs.readFileSync(tmpFile, 'utf8');
+                // The saved file should end with the next speaker marker
+                const afterResponse = saved.slice(saved.lastIndexOf('Catch some waves!'));
+                assert.ok(afterResponse.includes('@Tom'),
+                    'postCompletionLint should add @Tom as next speaker after Bilinda responds');
+
+                inkCleanup();
+            }
+        );
+    } finally {
+        cleanup();
+    }
+});
+
+test('App: AbortError shows cancellation message', async () => {
+    const { props, cleanup } = setupApp();
+    try {
+        await withFetchMock(
+            async () => { const err = new Error('aborted'); err.name = 'AbortError'; throw err; },
+            async () => {
+                const { lastFrame, stdin, cleanup: inkCleanup } = render(h(App, props));
+                await tick();
+
+                stdin.write('Hello');
+                await tick();
+                stdin.write('\x04');
+                await tick(500);
+
+                const frame = stripAnsi(lastFrame());
+                assert.ok(frame.includes('Request cancelled'),
+                    'AbortError should show "Request cancelled" not generic error');
+                assert.ok(!frame.includes('Error:'),
+                    'Should not show "Error:" prefix for cancellation');
+
+                inkCleanup();
+            }
+        );
+    } finally {
+        cleanup();
+    }
+});
+
+test('App: escape during busy state is ignored', async () => {
+    const { props, tmpFile, cleanup } = setupApp();
+    try {
+        // Use a slow response so we can press escape while streaming
+        const slowResponse = () => ({
+            ok: true, status: 200,
+            headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'text/event-stream' : null },
+            body: {
+                async *[Symbol.asyncIterator]() {
+                    const data = JSON.stringify({ choices: [{ delta: { content: 'streaming...' } }] });
+                    yield new TextEncoder().encode(`data: ${data}\n\n`);
+                    await new Promise(r => setTimeout(r, 300));
+                    yield new TextEncoder().encode(`data: [DONE]\n\n`);
+                }
+            }
+        });
+
+        await withFetchMock(
+            async () => slowResponse(),
+            async () => {
+                const { lastFrame, stdin, cleanup: inkCleanup } = render(h(App, props));
+                await tick();
+
+                stdin.write('Hi');
+                await tick();
+                stdin.write('\x04');
+                await tick(100); // mid-stream
+
+                // Press escape while busy
+                stdin.write('\x1b');
+                await tick(200);
+
+                // Should still be running — verify the frame still shows streaming content
+                const frameDuring = stripAnsi(lastFrame());
+                assert.ok(frameDuring.includes('streaming'),
+                    'Stream should continue despite escape press');
+
+                // Wait for stream to finish
+                await tick(500);
+
+                // File should contain the response, not be in a saved-and-exited state
+                const saved = fs.readFileSync(tmpFile, 'utf8');
+                assert.ok(saved.includes('streaming'),
+                    'Response should be saved — escape during busy should not exit');
+
+                inkCleanup();
+            }
+        );
     } finally {
         cleanup();
     }

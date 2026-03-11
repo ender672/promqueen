@@ -61,3 +61,14 @@ test('splitMessages: single pending message', () => {
     assert.strictEqual(result.completed.length, 0);
     assert.strictEqual(result.pending.name, 'Tom');
 });
+
+test('splitMessages: null content in middle is treated as completed', () => {
+    const msgs = [
+        { name: 'Tom', content: null },
+        { name: 'Bilinda', content: 'Hello!\n' },
+    ];
+    const result = splitMessages(msgs);
+    assert.strictEqual(result.completed.length, 2,
+        'Only the last message is checked — middle null-content messages are completed');
+    assert.strictEqual(result.pending, null);
+});

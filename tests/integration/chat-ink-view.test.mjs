@@ -13,6 +13,14 @@ const stripAnsi = s => s.replace(/\x1b\[[0-9;]*m/g, '');
 
 const propFiles = fs.readdirSync(fixturesDir).filter(f => f.endsWith('.props.json'));
 
+test('chat-ink-view: all .props.json fixtures have matching .frame.txt', () => {
+    const missing = propFiles
+        .map(f => f.replace('.props.json', ''))
+        .filter(base => !fs.existsSync(path.join(fixturesDir, `${base}.frame.txt`)));
+    assert.deepStrictEqual(missing, [],
+        `Missing .frame.txt for: ${missing.join(', ')}`);
+});
+
 for (const propFile of propFiles) {
     const baseName = propFile.replace('.props.json', '');
     const frameFile = path.join(fixturesDir, `${baseName}.frame.txt`);
