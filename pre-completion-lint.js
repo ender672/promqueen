@@ -111,7 +111,7 @@ function precompletionLint(messages, resolvedConfig, basePath = process.cwd()) {
 
   // Check for incomplete decorator on the last message
   const last = messages.length > 0 ? messages.at(-1) : null;
-  const incomplete = last ? getIncompleteDecorator(last.name) : null;
+  const incomplete = last && last.name ? getIncompleteDecorator(last.name) : null;
 
   if (incomplete) {
     const decoratorsMap = pqutils.loadDecorators(resolvedConfig, basePath);
