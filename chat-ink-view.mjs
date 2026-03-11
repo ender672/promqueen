@@ -24,7 +24,7 @@ export function TextArea({ onSubmit, height, disabled, initialText }) {
     useInput((input, key) => {
         if (disabled || key.escape) return;
 
-        if (input === 'd' && key.ctrl) {
+        if (key.return) {
             const text = buf.lines.join('\n').trim();
             if (text) {
                 onSubmit(text);
@@ -33,16 +33,6 @@ export function TextArea({ onSubmit, height, disabled, initialText }) {
                 buf.col = 0;
                 kick();
             }
-            return;
-        }
-
-        if (key.return) {
-            const before = buf.lines[buf.row].slice(0, buf.col);
-            const after = buf.lines[buf.row].slice(buf.col);
-            buf.lines.splice(buf.row, 1, before, after);
-            buf.row++;
-            buf.col = 0;
-            kick();
             return;
         }
 
@@ -113,7 +103,7 @@ export function splitMessages(msgs) {
 }
 
 export function ChatView({ messages, streamName, streamBuf, pendingMsg, sentMsg, busy, connectionName, costInfo, onSubmit, errorBanner, initialText }) {
-    const statusParts = ['Ctrl+D send', 'Enter newline', 'Esc quit'];
+    const statusParts = ['Enter send', 'Esc quit'];
     if (connectionName) statusParts.push(connectionName);
     if (costInfo) statusParts.push(costInfo);
     const hint = statusParts.join(' · ');

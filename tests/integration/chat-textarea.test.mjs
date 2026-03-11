@@ -25,46 +25,20 @@ test('TextArea: typing characters appears in frame', async () => {
     assert.ok(getFrame().includes('hello'), 'Typed text should appear');
 });
 
-test('TextArea: Ctrl+D submits trimmed text', async () => {
+test('TextArea: Enter submits trimmed text', async () => {
     const { stdin, getSubmitted } = renderTextArea();
     stdin.write('hello world');
     await tick();
-    stdin.write('\x04'); // Ctrl+D
+    stdin.write('\r'); // Enter
     await tick();
     assert.strictEqual(getSubmitted(), 'hello world');
 });
 
-test('TextArea: Ctrl+D on empty input does not submit', async () => {
+test('TextArea: Enter on empty input does not submit', async () => {
     const { stdin, getSubmitted } = renderTextArea();
-    stdin.write('\x04');
-    await tick();
-    assert.strictEqual(getSubmitted(), null, 'Empty input should not submit');
-});
-
-test('TextArea: Enter adds a newline', async () => {
-    const { stdin, getFrame } = renderTextArea();
-    stdin.write('line1');
-    await tick();
-    stdin.write('\r'); // Enter
-    await tick();
-    stdin.write('line2');
-    await tick();
-    const frame = getFrame();
-    assert.ok(frame.includes('line1'), 'First line should appear');
-    assert.ok(frame.includes('line2'), 'Second line should appear');
-});
-
-test('TextArea: Ctrl+D submits multi-line text', async () => {
-    const { stdin, getSubmitted } = renderTextArea();
-    stdin.write('line1');
-    await tick();
     stdin.write('\r');
     await tick();
-    stdin.write('line2');
-    await tick();
-    stdin.write('\x04');
-    await tick();
-    assert.strictEqual(getSubmitted(), 'line1\nline2');
+    assert.strictEqual(getSubmitted(), null, 'Empty input should not submit');
 });
 
 test('TextArea: backspace deletes character', async () => {
@@ -103,60 +77,16 @@ test('TextArea: horizontal arrow keys move cursor for mid-line insertion', async
     await tick();
     stdin.write('Y');
     await tick();
-    stdin.write('\x04');
+    stdin.write('\r');
     await tick();
     assert.strictEqual(getSubmitted(), 'aXbY');
 });
 
-test('TextArea: vertical arrow keys navigate lines with column clamping', async () => {
-    const { stdin, getSubmitted } = renderTextArea();
-    stdin.write('ab');       // short line
-    await tick();
-    stdin.write('\r');
-    await tick();
-    stdin.write('cdefg');    // long line, cursor at col 5
-    await tick();
-    stdin.write('\x1b[A');   // up — col clamps from 5 to 2
-    await tick();
-    stdin.write('X');        // insert at col 2 of line 1
-    await tick();
-    stdin.write('\x1b[B');   // down — back to line 2, col restored to clamped position
-    await tick();
-    stdin.write('Y');        // insert at clamped col on line 2
-    await tick();
-    stdin.write('\x04');
-    await tick();
-    assert.strictEqual(getSubmitted(), 'abX\ncdeYfg');
-});
-
-test('TextArea: backspace at line start joins with previous line', async () => {
-    const { stdin, getSubmitted } = renderTextArea();
-    stdin.write('abc');
-    await tick();
-    stdin.write('\r');
-    await tick();
-    stdin.write('def');
-    await tick();
-    // Move to start of line 2
-    stdin.write('\x1b[D');
-    await tick();
-    stdin.write('\x1b[D');
-    await tick();
-    stdin.write('\x1b[D');
-    await tick();
-    // Backspace joins lines
-    stdin.write('\x7f');
-    await tick();
-    stdin.write('\x04');
-    await tick();
-    assert.strictEqual(getSubmitted(), 'abcdef');
-});
-
-test('TextArea: Ctrl+D after submit clears the buffer', async () => {
+test('TextArea: Enter after submit clears the buffer', async () => {
     const { stdin, getFrame } = renderTextArea();
     stdin.write('first');
     await tick();
-    stdin.write('\x04');
+    stdin.write('\r');
     await tick();
     const frame = getFrame();
     assert.ok(!frame.includes('first'), 'Buffer should be cleared after submit');

@@ -124,7 +124,7 @@ test('App: submit sends API call and displays response', async () => {
 
                 stdin.write('Hey there!');
                 await tick();
-                stdin.write('\x04'); // Ctrl+D submits
+                stdin.write('\r'); // Enter submits
                 await waitFor(lastFrame, f => f.includes('Nice to meet you'));
 
                 const frame = stripAnsi(lastFrame());
@@ -153,7 +153,7 @@ test('App: API error shows banner, preserves conversation, and restores file', a
 
                 stdin.write('Hey there!');
                 await tick();
-                stdin.write('\x04');
+                stdin.write('\r');
                 await waitFor(lastFrame, f => f.includes('Error:'));
 
                 const frame = stripAnsi(lastFrame());
@@ -185,7 +185,7 @@ test('App: API error prefills input for retry', async () => {
 
                 stdin.write('my important message');
                 await tick();
-                stdin.write('\x04');
+                stdin.write('\r');
                 await waitFor(lastFrame, f => f.includes('Error:'));
 
                 const frame = stripAnsi(lastFrame());
@@ -230,7 +230,7 @@ test('App: multi-chunk streaming accumulates response', async () => {
 
                 stdin.write('Hi');
                 await tick();
-                stdin.write('\x04');
+                stdin.write('\r');
                 await waitFor(lastFrame, f => f.includes('Hello there Tom!'));
 
                 const frame = stripAnsi(lastFrame());
@@ -260,7 +260,7 @@ test('App: postCompletionLint adds next speaker after response', async () => {
 
                 stdin.write('Teach me to surf');
                 await tick();
-                stdin.write('\x04');
+                stdin.write('\r');
                 await waitFor(lastFrame, f => f.includes('Catch some waves!'));
 
                 const frame = stripAnsi(lastFrame());
@@ -292,7 +292,7 @@ test('App: AbortError shows cancellation message', async () => {
 
                 stdin.write('Hello');
                 await tick();
-                stdin.write('\x04');
+                stdin.write('\r');
                 await waitFor(lastFrame, f => f.includes('Request cancelled'));
 
                 const frame = stripAnsi(lastFrame());
@@ -332,7 +332,7 @@ test('App: mid-stream API failure restores state and prefills input', async () =
 
                 stdin.write('my message');
                 await tick();
-                stdin.write('\x04');
+                stdin.write('\r');
                 await waitFor(lastFrame, f => f.includes('Connection reset'));
 
                 const frame = stripAnsi(lastFrame());
@@ -384,7 +384,7 @@ test('App: writeFileSync failure on save shows error and preserves state', async
                 try {
                     stdin.write('Hello');
                     await tick();
-                    stdin.write('\x04');
+                    stdin.write('\r');
                     await waitFor(lastFrame, f => f.includes('EACCES'));
 
                     const frame = stripAnsi(lastFrame());
@@ -427,7 +427,7 @@ test('App: escape during busy state is ignored', async () => {
 
                 stdin.write('Hi');
                 await tick();
-                stdin.write('\x04');
+                stdin.write('\r');
                 await waitFor(lastFrame, f => f.includes('streaming'));
 
                 // Press escape while busy (stream hasn't finished yet)

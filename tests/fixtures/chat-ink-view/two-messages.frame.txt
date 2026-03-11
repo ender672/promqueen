@@ -10,4 +10,4 @@ Hey there!
 │                                                                                                  │
 │                                                                                                  │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
-Ctrl+D send · Enter newline · Esc quit · test
+Enter send · Esc quit · test
