@@ -252,6 +252,25 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
             return;
         }
 
+        if (text.trim() === '/delete-previous') {
+            if (messages.length === 0) return;
+            const remaining = messages.slice(0, -1);
+            const lastRemaining = remaining[remaining.length - 1];
+            if (lastRemaining) {
+                // Pop the now-last message out of completed and into the editor
+                setMessages(remaining.slice(0, -1));
+                setPendingMsg({ ...lastRemaining, content: null, decorators: [] });
+                setPrefill(lastRemaining.content || '');
+                saveFile(remaining);
+            } else {
+                setMessages([]);
+                setPendingMsg(null);
+                saveFile([]);
+            }
+            refreshScreen();
+            return;
+        }
+
         if (!pendingMsg) return;
 
         const filled = { ...pendingMsg, content: (pendingMsg.content || '') + text };

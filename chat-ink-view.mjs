@@ -161,6 +161,7 @@ const COMMANDS = [
     { name: '/html', description: 'Preview as HTML in browser' },
     { name: '/regenerate', description: 'Regenerate last response' },
     { name: '/show-prompt', description: 'Preview prepared prompt' },
+    { name: '/delete-previous', description: 'Delete last message' },
 ];
 
 function truncateStreamHead(buf) {
