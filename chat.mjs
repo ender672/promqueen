@@ -338,21 +338,20 @@ async function main() {
     if (resolved.endsWith('.png')) {
         const result = await runSetup(resolved);
         pqueenPath = result.pqueenPath;
-        cliConfig = result.cliConfig;
     } else if (resolved.endsWith('.pqueen')) {
         pqueenPath = resolved;
-
-        // Ensure the file has a working connection configured
-        const connectionOk = await testExistingConnection(pqueenPath, cliConfig);
-        if (!connectionOk) {
-            const dotConfig = pqutils.loadDotConfig();
-            const connResult = await wizardSelectConnection(dotConfig);
-            cliConfig = connResult.cliConfig;
-            updatePqueenConnection(pqueenPath, connResult.connectionName);
-        }
     } else {
         console.error('Expected a .png or .pqueen file.');
         process.exit(1);
+    }
+
+    // Ensure the file has a working connection configured
+    const connectionOk = await testExistingConnection(pqueenPath, cliConfig);
+    if (!connectionOk) {
+        const dotConfig = pqutils.loadDotConfig();
+        const connResult = await wizardSelectConnection(dotConfig);
+        cliConfig = connResult.cliConfig;
+        updatePqueenConnection(pqueenPath, connResult.connectionName);
     }
 
     const cwd = path.dirname(pqueenPath);
