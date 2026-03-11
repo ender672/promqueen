@@ -8,4 +8,4 @@ Error: API request failed: 500 - Internal Server Error
 │                                                                                                  │
 │                                                                                                  │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
-Enter send · Esc quit
+Enter send · /html preview · Esc quit

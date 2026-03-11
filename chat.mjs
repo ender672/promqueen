@@ -13,8 +13,25 @@ const { postCompletionLint } = require('./post-completion-lint.js');
 const { prepareTurn, dispatchSendPrompt } = require('./lib/pipeline.js');
 const { pricingToString } = require('./lib/send-prompt-common.js');
 const pqutils = require('./lib/pq-utils.js');
+const { rpToHtml } = require('./rp-to-html.js');
+const os = require('os');
+const { execFile, execFileSync } = require('child_process');
 
 const h = React.createElement;
+
+const midnightTemplate = fs.readFileSync(
+    path.join(path.dirname(fileURLToPath(import.meta.url)), 'templates', 'midnight.mustache'),
+    'utf8'
+);
+
+function findOpener() {
+    if (process.platform === 'darwin') return 'open';
+    if (process.platform === 'win32') return 'start';
+    for (const cmd of ['firefox', 'google-chrome', 'chromium', 'chromium-browser', 'xdg-open']) {
+        try { execFileSync('which', [cmd], { stdio: 'ignore' }); return cmd; } catch {}
+    }
+    return null;
+}
 
 // ─── App ────────────────────────────────────────────────────────────────────
 
@@ -38,6 +55,31 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
     const handleSubmit = useCallback((text) => {
         setError('');
         setPrefill('');
+
+        if (text.trim() === '/exit') {
+            const allMsgs = pendingMsg ? [...messages, pendingMsg] : messages;
+            saveFile(allMsgs);
+            if (process.stderr.isTTY) process.stderr.write(`\nSaved to ${pqueenPath}\n`);
+            exit();
+            return;
+        }
+
+        if (text.trim() === '/html') {
+            const allMsgs = pendingMsg ? [...messages, pendingMsg] : messages;
+            const doc = { messages: allMsgs };
+            const html = rpToHtml(doc, resolvedConfig, midnightTemplate);
+            const tmpFile = path.join(os.tmpdir(), `pq-preview-${Date.now()}.html`);
+            fs.writeFileSync(tmpFile, html);
+            const opener = findOpener();
+            if (!opener) {
+                setError('No browser found');
+                return;
+            }
+            execFile(opener, [tmpFile], (err) => {
+                if (err) setError(`Could not open browser: ${err.message}`);
+            });
+            return;
+        }
 
         // Fill the pending message but don't commit to messages yet (Static can't undo)
         const filled = { ...pendingMsg, content: (pendingMsg.content || '') + text + '\n' };

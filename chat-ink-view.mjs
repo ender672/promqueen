@@ -103,7 +103,7 @@ export function splitMessages(msgs) {
 }
 
 export function ChatView({ messages, streamName, streamBuf, pendingMsg, sentMsg, busy, connectionName, costInfo, onSubmit, errorBanner, initialText }) {
-    const statusParts = ['Enter send', 'Esc quit'];
+    const statusParts = ['Enter send', '/html preview', 'Esc quit'];
     if (connectionName) statusParts.push(connectionName);
     if (costInfo) statusParts.push(costInfo);
     const hint = statusParts.join(' · ');

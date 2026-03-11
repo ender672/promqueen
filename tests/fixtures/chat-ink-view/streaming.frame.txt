@@ -8,4 +8,4 @@ I am responding...
 │                                                                                                  │
 │                                                                                                  │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
-Enter send · Esc quit · test
+Enter send · /html preview · Esc quit · test

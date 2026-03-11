@@ -7,4 +7,4 @@ Hello! I am Bilinda.
 │                                                                                                  │
 │                                                                                                  │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
-Enter send · Esc quit
+Enter send · /html preview · Esc quit
