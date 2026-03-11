@@ -324,6 +324,99 @@ test('App: AbortError shows cancellation message', async () => {
     }
 });
 
+test('App: mid-stream API failure restores state and prefills input', async () => {
+    const { props, tmpFile, cleanup } = setupApp();
+    try {
+        const midStreamError = () => ({
+            ok: true, status: 200,
+            headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'text/event-stream' : null },
+            body: {
+                async *[Symbol.asyncIterator]() {
+                    const data = JSON.stringify({ choices: [{ delta: { content: 'partial response' } }] });
+                    yield new TextEncoder().encode(`data: ${data}\n\n`);
+                    throw new Error('Connection reset');
+                }
+            }
+        });
+
+        await withFetchMock(
+            async () => midStreamError(),
+            async () => {
+                const { lastFrame, stdin, cleanup: inkCleanup } = render(h(App, props));
+                await tick();
+
+                stdin.write('my message');
+                await tick();
+                stdin.write('\x04');
+                await tick(500);
+
+                const frame = stripAnsi(lastFrame());
+                assert.ok(frame.includes('Error:'), 'Error banner should appear');
+                assert.ok(frame.includes('Connection reset'), 'Should show the error message');
+
+                // Original conversation should be restored, not the partial response
+                assert.ok(frame.includes('@Bilinda'), 'Original messages should remain');
+                assert.ok(frame.includes('my message'),
+                    'Failed input should be prefilled for retry');
+
+                // File should be restored to pre-submit state
+                const saved = fs.readFileSync(tmpFile, 'utf8');
+                assert.ok(!saved.includes('partial response'),
+                    'Partial stream content should not be saved to file');
+
+                inkCleanup();
+            }
+        );
+    } finally {
+        cleanup();
+    }
+});
+
+test('App: writeFileSync failure on save shows error and preserves state', async () => {
+    const { props, tmpFile, cleanup } = setupApp();
+    try {
+        await withFetchMock(
+            async () => sseResponse('Great response!'),
+            async () => {
+                const { lastFrame, stdin, cleanup: inkCleanup } = render(h(App, props));
+                await tick();
+
+                // Sabotage writeFileSync to fail once on the post-response save
+                const origWriteFileSync = fs.writeFileSync;
+                let callCount = 0;
+                let failed = false;
+                fs.writeFileSync = function(...args) {
+                    callCount++;
+                    // Allow the first save (user message submit), fail exactly the second (post-response save),
+                    // then allow the recovery save in the catch block
+                    if (callCount === 2 && !failed && String(args[0]) === tmpFile) {
+                        failed = true;
+                        throw new Error('EACCES: permission denied');
+                    }
+                    return origWriteFileSync.apply(this, args);
+                };
+
+                try {
+                    stdin.write('Hello');
+                    await tick();
+                    stdin.write('\x04');
+                    await tick(500);
+
+                    const frame = stripAnsi(lastFrame());
+                    assert.ok(frame.includes('EACCES'),
+                        'Should show the write error message');
+                } finally {
+                    fs.writeFileSync = origWriteFileSync;
+                }
+
+                inkCleanup();
+            }
+        );
+    } finally {
+        cleanup();
+    }
+});
+
 test('App: escape during busy state is ignored', async () => {
     const { props, tmpFile, cleanup } = setupApp();
     try {
