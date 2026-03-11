@@ -142,10 +142,11 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
         setStreamBuf('');
 
         (async () => {
+            const tw = makeThrottledWriter();
             try {
                 const ac = new AbortController();
                 const { content, pricingResult } = await streamCompletion(
-                    apiMessages, ac, makeThrottledWriter());
+                    apiMessages, ac, tw);
 
                 const afterTurn = onSuccess(content);
                 postCompletionLint(afterTurn, resolvedConfig);
@@ -158,10 +159,26 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
                 saveFile(afterTurn);
                 accumulateTokens(pricingResult);
             } catch (err) {
-                if (onError) onError(err);
                 if (err.name === 'AbortError') {
+                    tw.flush();
+                    let partial = tw.chunks.join('');
+                    if (partial.endsWith('\n')) partial = partial.slice(0, -1);
+                    if (partial) {
+                        const afterTurn = onSuccess(partial);
+                        postCompletionLint(afterTurn, resolvedConfig);
+
+                        const lastMsg = afterTurn[afterTurn.length - 1];
+                        if (lastMsg.content === null) {
+                            setPendingMsg(lastMsg);
+                        }
+
+                        saveFile(afterTurn);
+                    } else {
+                        if (onError) onError(err);
+                    }
                     setError('Request cancelled');
                 } else {
+                    if (onError) onError(err);
                     setError(`Error: ${err.message}`);
                 }
             }
