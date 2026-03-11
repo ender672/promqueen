@@ -1,6 +1,6 @@
 # PromQueen
 
-A prompt engineering tool for chatting with AI APIs. Write prompts as readable `.pqueen` text files, then run them interactively from the terminal.
+A prompt engineering tool for chatting with AI APIs. Write prompts as readable `.pqueen` text files, then run them interactively from the terminal. The underlying prompt format is designed to be human-friendly — plain text with minimal syntax that's easy to read and edit by hand.
 
 Supports OpenAI, Anthropic, Google, DeepSeek, Mistral, Cohere, xAI, local llama.cpp, and any OpenAI-compatible API.
 
