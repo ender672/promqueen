@@ -122,11 +122,12 @@ export function splitMessages(msgs) {
 
 const COMMANDS = [
     { name: '/exit', description: 'Save and quit' },
-    { name: '/show-prompt', description: 'Preview prepared prompt' },
     { name: '/html', description: 'Preview as HTML in browser' },
+    { name: '/regenerate', description: 'Regenerate last response' },
+    { name: '/show-prompt', description: 'Preview prepared prompt' },
 ];
 
-export function ChatView({ messages, streamName, streamBuf, pendingMsg, sentMsg, busy, connectionName, costInfo, onSubmit, errorBanner, initialText }) {
+export function ChatView({ messages, streamName, streamBuf, pendingMsg, sentMsg, busy, connectionName, costInfo, onSubmit, errorBanner, initialText, staticKey }) {
     const [inputText, setInputText] = useState('');
     const [selectedIdx, setSelectedIdx] = useState(0);
     const trimmed = inputText.trim();
@@ -145,7 +146,7 @@ export function ChatView({ messages, streamName, streamBuf, pendingMsg, sentMsg,
     const visibleMessages = messages.filter(m => !m.decorators?.includes('pq:hidden'));
 
     return h(Box, { flexDirection: 'column' },
-        h(Static, { items: visibleMessages }, (msg, index) =>
+        h(Static, { key: `static-${staticKey}`, items: visibleMessages }, (msg, index) =>
             h(Box, { key: `msg-${index}`, flexDirection: 'column', marginTop: index > 0 ? 1 : 0 },
                 msg.name ? h(Text, { color: 'cyan' }, `@${msg.name}`) : null,
                 msg.content ? h(Text, null, msg.content.replace(/\n$/, '')) : null,

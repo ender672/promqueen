@@ -142,9 +142,6 @@ function precompletionLint(messages, resolvedConfig, basePath = process.cwd()) {
     } else if (messages && messages.length > 0) {
       const padding = getFinalMessagePadding(messages.at(-1).content);
       output += padding;
-      if (padding) {
-        messages.at(-1).content = (messages.at(-1).content || '') + padding;
-      }
     }
 
     const nextSpeaker = pqutils.guessNextSpeaker(messages, user);

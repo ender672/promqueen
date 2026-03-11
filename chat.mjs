@@ -48,6 +48,7 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
     const [error, setError] = useState('');
     const [prefill, setPrefill] = useState('');
     const [sentMsg, setSentMsg] = useState(null);
+    const [staticKey, setStaticKey] = useState(0);
 
     const saveFile = useCallback((msgs) => {
         fs.writeFileSync(pqueenPath, pqutils.serializeDocument(rawConfig, msgs));
@@ -93,6 +94,82 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
             execFile(opener, [tmpFile], (err) => {
                 if (err) setError(`Could not open browser: ${err.message}`);
             });
+            return;
+        }
+
+        if (text.trim() === '/regenerate') {
+            if (messages.length === 0) return;
+            const lastMsg = messages[messages.length - 1];
+            // Hollow out the last message, keeping its name/role
+            const hollow = { ...lastMsg, content: null, decorators: [] };
+            const priorMessages = [...messages.slice(0, -1), hollow];
+
+            const turn = prepareTurn(priorMessages, resolvedConfig, cwd);
+            const { apiMessages } = turn;
+
+            process.stdout.write('\x1b[2J\x1b[H');
+            setStaticKey(k => k + 1);
+            setMessages(messages.slice(0, -1));
+            setPendingMsg(null);
+            setSentMsg(null);
+            setStreamName(lastMsg.name || '');
+            setBusy(true);
+            setStreamBuf('');
+            saveFile(priorMessages);
+
+            (async () => {
+                const chunks = [];
+                try {
+                    const pricingResult = await dispatchSendPrompt(apiMessages, resolvedConfig, {
+                        write(chunk) {
+                            setStreamBuf(buf => buf + chunk);
+                            chunks.push(chunk);
+                        }
+                    }, cwd, {});
+
+                    let content = chunks.join('');
+                    if (content && !content.endsWith('\n')) content += '\n';
+
+                    const regenerated = { ...lastMsg, content, decorators: [] };
+                    const completedMessages = [...messages.slice(0, -1), regenerated];
+                    setMessages(completedMessages);
+
+                    const afterTurn = [...completedMessages];
+                    postCompletionLint(afterTurn, resolvedConfig);
+
+                    const newLast = afterTurn[afterTurn.length - 1];
+                    if (newLast.content === null) {
+                        setPendingMsg(newLast);
+                    }
+
+                    saveFile(afterTurn);
+
+                    if (pricingResult) {
+                        setCumulativeTokens(prev => {
+                            const next = {
+                                prompt: prev.prompt + pricingResult.promptTokens,
+                                cached: prev.cached + pricingResult.cachedTokens,
+                                completion: prev.completion + pricingResult.completionTokens,
+                            };
+                            setCostInfo(tokensToString(next.prompt, next.cached, next.completion));
+                            return next;
+                        });
+                    }
+                } catch (err) {
+                    // Restore original messages and pending state
+                    setMessages(messages);
+                    setPendingMsg(pendingMsg);
+                    saveFile(pendingMsg ? [...messages, pendingMsg] : messages);
+                    if (err.name === 'AbortError') {
+                        setError('Request cancelled');
+                    } else {
+                        setError(`Error: ${err.message}`);
+                    }
+                }
+                setStreamBuf('');
+                setStreamName('');
+                setBusy(false);
+            })();
             return;
         }
 
@@ -186,7 +263,7 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
 
     return h(ChatView, {
         messages, streamName, streamBuf, pendingMsg, sentMsg,
-        busy, connectionName, costInfo,
+        busy, connectionName, costInfo, staticKey,
         onSubmit: handleSubmit,
         errorBanner: error,
         initialText: prefill,
