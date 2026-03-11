@@ -110,7 +110,7 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
         if (key.escape && !busy) {
             const allMsgs = pendingMsg ? [...messages, pendingMsg] : messages;
             saveFile(allMsgs);
-            process.stdout.write(`\nSaved to ${pqueenPath}\n`);
+            if (process.stderr.isTTY) process.stderr.write(`\nSaved to ${pqueenPath}\n`);
             exit();
         }
     });
