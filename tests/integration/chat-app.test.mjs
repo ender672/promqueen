@@ -132,7 +132,7 @@ test('App: submit sends API call and displays response', async () => {
     }
 });
 
-test('App: API error shows error banner and restores file', async () => {
+test('App: API error shows banner, preserves conversation, and restores file', async () => {
     const { props, tmpFile, cleanup } = setupApp();
     try {
         await withFetchMock(
@@ -149,37 +149,12 @@ test('App: API error shows error banner and restores file', async () => {
                 const frame = stripAnsi(lastFrame());
                 assert.ok(frame.includes('Error:'), 'Error banner should appear');
                 assert.ok(frame.includes('500'), 'Should mention status code');
+                assert.ok(frame.includes('@Bilinda'), 'Original messages should remain');
+                assert.ok(frame.includes('Hello'), 'Original content should remain');
 
                 // File should be restored — no error text written
                 const saved = fs.readFileSync(tmpFile, 'utf8');
                 assert.ok(!saved.includes('Internal Server Error'), 'API error should not be in file');
-
-                inkCleanup();
-            }
-        );
-    } finally {
-        cleanup();
-    }
-});
-
-test('App: API error preserves original conversation in frame', async () => {
-    const { props, cleanup } = setupApp();
-    try {
-        await withFetchMock(
-            async () => errorResponse(429, 'Rate limit exceeded'),
-            async () => {
-                const { lastFrame, stdin, cleanup: inkCleanup } = render(h(App, props));
-                await tick();
-
-                stdin.write('Hey');
-                await tick();
-                stdin.write('\x04');
-                await tick(500);
-
-                const frame = stripAnsi(lastFrame());
-                assert.ok(frame.includes('@Bilinda'), 'Original messages should remain');
-                assert.ok(frame.includes('Hello'), 'Original content should remain');
-                assert.ok(frame.includes('429'), 'Error should mention status code');
 
                 inkCleanup();
             }

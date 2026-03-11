@@ -90,87 +90,42 @@ test('TextArea: initialText prefills the buffer', () => {
     assert.ok(getFrame().includes('prefilled'), 'Initial text should appear in frame');
 });
 
-test('TextArea: left arrow moves cursor, inserting at new position', async () => {
-    const { stdin, getSubmitted } = renderTextArea();
-    stdin.write('ab');
-    await tick();
-    stdin.write('\x1b[D'); // left arrow
-    await tick();
-    stdin.write('X');
-    await tick();
-    stdin.write('\x04');
-    await tick();
-    assert.strictEqual(getSubmitted(), 'aXb');
-});
-
-test('TextArea: right arrow moves cursor back right', async () => {
+test('TextArea: horizontal arrow keys move cursor for mid-line insertion', async () => {
     const { stdin, getSubmitted } = renderTextArea();
     stdin.write('ab');
     await tick();
     stdin.write('\x1b[D'); // left
     await tick();
-    stdin.write('\x1b[D'); // left
-    await tick();
-    stdin.write('\x1b[C'); // right
-    await tick();
     stdin.write('X');
+    await tick();
+    stdin.write('\x1b[C'); // right (past 'b')
+    await tick();
+    stdin.write('Y');
     await tick();
     stdin.write('\x04');
     await tick();
-    assert.strictEqual(getSubmitted(), 'aXb');
+    assert.strictEqual(getSubmitted(), 'aXbY');
 });
 
-test('TextArea: up arrow moves to previous line', async () => {
+test('TextArea: vertical arrow keys navigate lines with column clamping', async () => {
     const { stdin, getSubmitted } = renderTextArea();
-    stdin.write('abc');
-    await tick();
-    stdin.write('\r'); // Enter
-    await tick();
-    stdin.write('def');
-    await tick();
-    stdin.write('\x1b[A'); // up arrow
-    await tick();
-    stdin.write('X');
-    await tick();
-    stdin.write('\x04');
-    await tick();
-    assert.strictEqual(getSubmitted(), 'abcX\ndef');
-});
-
-test('TextArea: down arrow moves to next line', async () => {
-    const { stdin, getSubmitted } = renderTextArea();
-    stdin.write('abc');
+    stdin.write('ab');       // short line
     await tick();
     stdin.write('\r');
     await tick();
-    stdin.write('def');
+    stdin.write('cdefg');    // long line, cursor at col 5
     await tick();
-    stdin.write('\x1b[A'); // up to line 0
+    stdin.write('\x1b[A');   // up — col clamps from 5 to 2
     await tick();
-    stdin.write('\x1b[B'); // down to line 1
+    stdin.write('X');        // insert at col 2 of line 1
     await tick();
-    stdin.write('X');
+    stdin.write('\x1b[B');   // down — back to line 2, col restored to clamped position
     await tick();
-    stdin.write('\x04');
-    await tick();
-    assert.strictEqual(getSubmitted(), 'abc\ndefX');
-});
-
-test('TextArea: up arrow clamps column to shorter line', async () => {
-    const { stdin, getSubmitted } = renderTextArea();
-    stdin.write('ab');
-    await tick();
-    stdin.write('\r');
-    await tick();
-    stdin.write('cdefg');
-    await tick();
-    stdin.write('\x1b[A'); // up - col clamps from 5 to 2
-    await tick();
-    stdin.write('X');
+    stdin.write('Y');        // insert at clamped col on line 2
     await tick();
     stdin.write('\x04');
     await tick();
-    assert.strictEqual(getSubmitted(), 'abX\ncdefg');
+    assert.strictEqual(getSubmitted(), 'abX\ncdeYfg');
 });
 
 test('TextArea: backspace at line start joins with previous line', async () => {
