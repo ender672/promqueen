@@ -3,9 +3,9 @@ const fs = require('fs');
 const path = require('path');
 const { applyTemplate } = require('../../apply-template.js');
 const { applyLorebook, resolveLorebookPath } = require('../../apply-lorebook.js');
-const { precompletionLint } = require('../../pre-completion-lint.js');
 const pqutils = require('../../lib/pq-utils.js');
-const { getDocumentText, preparePrompt } = require('./helpers');
+const { prepareTurn } = require('../../lib/pipeline.js');
+const { getDocumentText } = require('./helpers');
 
 function registerPreviewCommands(context) {
     let previewDisposable = vscode.commands.registerCommand('promqueen.previewPrompt', async function () {
@@ -21,14 +21,10 @@ function registerPreviewCommands(context) {
         const templateLoaderPath = path.dirname(document.uri.fsPath);
 
         try {
-            // 1. Parse, resolve config, and precompletion lint (mutates parsedDoc.messages)
             const text = getDocumentText(document);
             const parsedDoc = pqutils.parseConfigAndMessages(text);
             const resolvedConfig = pqutils.resolveConfig(parsedDoc.config, projectRoot, {});
-            precompletionLint(parsedDoc.messages, resolvedConfig, templateLoaderPath);
-
-            // 2. Prepare prompt
-            const apiMessages = preparePrompt(parsedDoc.messages, resolvedConfig, templateLoaderPath, projectRoot);
+            const { apiMessages } = prepareTurn(parsedDoc.messages, resolvedConfig, templateLoaderPath);
 
             // Serialize for display using role-based format
             const displayOutput = pqutils.serializeDocument(parsedDoc.config, apiMessages);

@@ -29,7 +29,7 @@ function getFinalMessagePadding(message) {
 }
 
 function postCompletionLint(messages, resolvedConfig) {
-  const user = resolvedConfig.user;
+  const user = resolvedConfig.roleplay_user;
 
   let output = '';
 

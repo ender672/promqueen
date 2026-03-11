@@ -9,9 +9,8 @@ import { ChatView, splitMessages } from './chat-ink-view.mjs';
 const require = createRequire(import.meta.url);
 const fs = require('fs');
 const path = require('path');
-const { precompletionLint } = require('./pre-completion-lint.js');
 const { postCompletionLint } = require('./post-completion-lint.js');
-const { preparePrompt, dispatchSendPrompt } = require('./lib/pipeline.js');
+const { prepareTurn, dispatchSendPrompt } = require('./lib/pipeline.js');
 const { pricingToString } = require('./lib/send-prompt-common.js');
 const pqutils = require('./lib/pq-utils.js');
 
@@ -47,14 +46,8 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
         setPendingMsg(null);
         saveFile(allMessages);
 
-        // Clone and run precompletionLint to set up the assistant's empty message
-        const msgsForApi = structuredClone(allMessages);
-        precompletionLint(msgsForApi, resolvedConfig);
-        const assistantEntry = msgsForApi[msgsForApi.length - 1];
-        const assistantName = assistantEntry.name;
-        const assistantRole = assistantEntry.role || 'assistant';
-
-        const apiMessages = preparePrompt(msgsForApi, resolvedConfig, cwd, cwd);
+        const turn = prepareTurn(allMessages, resolvedConfig, cwd);
+        const { apiMessages, assistantName, assistantRole } = turn;
 
         setStreamName(assistantName);
         setBusy(true);
@@ -84,8 +77,7 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
                 setMessages(prev => [...prev, filled, assistantMsg]);
 
                 // Run post-completion lint to determine next speaker
-                const postConfig = { ...resolvedConfig, user: resolvedConfig.user || resolvedConfig.roleplay_user };
-                postCompletionLint(afterTurn, postConfig);
+                postCompletionLint(afterTurn, resolvedConfig);
 
                 // If postCompletionLint pushed a next speaker, use it as pending
                 const lastMsg = afterTurn[afterTurn.length - 1];
