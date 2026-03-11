@@ -295,7 +295,7 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
         runGeneration, refreshScreen]);
 
     useInput((_input, key) => {
-        if (key.escape && busy) {
+        if ((key.escape || (key.ctrl && _input === 'c')) && busy) {
             if (abortRef.current) abortRef.current.abort();
         } else if (key.escape && !busy) {
             const allMsgs = pendingMsg ? [...messages, pendingMsg] : messages;
