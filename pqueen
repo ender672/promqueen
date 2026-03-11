@@ -43,9 +43,20 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
     let initPrefill = '';
     if (!initPending && initCompleted.length > 0) {
         const last = initCompleted[initCompleted.length - 1];
-        initCompleted = initCompleted.slice(0, -1);
-        initPrefill = last.content || '';
-        initPending = { ...last, content: null, decorators: [] };
+        if (last.role === 'user') {
+            // User message: pop into editor for continued editing
+            initCompleted = initCompleted.slice(0, -1);
+            initPrefill = last.content || '';
+            initPending = { ...last, content: null, decorators: [] };
+        } else {
+            // Assistant/other role: determine next speaker via postCompletionLint
+            const allMsgs = [...initCompleted];
+            postCompletionLint(allMsgs, resolvedConfig);
+            const nextSpeaker = allMsgs[allMsgs.length - 1];
+            if (nextSpeaker && nextSpeaker.content === null) {
+                initPending = nextSpeaker;
+            }
+        }
     }
     const [messages, setMessages] = useState(initCompleted);
     const [pendingMsg, setPendingMsg] = useState(initPending);
