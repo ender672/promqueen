@@ -91,3 +91,47 @@ test('TextArea: Enter after submit clears the buffer', async () => {
     const frame = getFrame();
     assert.ok(!frame.includes('first'), 'Buffer should be cleared after submit');
 });
+
+test('TextArea: vertical arrow keys navigate between lines', async () => {
+    const { stdin, getSubmitted } = renderTextArea({
+        initialText: 'line1\nline2\nline3'
+    });
+    // Cursor starts at end of line3 (row=2, col=5)
+    // Up arrow moves to line2
+    stdin.write('\x1b[A'); // up
+    await tick();
+    // Insert at cursor position on line2
+    stdin.write('X');
+    await tick();
+    // Up arrow to line1
+    stdin.write('\x1b[A'); // up
+    await tick();
+    stdin.write('Y');
+    await tick();
+    // Down twice to line3
+    stdin.write('\x1b[B'); // down
+    await tick();
+    stdin.write('\x1b[B'); // down
+    await tick();
+    stdin.write('Z');
+    await tick();
+    stdin.write('\r');
+    await tick();
+    assert.strictEqual(getSubmitted(), 'line1Y\nline2X\nline3Z');
+});
+
+test('TextArea: backspace at start of line joins with previous line', async () => {
+    const { stdin, getSubmitted } = renderTextArea({ initialText: 'ab\ncd' });
+    // Cursor is at end of 'cd' (row=1, col=2)
+    // Move to start of line2
+    stdin.write('\x1b[D'); // left
+    await tick();
+    stdin.write('\x1b[D'); // left
+    await tick();
+    // Backspace should join lines
+    stdin.write('\x7f');
+    await tick();
+    stdin.write('\r');
+    await tick();
+    assert.strictEqual(getSubmitted(), 'abcd');
+});

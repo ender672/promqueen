@@ -12,18 +12,25 @@ const pqutils = require_('../../lib/pq-utils.js');
 
 import { App } from '../../chat.mjs';
 
+// Each App mounts a resize listener on process.stdout; ink cleanup is async
+// so listeners accumulate across tests in the same process.
+process.stdout.setMaxListeners(30);
+
 const h = React.createElement;
 // eslint-disable-next-line no-control-regex
 const stripAnsi = s => s.replace(/\x1b\[[0-9;]*m/g, '');
 const tick = (ms = 0) => new Promise(r => setTimeout(r, ms));
 
-async function waitFor(lastFrame, predicate, timeout = 2000) {
+async function waitFor(lastFrame, predicate, timeoutOrLabel = 2000, maybeLabel) {
+    const timeout = typeof timeoutOrLabel === 'number' ? timeoutOrLabel : 2000;
+    const label = typeof timeoutOrLabel === 'string' ? timeoutOrLabel : maybeLabel;
     const start = Date.now();
     while (Date.now() - start < timeout) {
         if (predicate(stripAnsi(lastFrame()))) return;
         await new Promise(r => setTimeout(r, 5));
     }
-    throw new Error('waitFor timed out: ' + JSON.stringify(stripAnsi(lastFrame())));
+    const hint = label ? ` (waiting for: ${label})` : '';
+    throw new Error('waitFor timed out' + hint + ': ' + JSON.stringify(stripAnsi(lastFrame())));
 }
 
 const INPUT_CONTENT = `---
@@ -393,6 +400,162 @@ test('App: writeFileSync failure on save shows error and preserves state', async
                 } finally {
                     fs.writeFileSync = origWriteFileSync;
                 }
+
+                inkCleanup();
+            }
+        );
+    } finally {
+        cleanup();
+    }
+});
+
+test('App: /exit command saves and exits', async () => {
+    const { props, tmpFile, cleanup } = setupApp();
+    try {
+        const { stdin, cleanup: inkCleanup } = render(h(App, props));
+        await tick();
+
+        stdin.write('/exit');
+        await tick();
+        stdin.write('\r');
+        await tick(50);
+
+        const saved = fs.readFileSync(tmpFile, 'utf8');
+        assert.ok(saved.includes('Bilinda'), 'File should be saved before exit');
+        assert.ok(saved.includes('Hello'), 'File should contain message content');
+
+        inkCleanup();
+    } finally {
+        cleanup();
+    }
+});
+
+test('App: /regenerate re-requests last assistant message', async () => {
+    const { props, tmpFile, cleanup } = setupApp();
+    let fetchCount = 0;
+    try {
+        await withFetchMock(
+            async () => {
+                fetchCount++;
+                if (fetchCount === 1) return sseResponse('First response');
+                return sseResponse('Regenerated response');
+            },
+            async () => {
+                const { lastFrame, stdin, cleanup: inkCleanup } = render(h(App, props));
+                await tick();
+
+                // First turn: send a message and get a response
+                stdin.write('Hi');
+                await tick();
+                stdin.write('\r');
+                await waitFor(lastFrame, f => f.includes('First response'), 'first response');
+
+                // Now regenerate
+                stdin.write('/regenerate');
+                await tick();
+                stdin.write('\r');
+                await waitFor(lastFrame, f => f.includes('Regenerated response'), 'regenerated response');
+
+                const frame = stripAnsi(lastFrame());
+                assert.ok(frame.includes('Regenerated response'),
+                    'Regenerated response should appear');
+
+                const saved = fs.readFileSync(tmpFile, 'utf8');
+                assert.ok(saved.includes('Regenerated response'),
+                    'Regenerated response should be saved to file');
+                assert.ok(!saved.includes('First response'),
+                    'Original response should not be in file');
+
+                inkCleanup();
+            }
+        );
+    } finally {
+        cleanup();
+    }
+});
+
+test('App: multi-turn conversation works correctly', async () => {
+    const { props, tmpFile, cleanup } = setupApp();
+    let fetchCount = 0;
+    try {
+        await withFetchMock(
+            async () => {
+                fetchCount++;
+                if (fetchCount === 1) return sseResponse('Reply one');
+                return sseResponse('Reply two');
+            },
+            async () => {
+                const { lastFrame, stdin, cleanup: inkCleanup } = render(h(App, props));
+                await tick();
+
+                // First turn
+                stdin.write('Message one');
+                await tick();
+                stdin.write('\r');
+                await waitFor(lastFrame, f => f.includes('Reply one'), 'first reply');
+
+                // Second turn — postCompletionLint should have added @Tom as pending
+                stdin.write('Message two');
+                await tick();
+                stdin.write('\r');
+                await waitFor(lastFrame, f => f.includes('Reply two'), 'second reply');
+
+                const frame = stripAnsi(lastFrame());
+                assert.ok(frame.includes('Reply one'), 'First reply should still be visible');
+                assert.ok(frame.includes('Reply two'), 'Second reply should appear');
+
+                const saved = fs.readFileSync(tmpFile, 'utf8');
+                assert.ok(saved.includes('Message one'), 'First user message saved');
+                assert.ok(saved.includes('Reply one'), 'First reply saved');
+                assert.ok(saved.includes('Message two'), 'Second user message saved');
+                assert.ok(saved.includes('Reply two'), 'Second reply saved');
+                assert.strictEqual(fetchCount, 2, 'Should have made exactly 2 API calls');
+
+                inkCleanup();
+            }
+        );
+    } finally {
+        cleanup();
+    }
+});
+
+test('App: streaming content is visible before completion', async () => {
+    const { props, cleanup } = setupApp();
+    try {
+        let resolveSecondChunk;
+        const slowStream = () => ({
+            ok: true, status: 200,
+            headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'text/event-stream' : null },
+            body: {
+                async *[Symbol.asyncIterator]() {
+                    const data1 = JSON.stringify({ choices: [{ delta: { content: 'partial content visible' } }] });
+                    yield new TextEncoder().encode(`data: ${data1}\n\n`);
+                    // Wait before sending done so we can observe the partial state
+                    await new Promise(r => { resolveSecondChunk = r; });
+                    yield new TextEncoder().encode(`data: [DONE]\n\n`);
+                }
+            }
+        });
+
+        await withFetchMock(
+            async () => slowStream(),
+            async () => {
+                const { lastFrame, stdin, cleanup: inkCleanup } = render(h(App, props));
+                await tick();
+
+                stdin.write('Hi');
+                await tick();
+                stdin.write('\r');
+                await waitFor(lastFrame, f => f.includes('partial content visible'), 'streaming partial');
+
+                // Stream is still in progress — verify partial content is displayed
+                const frame = stripAnsi(lastFrame());
+                assert.ok(frame.includes('partial content visible'),
+                    'Partial streaming content should be visible before stream completes');
+
+                // Let the stream finish
+                resolveSecondChunk();
+                await tick(50);
 
                 inkCleanup();
             }
