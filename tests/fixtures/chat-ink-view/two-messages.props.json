@@ -2,11 +2,11 @@
   "messages": [
     {
       "name": "Bilinda",
-      "content": "Hello!\n"
+      "content": "Hello!"
     },
     {
       "name": "Tom",
-      "content": "Hey there!\n"
+      "content": "Hey there!"
     }
   ],
   "streamName": "",

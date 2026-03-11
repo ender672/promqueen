@@ -2,15 +2,15 @@
   "messages": [
     {
       "name": "Bilinda",
-      "content": "Hello!\n"
+      "content": "Hello!"
     },
     {
       "name": "Tom",
-      "content": "Hi!\n"
+      "content": "Hi!"
     },
     {
       "name": "Bilinda",
-      "content": "How are you?\n"
+      "content": "How are you?"
     }
   ],
   "streamName": "",

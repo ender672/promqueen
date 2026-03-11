@@ -86,7 +86,7 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
         const pricingResult = await dispatchSendPrompt(apiMessages, resolvedConfig, tw, cwd, { signal: ac.signal });
         tw.flush();
         let content = tw.chunks.join('');
-        if (content && !content.endsWith('\n')) content += '\n';
+        if (content.endsWith('\n')) content = content.slice(0, -1);
         return { content, pricingResult };
     }, [resolvedConfig, cwd]);
 
@@ -246,7 +246,7 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
 
         if (!pendingMsg) return;
 
-        const filled = { ...pendingMsg, content: (pendingMsg.content || '') + text + '\n' };
+        const filled = { ...pendingMsg, content: (pendingMsg.content || '') + text };
         const allMessages = [...messages, filled];
         // Capture rollback state before optimistic updates
         const rollbackPending = pendingMsg;
