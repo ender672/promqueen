@@ -65,6 +65,7 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
     const [, setCumulativeTokens] = useState({ prompt: 0, cached: 0, completion: 0 });
     const [streamBuf, setStreamBuf] = useState('');
     const [streamName, setStreamName] = useState('');
+    const [streamToEditbox, setStreamToEditbox] = useState(false);
     const [error, setError] = useState('');
     const [prefill, setPrefill] = useState(initPrefill);
     const [staticKey, setStaticKey] = useState(0);
@@ -196,6 +197,7 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
             refreshScreen();
             setStreamBuf('');
             setStreamName('');
+            setStreamToEditbox(false);
             setBusy(false);
         })();
     }, [resolvedConfig, streamCompletion, accumulateTokens, makeThrottledWriter, saveFile, refreshScreen]);
@@ -305,26 +307,15 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
             const turn = prepareTurn(allMsgs, resolvedConfig, cwd);
             const { apiMessages, nextEntry } = turn;
 
-            const rollbackMessages = messages;
-            const rollbackPending = pendingMsg;
-
-            setPendingMsg(null);
-            refreshScreen();
-
+            setStreamToEditbox(true);
             runGeneration({
                 apiMessages,
                 streamName: nextEntry.name || '',
                 onSuccess(content) {
-                    const completed = { ...nextEntry, content };
-                    const completedMessages = [...messages, completed];
-                    setMessages(completedMessages);
-                    return completedMessages;
+                    setPrefill(content);
+                    return allMsgs;
                 },
-                onError() {
-                    setMessages(rollbackMessages);
-                    setPendingMsg(rollbackPending);
-                    saveFile(rollbackPending ? [...rollbackMessages, rollbackPending] : rollbackMessages);
-                },
+                onError() {},
             });
             return;
         }
@@ -393,7 +384,7 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
     });
 
     return h(ChatView, {
-        messages, streamName, streamBuf, pendingMsg,
+        messages, streamName, streamBuf, streamToEditbox, pendingMsg,
         busy, connectionName: resolvedConfig.connection || '', costInfo, staticKey,
         onSubmit: handleSubmit,
         errorBanner: error,

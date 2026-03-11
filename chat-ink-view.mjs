@@ -176,7 +176,7 @@ function truncateStreamHead(buf) {
     return lines.slice(-maxLines).join('\n');
 }
 
-export function ChatView({ messages, streamName, streamBuf, pendingMsg, busy, connectionName, costInfo, onSubmit, errorBanner, initialText, staticKey }) {
+export function ChatView({ messages, streamName, streamBuf, streamToEditbox, pendingMsg, busy, connectionName, costInfo, onSubmit, errorBanner, initialText, staticKey }) {
     const [inputText, setInputText] = useState('');
     const [selectedIdx, setSelectedIdx] = useState(0);
     const trimmed = inputText.trim();
@@ -201,7 +201,7 @@ export function ChatView({ messages, streamName, streamBuf, pendingMsg, busy, co
                 msg.content ? h(Text, null, msg.content) : null,
             )
         ),
-        streamName ? h(Box, { flexDirection: 'column', marginTop: 1 },
+        streamName && !streamToEditbox ? h(Box, { flexDirection: 'column', marginTop: 1 },
             h(Text, { color: 'cyan' }, `@${streamName}`),
             streamBuf ? h(Text, null, truncateStreamHead(streamBuf)) : null,
         ) : null,
@@ -213,7 +213,9 @@ export function ChatView({ messages, streamName, streamBuf, pendingMsg, busy, co
             paddingLeft: 1,
             paddingRight: 1,
         },
-            h(TextArea, {
+            streamToEditbox
+                ? h(Text, null, streamBuf ? truncateStreamHead(streamBuf) : '')
+                : h(TextArea, {
                 onSubmit, onChange: setInputText, height: 3, disabled: busy, initialText,
                 activeCommands: filteredCommands.length > 0 ? filteredCommands : null,
                 onCommandNav: (delta) => setSelectedIdx(i => {
