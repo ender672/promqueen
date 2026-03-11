@@ -288,6 +288,38 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
             return;
         }
 
+        if (text.trim() === '/generate') {
+            if (!pendingMsg) return;
+            const hollow = { ...pendingMsg, content: null, decorators: pendingMsg.decorators || [] };
+            const priorMessages = [...messages, hollow];
+
+            const turn = prepareTurn(priorMessages, resolvedConfig, cwd);
+            const { apiMessages, nextEntry } = turn;
+
+            const rollbackMessages = messages;
+            const rollbackPending = pendingMsg;
+
+            setPendingMsg(null);
+            refreshScreen();
+
+            runGeneration({
+                apiMessages,
+                streamName: nextEntry.name || '',
+                onSuccess(content) {
+                    const completed = { ...nextEntry, content };
+                    const completedMessages = [...messages, completed];
+                    setMessages(completedMessages);
+                    return completedMessages;
+                },
+                onError() {
+                    setMessages(rollbackMessages);
+                    setPendingMsg(rollbackPending);
+                    saveFile(rollbackPending ? [...rollbackMessages, rollbackPending] : rollbackMessages);
+                },
+            });
+            return;
+        }
+
         if (text.trim() === '/edit-last') {
             if (messages.length === 0) return;
             const lastMsg = messages[messages.length - 1];

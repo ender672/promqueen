@@ -156,8 +156,10 @@ export function splitMessages(msgs) {
     return { completed: msgs, pending: null };
 }
 
+// Slash commands — keep in sync with handleSubmit() in pqueen
 const COMMANDS = [
     { name: '/exit', description: 'Save and quit' },
+    { name: '/generate', description: 'LLM-generate current message' },
     { name: '/html', description: 'Preview as HTML in browser' },
     { name: '/regenerate', description: 'Regenerate last response' },
     { name: '/show-prompt', description: 'Preview prepared prompt' },
