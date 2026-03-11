@@ -98,6 +98,8 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
             return;
         }
 
+        if (!pendingMsg) return;
+
         // Fill the pending message but don't commit to messages yet (Static can't undo)
         const filled = { ...pendingMsg, content: (pendingMsg.content || '') + text + '\n' };
         const allMessages = [...messages, filled];
