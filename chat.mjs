@@ -51,6 +51,34 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
     const [staticKey, setStaticKey] = useState(0);
     const abortRef = useRef(null);
 
+    // Returns { writer, flush } — writer batches chunks, flushing to
+    // setStreamBuf at most once per animation frame to avoid jumpy redraws.
+    const makeThrottledWriter = useCallback(() => {
+        const chunks = [];
+        let pending = '';
+        let rafId = null;
+        const flush = () => {
+            if (pending) {
+                const p = pending;
+                pending = '';
+                setStreamBuf(buf => buf + p);
+            }
+            if (rafId) { clearTimeout(rafId); rafId = null; }
+        };
+        const writer = {
+            chunks,
+            write(chunk) {
+                chunks.push(chunk);
+                pending += chunk;
+                if (!rafId) {
+                    rafId = setTimeout(flush, 60);
+                }
+            },
+            flush,
+        };
+        return writer;
+    }, []);
+
     useEffect(() => {
         const onResize = () => {
             process.stdout.write('\x1b[2J\x1b[H');
@@ -130,16 +158,12 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
             (async () => {
                 const ac = new AbortController();
                 abortRef.current = ac;
-                const chunks = [];
+                const tw = makeThrottledWriter();
                 try {
-                    const pricingResult = await dispatchSendPrompt(apiMessages, resolvedConfig, {
-                        write(chunk) {
-                            setStreamBuf(buf => buf + chunk);
-                            chunks.push(chunk);
-                        }
-                    }, cwd, { signal: ac.signal });
+                    const pricingResult = await dispatchSendPrompt(apiMessages, resolvedConfig, tw, cwd, { signal: ac.signal });
+                    tw.flush();
 
-                    let content = chunks.join('');
+                    let content = tw.chunks.join('');
                     if (content && !content.endsWith('\n')) content += '\n';
 
                     const regenerated = { ...lastMsg, content, decorators: [] };
@@ -204,16 +228,12 @@ function App({ pqueenPath, cwd, connectionName, initialMessages, resolvedConfig,
         (async () => {
             const ac = new AbortController();
             abortRef.current = ac;
-            const chunks = [];
+            const tw = makeThrottledWriter();
             try {
-                const pricingResult = await dispatchSendPrompt(apiMessages, resolvedConfig, {
-                    write(chunk) {
-                        setStreamBuf(buf => buf + chunk);
-                        chunks.push(chunk);
-                    }
-                }, cwd, { signal: ac.signal });
+                const pricingResult = await dispatchSendPrompt(apiMessages, resolvedConfig, tw, cwd, { signal: ac.signal });
+                tw.flush();
 
-                let content = chunks.join('');
+                let content = tw.chunks.join('');
                 if (content && !content.endsWith('\n')) content += '\n';
 
                 const assistantMsg = {
