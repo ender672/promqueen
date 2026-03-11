@@ -47,12 +47,19 @@ Hello! I'm Bilinda, your surf instructor.
 @Tom
 `;
 
-function setupApp() {
+const SELF_CONTAINED_CONFIG = `connection: test
+connection_profiles:
+  test:
+    api_url: http://dummy
+dot_config_loading: false`;
+
+function setupApp(content) {
+    content = content || INPUT_CONTENT;
     const tmpFile = path.join(os.tmpdir(), `chat-app-test-${Date.now()}-${Math.random().toString(36).slice(2)}.pqueen`);
-    fs.writeFileSync(tmpFile, INPUT_CONTENT);
+    fs.writeFileSync(tmpFile, content);
 
     const cwd = path.dirname(tmpFile);
-    const doc = pqutils.parseConfigAndMessages(INPUT_CONTENT);
+    const doc = pqutils.parseConfigAndMessages(content);
     const resolvedConfig = pqutils.resolveConfig(doc.config, cwd);
 
     return {
@@ -642,6 +649,255 @@ test('App: escape during busy state is ignored', async () => {
                 inkCleanup();
             }
         );
+    } finally {
+        cleanup();
+    }
+});
+
+// ─── Edge-case .pqueen file loading tests ────────────────────────────────────
+
+test('App: simple prompt with standard role names (user/assistant)', async () => {
+    const content = `---\n${SELF_CONTAINED_CONFIG}\n---\n@system\nYou are helpful.\n\n@user\n`;
+    const { props, tmpFile, cleanup } = setupApp(content);
+    try {
+        await withFetchMock(
+            async () => sseResponse('I can help!'),
+            async () => {
+                const { lastFrame, stdin, cleanup: inkCleanup } = render(h(App, props));
+                await tick();
+
+                const frame = stripAnsi(lastFrame());
+                assert.ok(frame.includes('@system') || frame.includes('You are helpful'),
+                    'System message should be visible');
+                assert.ok(frame.includes('@user'), 'Pending @user should be visible');
+
+                stdin.write('Hello');
+                await tick();
+                stdin.write('\r');
+                await waitFor(lastFrame, f => f.includes('I can help!'), 'response');
+
+                const saved = fs.readFileSync(tmpFile, 'utf8');
+                assert.ok(saved.includes('Hello'), 'User message saved');
+                assert.ok(saved.includes('I can help!'), 'Response saved');
+                // File should end with a pending @user for the next turn
+                assert.ok(saved.trimEnd().endsWith('@user'),
+                    'File should end with pending @user marker');
+
+                inkCleanup();
+            }
+        );
+    } finally {
+        cleanup();
+    }
+});
+
+test('App: system-only file (no user message) shows last message as prefill', async () => {
+    const content = `---\n${SELF_CONTAINED_CONFIG}\n---\n@system\nYou are helpful.`;
+    const { props, cleanup } = setupApp(content);
+    try {
+        const { lastFrame, cleanup: inkCleanup } = render(h(App, props));
+        await tick();
+
+        const frame = stripAnsi(lastFrame());
+        // The system message should become pendingMsg with content prefilled
+        // (splitMessages sees all messages have content → no pending →
+        //  init logic pops the last message and prefills its content)
+        assert.ok(frame.includes('You are helpful'),
+            'System message content should be prefilled in the text area');
+
+        inkCleanup();
+    } finally {
+        cleanup();
+    }
+});
+
+test('App: mid-conversation file with all messages filled triggers prefill', async () => {
+    const content = `---\n${SELF_CONTAINED_CONFIG}\nroleplay_user: Tom\n---\n@Bilinda\nHello!\n\n@Tom\nHi there!\n\n@Bilinda\nHow are you?`;
+    const { props, cleanup } = setupApp(content);
+    try {
+        const { lastFrame, cleanup: inkCleanup } = render(h(App, props));
+        await tick();
+
+        const frame = stripAnsi(lastFrame());
+        // Last message (Bilinda's "How are you?") should be popped and prefilled
+        assert.ok(frame.includes('How are you?'),
+            'Last message content should be prefilled for editing');
+        // The previous messages should be in the completed list
+        assert.ok(frame.includes('Hello!'), 'Earlier messages should be visible');
+        assert.ok(frame.includes('Hi there!'), 'Tom message should be visible');
+
+        inkCleanup();
+    } finally {
+        cleanup();
+    }
+});
+
+test('App: file with no messages (frontmatter only) renders without crash', async () => {
+    const content = `---\n${SELF_CONTAINED_CONFIG}\n---\n`;
+    const { props, cleanup } = setupApp(content);
+    try {
+        const { lastFrame, cleanup: inkCleanup } = render(h(App, props));
+        await tick();
+
+        const frame = stripAnsi(lastFrame());
+        // Should render the text input area at minimum
+        assert.ok(frame.includes('Enter send') || frame.includes('quit'),
+            'Status hint should be visible even with no messages');
+
+        inkCleanup();
+    } finally {
+        cleanup();
+    }
+});
+
+test('App: file with single @user message and no system prompt', async () => {
+    const content = `---\n${SELF_CONTAINED_CONFIG}\n---\n@user\n`;
+    const { props, tmpFile, cleanup } = setupApp(content);
+    try {
+        await withFetchMock(
+            async () => sseResponse('Hi there!'),
+            async () => {
+                const { lastFrame, stdin, cleanup: inkCleanup } = render(h(App, props));
+                await tick();
+
+                const frame = stripAnsi(lastFrame());
+                assert.ok(frame.includes('@user'), 'Pending @user should be visible');
+
+                stdin.write('Hello world');
+                await tick();
+                stdin.write('\r');
+                await waitFor(lastFrame, f => f.includes('Hi there!'), 'response');
+
+                const saved = fs.readFileSync(tmpFile, 'utf8');
+                assert.ok(saved.includes('Hello world'), 'User message saved');
+                assert.ok(saved.includes('Hi there!'), 'Response saved');
+
+                inkCleanup();
+            }
+        );
+    } finally {
+        cleanup();
+    }
+});
+
+test('App: file with assistant as last message creates pending user turn', async () => {
+    // When the user fills a pending @assistant message, precompletionLint
+    // determines the next speaker is @user, so no LLM call happens —
+    // instead a new pending @user is created for the human to fill in.
+    const content = `---\n${SELF_CONTAINED_CONFIG}\n---\n@system\nBe helpful.\n\n@user\nHello!\n\n@assistant\n`;
+    const { props, tmpFile, cleanup } = setupApp(content);
+    try {
+        const { lastFrame, stdin, cleanup: inkCleanup } = render(h(App, props));
+        await tick();
+
+        const frame = stripAnsi(lastFrame());
+        assert.ok(frame.includes('@assistant'), 'Pending @assistant should be visible');
+        assert.ok(frame.includes('Hello!'), 'User message should be visible');
+
+        // Fill the assistant message — this should NOT trigger LLM call,
+        // instead it should create a pending @user turn
+        stdin.write('I am here to help.');
+        await tick();
+        stdin.write('\r');
+        await waitFor(lastFrame, f => f.includes('@user') && f.includes('I am here to help.'),
+            'pending user after assistant fill');
+
+        const saved = fs.readFileSync(tmpFile, 'utf8');
+        assert.ok(saved.includes('I am here to help.'), 'Assistant content saved');
+        assert.ok(saved.trimEnd().endsWith('@user'),
+            'File should end with pending @user after assistant message is filled');
+
+        inkCleanup();
+    } finally {
+        cleanup();
+    }
+});
+
+test('App: multi-turn with standard roles preserves correct file structure', async () => {
+    const content = `---\n${SELF_CONTAINED_CONFIG}\n---\n@system\nYou are helpful.\n\n@user\n`;
+    const { props, tmpFile, cleanup } = setupApp(content);
+    let fetchCount = 0;
+    try {
+        await withFetchMock(
+            async () => {
+                fetchCount++;
+                return sseResponse(`Reply ${fetchCount}`);
+            },
+            async () => {
+                const { lastFrame, stdin, cleanup: inkCleanup } = render(h(App, props));
+                await tick();
+
+                // First turn
+                stdin.write('First message');
+                await tick();
+                stdin.write('\r');
+                await waitFor(lastFrame, f => f.includes('Reply 1'), 'first reply');
+
+                // Second turn
+                stdin.write('Second message');
+                await tick();
+                stdin.write('\r');
+                await waitFor(lastFrame, f => f.includes('Reply 2'), 'second reply');
+
+                const saved = fs.readFileSync(tmpFile, 'utf8');
+                assert.ok(saved.includes('First message'), 'First message saved');
+                assert.ok(saved.includes('Reply 1'), 'First reply saved');
+                assert.ok(saved.includes('Second message'), 'Second message saved');
+                assert.ok(saved.includes('Reply 2'), 'Second reply saved');
+                // File should end with pending @user
+                assert.ok(saved.trimEnd().endsWith('@user'),
+                    'File should end with pending @user for next turn');
+
+                inkCleanup();
+            }
+        );
+    } finally {
+        cleanup();
+    }
+});
+
+test('App: file with decorators on messages renders correctly', async () => {
+    const content = `---\n${SELF_CONTAINED_CONFIG}\nroleplay_user: Tom\n---\n@Bilinda [happy]\nHello!\n\n@Tom\n`;
+    const { props, cleanup } = setupApp(content);
+    try {
+        const { lastFrame, cleanup: inkCleanup } = render(h(App, props));
+        await tick();
+
+        const frame = stripAnsi(lastFrame());
+        assert.ok(frame.includes('Hello!'), 'Decorated message content should be visible');
+        assert.ok(frame.includes('@Tom'), 'Pending Tom should be visible');
+
+        inkCleanup();
+    } finally {
+        cleanup();
+    }
+});
+
+test('App: save roundtrip preserves file structure', async () => {
+    const content = `---\n${SELF_CONTAINED_CONFIG}\n---\n@system\nBe helpful.\n\n@user\n`;
+    const { props, tmpFile, cleanup } = setupApp(content);
+    try {
+        const { stdin, cleanup: inkCleanup } = render(h(App, props));
+        await tick();
+
+        // Exit immediately to trigger a save
+        stdin.write('/exit');
+        await tick();
+        stdin.write('\r');
+        await tick(50);
+
+        const saved = fs.readFileSync(tmpFile, 'utf8');
+        assert.ok(saved.startsWith('---\n'), 'Should start with frontmatter marker');
+        assert.ok(saved.includes('connection: test'), 'Connection should be preserved');
+        assert.ok(saved.includes('@system'), 'System message should be preserved');
+        assert.ok(saved.includes('Be helpful'), 'System content should be preserved');
+        assert.ok(saved.includes('@user'), 'User marker should be preserved');
+
+        // Re-parse the saved file to ensure it's valid
+        const doc = pqutils.parseConfigAndMessages(saved);
+        assert.ok(doc.messages.length >= 2, 'Re-parsed file should have at least 2 messages');
+
+        inkCleanup();
     } finally {
         cleanup();
     }

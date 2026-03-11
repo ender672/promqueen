@@ -323,7 +323,7 @@ export { App };
 
 // ─── Main ───────────────────────────────────────────────────────────────────
 
-const { runSetup } = require('./lib/chat-setup.js');
+const { runSetup, testExistingConnection, wizardSelectConnection, updatePqueenConnection } = require('./lib/chat-setup.js');
 
 async function main() {
     const inputPath = process.argv[2];
@@ -347,6 +347,15 @@ async function main() {
         cliConfig = result.cliConfig;
     } else if (resolved.endsWith('.pqueen')) {
         pqueenPath = resolved;
+
+        // Ensure the file has a working connection configured
+        const connectionOk = await testExistingConnection(pqueenPath, cliConfig);
+        if (!connectionOk) {
+            const dotConfig = pqutils.loadDotConfig();
+            const connResult = await wizardSelectConnection(dotConfig);
+            cliConfig = connResult.cliConfig;
+            updatePqueenConnection(pqueenPath, connResult.connectionName);
+        }
     } else {
         console.error('Expected a .png or .pqueen file.');
         process.exit(1);
