@@ -11,6 +11,7 @@ const require_ = createRequire(import.meta.url);
 const pqutils = require_('../../lib/pq-utils.js');
 
 import { App } from '../../pqueen';
+import { COMMANDS } from '../../chat-ink-view.mjs';
 
 // Each App mounts a resize listener on process.stdout; ink cleanup is async
 // so listeners accumulate across tests in the same process.
@@ -900,5 +901,26 @@ test('App: save roundtrip preserves file structure', async () => {
         inkCleanup();
     } finally {
         cleanup();
+    }
+});
+
+test('slash command lists stay in sync', () => {
+    const __dirname = path.dirname(new URL(import.meta.url).pathname);
+    const pqueenSrc = fs.readFileSync(path.join(__dirname, '../../pqueen'), 'utf8');
+
+    // Extract command names from text.trim() === '/...' patterns in pqueen
+    const handlerCommands = new Set(
+        [...pqueenSrc.matchAll(/text\.trim\(\) === '(\/[a-z-]+)'/g)].map(m => m[1])
+    );
+
+    const autocompleteCommands = new Set(COMMANDS.map(c => c.name));
+
+    for (const cmd of handlerCommands) {
+        assert.ok(autocompleteCommands.has(cmd),
+            `Command ${cmd} is handled in pqueen but missing from COMMANDS in chat-ink-view.mjs`);
+    }
+    for (const cmd of autocompleteCommands) {
+        assert.ok(handlerCommands.has(cmd),
+            `Command ${cmd} is in COMMANDS but has no handler in pqueen`);
     }
 });

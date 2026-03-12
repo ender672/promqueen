@@ -154,8 +154,9 @@ export function splitMessages(msgs) {
     return { completed: msgs, pending: null };
 }
 
-// Slash commands — keep in sync with handleSubmit() in pqueen
-const COMMANDS = [
+// Slash commands — tested against handleSubmit() in pqueen by
+// tests/integration/chat-app.test.mjs "slash command lists stay in sync"
+export const COMMANDS = [
     { name: '/exit', description: 'Save and quit' },
     { name: '/generate', description: 'LLM-generate current message' },
     { name: '/html', description: 'Preview as HTML in browser' },
@@ -163,6 +164,7 @@ const COMMANDS = [
     { name: '/show-prompt', description: 'Preview prepared prompt' },
     { name: '/delete-last', description: 'Delete last message' },
     { name: '/edit-last', description: 'Edit last message' },
+    { name: '/show-card', description: 'Open character card image' },
 ];
 
 function truncateStreamHead(buf) {
