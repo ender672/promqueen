@@ -246,6 +246,27 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
             return;
         }
 
+        if (text.trim() === '/show-card') {
+            if (!resolvedConfig.charcard) {
+                setError('No charcard configured');
+                return;
+            }
+            const cardPath = path.resolve(cwd, resolvedConfig.charcard);
+            if (!fs.existsSync(cardPath)) {
+                setError(`Card not found: ${cardPath}`);
+                return;
+            }
+            const opener = findOpener();
+            if (!opener) {
+                setError('No file opener found');
+                return;
+            }
+            execFile(opener, [cardPath], (err) => {
+                if (err) setError(`Could not open card: ${err.message}`);
+            });
+            return;
+        }
+
         if (text.trim() === '/regenerate') {
             if (messages.length === 0) return;
             const lastMsg = messages[messages.length - 1];
