@@ -19,7 +19,7 @@ const h = React.createElement;
 
 // ─── App ────────────────────────────────────────────────────────────────────
 
-function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
+function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig, noSave }) {
     const { exit } = useApp();
     const initial = splitMessages(initialMessages);
     let initCompleted = initial.completed;
@@ -125,8 +125,9 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
     }, [refreshScreen]);
 
     const saveFile = useCallback((msgs) => {
+        if (noSave) return;
         fs.writeFileSync(pqueenPath, pqutils.serializeDocument(rawConfig, msgs));
-    }, [pqueenPath, rawConfig]);
+    }, [pqueenPath, rawConfig, noSave]);
 
     // Stream a generation and run the post-completion pipeline.  Callers
     // control what happens on success/error via callbacks:
@@ -214,7 +215,7 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
         } else if (key.escape && !busy) {
             const allMsgs = pendingMsg ? [...messages, pendingMsg] : messages;
             saveFile(allMsgs);
-            if (process.stderr.isTTY) process.stderr.write(`\nSaved to ${pqueenPath}\n`);
+            if (process.stderr.isTTY) process.stderr.write(noSave ? '\n' : `\nSaved to ${pqueenPath}\n`);
             exit();
         }
     });
@@ -235,9 +236,12 @@ export { App };
 const { runSetup, testExistingConnection, wizardSelectConnection, updatePqueenConnection } = require('./lib/chat-setup.js');
 
 async function main() {
-    const inputPath = process.argv[2];
+    const args = process.argv.slice(2);
+    const noSave = args.includes('--no-save');
+    const positional = args.filter(a => !a.startsWith('--'));
+    const inputPath = positional[0];
     if (!inputPath) {
-        console.error('Usage: chat.mjs <file.png | file.pqueen>');
+        console.error('Usage: pqueen [--no-save] <file.png | file.pqueen>');
         process.exit(1);
     }
 
@@ -283,6 +287,7 @@ async function main() {
         initialMessages: doc.messages,
         resolvedConfig,
         rawConfig: doc.config,
+        noSave,
     }), { exitOnCtrlC: false });
 }
 

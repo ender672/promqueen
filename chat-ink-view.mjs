@@ -204,7 +204,7 @@ export function splitMessages(msgs) {
 // Slash commands — tested against handleSubmit() in pqueen by
 // tests/integration/chat-app.test.mjs "slash command lists stay in sync"
 export const COMMANDS = [
-    { name: '/exit', description: 'Save and quit' },
+    { name: '/exit', description: 'Quit' },
     { name: '/generate', description: 'LLM-generate current message' },
     { name: '/html', description: 'Preview as HTML in browser' },
     { name: '/regenerate', description: 'Regenerate last response' },
