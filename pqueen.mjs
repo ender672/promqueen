@@ -337,6 +337,6 @@ async function main() {
 }
 
 const __filename = fileURLToPath(import.meta.url);
-if (process.argv[1] && __filename === path.resolve(process.argv[1])) {
+if (process.argv[1] && fs.realpathSync(path.resolve(process.argv[1])) === __filename) {
     main();
 }
