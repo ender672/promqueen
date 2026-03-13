@@ -270,7 +270,11 @@ async function main() {
         const dotConfig = pqutils.loadDotConfig();
         const connResult = await wizardSelectConnection(dotConfig);
         cliConfig = connResult.cliConfig;
-        updatePqueenConnection(pqueenPath, connResult.connectionName);
+        if (noSave) {
+            cliConfig.connection = connResult.connectionName;
+        } else {
+            updatePqueenConnection(pqueenPath, connResult.connectionName);
+        }
     }
 
     const cwd = path.dirname(pqueenPath);
