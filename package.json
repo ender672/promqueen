@@ -4,23 +4,7 @@
   "description": "LLM prompt engineering tool for .pqueen prompt files",
   "main": "pqueen-run.js",
   "bin": {
-    "pqueen-run": "pqueen-run.js",
-    "pqueen-apply-template": "apply-template.js",
-    "pqueen-format-names": "format-names.js",
-    "pqueen-send-prompt": "send-prompt.js",
-    "pqueen-pre-completion-lint": "pre-completion-lint.js",
-    "pqueen-post-completion-lint": "post-completion-lint.js",
-    "pqueen-watcher": "watcher.js",
-    "charcard-png-to-json": "charcard-png-to-json.js",
-    "charcard-png-to-txt": "charcard-png-to-txt.js",
-    "charcard-png-to-openings": "charcard-png-to-openings.js",
-    "charcard-png-get-field": "charcard-png-get-field.js",
-    "pqueen": "pqueen.mjs",
-    "pqueen-setup": "setup.js",
-    "pqueen-apply-lorebook": "apply-lorebook.js",
-    "pqueen-rp-to-html": "rp-to-html.js",
-    "pqueen-send-raw-prompt": "send-raw-prompt.js",
-    "pqueen-send-prompt-anthropic": "send-prompt-anthropic.js"
+    "pqueen": "pqueen.mjs"
   },
   "scripts": {
     "test": "node --test tests/integration/*.test.js tests/integration/*.test.mjs",
