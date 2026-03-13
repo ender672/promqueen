@@ -187,6 +187,11 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
             return;
         }
 
+        if (input === 'a' && key.ctrl) {
+            buf.col = 0;
+            kick(); return;
+        }
+
         if (input && !key.ctrl && !key.meta) {
             historyIdxRef.current = -1;
             buf.lines[buf.row] = buf.lines[buf.row].slice(0, buf.col) + input + buf.lines[buf.row].slice(buf.col);
