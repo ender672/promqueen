@@ -9,6 +9,9 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
     const { exit } = useApp();
     const bufRef = useRef({ lines: [''], row: 0, col: 0 });
     const prevInitialRef = useRef('');
+    const historyRef = useRef([]);       // oldest first
+    const historyIdxRef = useRef(-1);    // -1 = not browsing
+    const savedInputRef = useRef('');    // input before entering history
     const [, forceRender] = useState(0);
     const kick = () => {
         forceRender(n => n + 1);
@@ -43,6 +46,13 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
 
         if (key.return) {
             const text = buf.lines.join('\n').trim();
+            if (text) {
+                const hist = historyRef.current;
+                if (hist.length === 0 || hist[hist.length - 1] !== text) {
+                    hist.push(text);
+                }
+            }
+            historyIdxRef.current = -1;
             onSubmit(text);
             buf.lines = [''];
             buf.row = 0;
@@ -51,7 +61,7 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
             return;
         }
 
-        if (activeCommands && activeCommands.length > 0) {
+        if (activeCommands && activeCommands.length > 0 && historyIdxRef.current === -1) {
             if (key.upArrow) { onCommandNav(-1); return; }
             if (key.downArrow) { onCommandNav(1); return; }
             if (key.tab) {
@@ -67,6 +77,7 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
         }
 
         if (key.backspace || key.delete) {
+            historyIdxRef.current = -1;
             if (buf.col > 0) {
                 buf.lines[buf.row] = buf.lines[buf.row].slice(0, buf.col - 1) + buf.lines[buf.row].slice(buf.col);
                 buf.col--;
@@ -105,20 +116,56 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
             }
             kick(); return;
         }
-        if (key.upArrow && buf.row > 0) {
-            buf.row--;
-            buf.col = Math.min(buf.col, buf.lines[buf.row].length);
+        if (key.upArrow) {
+            if (buf.row > 0) {
+                buf.row--;
+                buf.col = Math.min(buf.col, buf.lines[buf.row].length);
+            } else {
+                // At top of buffer — browse history
+                const hist = historyRef.current;
+                if (hist.length > 0) {
+                    if (historyIdxRef.current === -1) {
+                        savedInputRef.current = buf.lines.join('\n');
+                        historyIdxRef.current = hist.length - 1;
+                    } else if (historyIdxRef.current > 0) {
+                        historyIdxRef.current--;
+                    }
+                    const entry = hist[historyIdxRef.current];
+                    buf.lines = entry.split('\n');
+                    buf.row = buf.lines.length - 1;
+                    buf.col = buf.lines[buf.row].length;
+                }
+            }
             kick();
             return;
         }
-        if (key.downArrow && buf.row < buf.lines.length - 1) {
-            buf.row++;
-            buf.col = Math.min(buf.col, buf.lines[buf.row].length);
+        if (key.downArrow) {
+            if (buf.row < buf.lines.length - 1) {
+                buf.row++;
+                buf.col = Math.min(buf.col, buf.lines[buf.row].length);
+            } else if (historyIdxRef.current !== -1) {
+                // At bottom of buffer while browsing history — go forward
+                const hist = historyRef.current;
+                if (historyIdxRef.current < hist.length - 1) {
+                    historyIdxRef.current++;
+                    const entry = hist[historyIdxRef.current];
+                    buf.lines = entry.split('\n');
+                    buf.row = buf.lines.length - 1;
+                    buf.col = buf.lines[buf.row].length;
+                } else {
+                    // Past the end — restore saved input
+                    historyIdxRef.current = -1;
+                    buf.lines = savedInputRef.current.split('\n');
+                    buf.row = buf.lines.length - 1;
+                    buf.col = buf.lines[buf.row].length;
+                }
+            }
             kick();
             return;
         }
 
         if (input && !key.ctrl && !key.meta) {
+            historyIdxRef.current = -1;
             buf.lines[buf.row] = buf.lines[buf.row].slice(0, buf.col) + input + buf.lines[buf.row].slice(buf.col);
             buf.col += input.length;
             kick();
