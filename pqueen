@@ -265,7 +265,7 @@ async function main() {
     }
 
     // Ensure the file has a working connection configured
-    const connectionOk = await testExistingConnection(pqueenPath, cliConfig);
+    const connectionOk = testExistingConnection(pqueenPath, cliConfig);
     if (!connectionOk) {
         const dotConfig = pqutils.loadDotConfig();
         const connResult = await wizardSelectConnection(dotConfig);
