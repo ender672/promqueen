@@ -219,6 +219,7 @@ export const COMMANDS = [
     { name: '/edit-last', description: 'Edit last message' },
     { name: '/show-card', description: 'Open character card image' },
     { name: '/edit-speaker', description: 'Edit current speaker name' },
+    { name: '/branch', description: 'Copy file and switch to it' },
 ];
 
 function truncateStreamHead(buf) {

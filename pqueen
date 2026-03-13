@@ -19,8 +19,10 @@ const h = React.createElement;
 
 // ─── App ────────────────────────────────────────────────────────────────────
 
-function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig, noSave }) {
+function App({ pqueenPath: initialPqueenPath, cwd: initialCwd, initialMessages, resolvedConfig, rawConfig, noSave }) {
     const { exit } = useApp();
+    const [pqueenPath, setPqueenPath] = useState(initialPqueenPath);
+    const cwd = useMemo(() => path.dirname(pqueenPath), [pqueenPath]);
     const initial = splitMessages(initialMessages);
     let initCompleted = initial.completed;
     let initPending = initial.pending;
@@ -209,11 +211,12 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig, noSa
         setPrefill('');
 
         const ctx = {
-            allMsgs, messages, pendingMsg, resolvedConfig, cwd, pqueenPath,
+            allMsgs, messages, pendingMsg, resolvedConfig, cwd, pqueenPath, rawConfig,
             saveFile, runGeneration, refreshScreen, exit,
             setMessages, setPendingMsg, setPrefill, setError, setStreamToEditbox,
             generations, setGenerations, setGenerationIdx,
             editingSpeaker, setEditingSpeaker,
+            setPqueenPath,
         };
 
         if (editingSpeaker) {
@@ -229,7 +232,7 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig, noSa
         }
 
         cmdSubmitText(ctx, text);
-    }, [messages, pendingMsg, allMsgs, busy, resolvedConfig, cwd, saveFile,
+    }, [messages, pendingMsg, allMsgs, busy, resolvedConfig, cwd, pqueenPath, rawConfig, saveFile,
         runGeneration, refreshScreen, generations, editingSpeaker]);
 
     useInput((_input, key) => {
