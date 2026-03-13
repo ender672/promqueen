@@ -134,19 +134,6 @@ function App({ pqueenPath: initialPqueenPath, cwd: initialCwd, initialMessages, 
         fs.writeFileSync(pqueenPath, pqutils.serializeDocument(rawConfig, msgs));
     }, [pqueenPath, rawConfig, noSave]);
 
-    const handleCycleGeneration = useCallback((delta) => {
-        if (generations.length <= 1) return;
-        const newIdx = generationIdx + delta;
-        if (newIdx < 0 || newIdx >= generations.length) return;
-        setGenerationIdx(newIdx);
-        const updated = [...messages];
-        updated[updated.length - 1] = { ...updated[updated.length - 1], content: generations[newIdx] };
-        setMessages(updated);
-        const allUpdated = pendingMsg ? [...updated, pendingMsg] : updated;
-        saveFile(allUpdated);
-        refreshScreen();
-    }, [generations, generationIdx, messages, pendingMsg, saveFile, refreshScreen]);
-
     // Stream a generation and run the post-completion pipeline.  Callers
     // control what happens on success/error via callbacks:
     //   onSuccess(content) → must return the full afterTurn message array
@@ -204,6 +191,31 @@ function App({ pqueenPath: initialPqueenPath, cwd: initialCwd, initialMessages, 
             setBusy(false);
         })();
     }, [resolvedConfig, streamCompletion, accumulateTokens, makeThrottledWriter, saveFile, refreshScreen]);
+
+    const handleCycleGeneration = useCallback((delta) => {
+        if (generations.length <= 1) return;
+        const newIdx = generationIdx + delta;
+        if (newIdx < 0) return;
+        if (newIdx >= generations.length) {
+            // Trigger a new regeneration when pressing right past the last generation
+            const ctx = {
+                allMsgs: pendingMsg ? [...messages, pendingMsg] : messages,
+                messages, pendingMsg, resolvedConfig, cwd, pqueenPath, rawConfig,
+                saveFile, runGeneration, refreshScreen,
+                setMessages, setPendingMsg, setPrefill, setError, setStreamToEditbox,
+                generations, setGenerations, setGenerationIdx,
+            };
+            SLASH_COMMANDS['/regenerate'](ctx);
+            return;
+        }
+        setGenerationIdx(newIdx);
+        const updated = [...messages];
+        updated[updated.length - 1] = { ...updated[updated.length - 1], content: generations[newIdx] };
+        setMessages(updated);
+        const allUpdated = pendingMsg ? [...updated, pendingMsg] : updated;
+        saveFile(allUpdated);
+        refreshScreen();
+    }, [generations, generationIdx, messages, pendingMsg, resolvedConfig, cwd, pqueenPath, rawConfig, saveFile, runGeneration, refreshScreen]);
 
     const handleSubmit = useCallback((text) => {
         if (busy) return;
