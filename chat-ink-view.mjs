@@ -218,6 +218,7 @@ export const COMMANDS = [
     { name: '/delete-last', description: 'Delete last message' },
     { name: '/edit-last', description: 'Edit last message' },
     { name: '/show-card', description: 'Open character card image' },
+    { name: '/edit-speaker', description: 'Edit current speaker name' },
 ];
 
 function truncateStreamHead(buf) {

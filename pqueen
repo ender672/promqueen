@@ -13,7 +13,7 @@ const { postCompletionLint } = require('./post-completion-lint.js');
 const { dispatchSendPrompt } = require('./lib/pipeline.js');
 const { tokensToString } = require('./lib/send-prompt-common.js');
 const pqutils = require('./lib/pq-utils.js');
-const { SLASH_COMMANDS, cmdSubmitText } = require('./lib/commands.js');
+const { SLASH_COMMANDS, cmdSubmitText, cmdFinishEditSpeaker } = require('./lib/commands.js');
 
 const h = React.createElement;
 
@@ -55,6 +55,7 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig, noSa
     const [staticKey, setStaticKey] = useState(0);
     const [generations, setGenerations] = useState([]);
     const [generationIdx, setGenerationIdx] = useState(-1);
+    const [editingSpeaker, setEditingSpeaker] = useState(false);
     const abortRef = useRef(null);
 
     const refreshScreen = useCallback(() => {
@@ -212,7 +213,13 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig, noSa
             saveFile, runGeneration, refreshScreen, exit,
             setMessages, setPendingMsg, setPrefill, setError, setStreamToEditbox,
             generations, setGenerations, setGenerationIdx,
+            editingSpeaker, setEditingSpeaker,
         };
+
+        if (editingSpeaker) {
+            cmdFinishEditSpeaker(ctx, text);
+            return;
+        }
 
         const trimmed = text.trim();
         const handler = SLASH_COMMANDS[trimmed] || (trimmed === '' ? SLASH_COMMANDS['/generate'] : null);
@@ -223,7 +230,7 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig, noSa
 
         cmdSubmitText(ctx, text);
     }, [messages, pendingMsg, allMsgs, busy, resolvedConfig, cwd, saveFile,
-        runGeneration, refreshScreen, generations]);
+        runGeneration, refreshScreen, generations, editingSpeaker]);
 
     useInput((_input, key) => {
         if ((key.escape || (key.ctrl && _input === 'c')) && busy) {
