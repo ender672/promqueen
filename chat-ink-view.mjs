@@ -5,7 +5,7 @@ const h = React.createElement;
 
 // ─── Multi-line TextArea component ──────────────────────────────────────────
 
-export function TextArea({ onSubmit, onChange, height, disabled, initialText, activeCommands, onCommandNav, onCommandAccept }) {
+export function TextArea({ onSubmit, onChange, height, disabled, initialText, activeCommands, onCommandNav, onCommandAccept, onCycleGeneration }) {
     const { exit } = useApp();
     const bufRef = useRef({ lines: [''], row: 0, col: 0 });
     const prevInitialRef = useRef('');
@@ -93,6 +93,9 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
         }
 
         if (key.leftArrow) {
+            if (onCycleGeneration && buf.lines.length === 1 && buf.lines[0] === '') {
+                onCycleGeneration(-1); return;
+            }
             if (key.ctrl || key.meta) {
                 const line = buf.lines[buf.row];
                 let c = buf.col - 1;
@@ -105,6 +108,9 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
             kick(); return;
         }
         if (key.rightArrow) {
+            if (onCycleGeneration && buf.lines.length === 1 && buf.lines[0] === '') {
+                onCycleGeneration(1); return;
+            }
             if (key.ctrl || key.meta) {
                 const line = buf.lines[buf.row];
                 let c = buf.col;
@@ -223,7 +229,7 @@ function truncateStreamHead(buf) {
     return lines.slice(-maxLines).join('\n');
 }
 
-export function ChatView({ messages, streamName, streamBuf, streamToEditbox, pendingMsg, busy, connectionName, costInfo, onSubmit, errorBanner, initialText, staticKey }) {
+export function ChatView({ messages, streamName, streamBuf, streamToEditbox, pendingMsg, busy, connectionName, costInfo, onSubmit, errorBanner, initialText, staticKey, generationInfo, onCycleGeneration }) {
     const [inputText, setInputText] = useState('');
     const [selectedIdx, setSelectedIdx] = useState(0);
     const trimmed = inputText.trim();
@@ -235,6 +241,7 @@ export function ChatView({ messages, streamName, streamBuf, streamToEditbox, pen
     useEffect(() => setSelectedIdx(0), [trimmed]);
 
     const statusParts = ['Enter send', '/html preview', 'Esc quit'];
+    if (generationInfo) statusParts.push(generationInfo);
     if (connectionName) statusParts.push(connectionName);
     if (costInfo) statusParts.push(costInfo);
     const hint = statusParts.join(' · ');
@@ -263,7 +270,7 @@ export function ChatView({ messages, streamName, streamBuf, streamToEditbox, pen
             streamToEditbox
                 ? h(Text, null, streamBuf ? truncateStreamHead(streamBuf) : '')
                 : h(TextArea, {
-                onSubmit, onChange: setInputText, height: 3, disabled: busy, initialText,
+                onSubmit, onChange: setInputText, height: 3, disabled: busy, initialText, onCycleGeneration,
                 activeCommands: filteredCommands.length > 0 ? filteredCommands : null,
                 onCommandNav: (delta) => setSelectedIdx(i => {
                     const n = filteredCommands.length;

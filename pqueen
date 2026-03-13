@@ -53,6 +53,8 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig, noSa
     const [error, setError] = useState('');
     const [prefill, setPrefill] = useState(initPrefill);
     const [staticKey, setStaticKey] = useState(0);
+    const [generations, setGenerations] = useState([]);
+    const [generationIdx, setGenerationIdx] = useState(-1);
     const abortRef = useRef(null);
 
     const refreshScreen = useCallback(() => {
@@ -129,6 +131,19 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig, noSa
         fs.writeFileSync(pqueenPath, pqutils.serializeDocument(rawConfig, msgs));
     }, [pqueenPath, rawConfig, noSave]);
 
+    const handleCycleGeneration = useCallback((delta) => {
+        if (generations.length <= 1) return;
+        const newIdx = generationIdx + delta;
+        if (newIdx < 0 || newIdx >= generations.length) return;
+        setGenerationIdx(newIdx);
+        const updated = [...messages];
+        updated[updated.length - 1] = { ...updated[updated.length - 1], content: generations[newIdx] };
+        setMessages(updated);
+        const allUpdated = pendingMsg ? [...updated, pendingMsg] : updated;
+        saveFile(allUpdated);
+        refreshScreen();
+    }, [generations, generationIdx, messages, pendingMsg, saveFile, refreshScreen]);
+
     // Stream a generation and run the post-completion pipeline.  Callers
     // control what happens on success/error via callbacks:
     //   onSuccess(content) → must return the full afterTurn message array
@@ -196,6 +211,7 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig, noSa
             allMsgs, messages, pendingMsg, resolvedConfig, cwd, pqueenPath,
             saveFile, runGeneration, refreshScreen, exit,
             setMessages, setPendingMsg, setPrefill, setError, setStreamToEditbox,
+            generations, setGenerations, setGenerationIdx,
         };
 
         const trimmed = text.trim();
@@ -207,7 +223,7 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig, noSa
 
         cmdSubmitText(ctx, text);
     }, [messages, pendingMsg, allMsgs, busy, resolvedConfig, cwd, saveFile,
-        runGeneration, refreshScreen]);
+        runGeneration, refreshScreen, generations]);
 
     useInput((_input, key) => {
         if ((key.escape || (key.ctrl && _input === 'c')) && busy) {
@@ -220,12 +236,16 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig, noSa
         }
     });
 
+    const generationInfo = generations.length > 1 ? `(${generationIdx + 1}/${generations.length})` : '';
+
     return h(ChatView, {
         messages, streamName, streamBuf, streamToEditbox, pendingMsg,
         busy, connectionName: resolvedConfig.connection || '', costInfo, staticKey,
         onSubmit: handleSubmit,
         errorBanner: error,
         initialText: prefill,
+        generationInfo,
+        onCycleGeneration: handleCycleGeneration,
     });
 }
 
