@@ -13,6 +13,8 @@ const pqutils = require_('../../lib/pq-utils.js');
 import { App } from '../../pqueen';
 import { COMMANDS } from '../../chat-ink-view.mjs';
 
+const { SLASH_COMMANDS } = require_('../../lib/commands.js');
+
 // Each App mounts a resize listener on process.stdout; ink cleanup is async
 // so listeners accumulate across tests in the same process.
 process.stdout.setMaxListeners(30);
@@ -905,22 +907,15 @@ test('App: save roundtrip preserves file structure', async () => {
 });
 
 test('slash command lists stay in sync', () => {
-    const __dirname = path.dirname(new URL(import.meta.url).pathname);
-    const pqueenSrc = fs.readFileSync(path.join(__dirname, '../../pqueen'), 'utf8');
-
-    // Extract command names from text.trim() === '/...' patterns in pqueen
-    const handlerCommands = new Set(
-        [...pqueenSrc.matchAll(/text\.trim\(\) === '(\/[a-z-]+)'/g)].map(m => m[1])
-    );
-
+    const handlerCommands = new Set(Object.keys(SLASH_COMMANDS));
     const autocompleteCommands = new Set(COMMANDS.map(c => c.name));
 
     for (const cmd of handlerCommands) {
         assert.ok(autocompleteCommands.has(cmd),
-            `Command ${cmd} is handled in pqueen but missing from COMMANDS in chat-ink-view.mjs`);
+            `Command ${cmd} is handled in SLASH_COMMANDS but missing from COMMANDS in chat-ink-view.mjs`);
     }
     for (const cmd of autocompleteCommands) {
         assert.ok(handlerCommands.has(cmd),
-            `Command ${cmd} is in COMMANDS but has no handler in pqueen`);
+            `Command ${cmd} is in COMMANDS but has no handler in SLASH_COMMANDS`);
     }
 });

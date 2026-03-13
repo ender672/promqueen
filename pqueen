@@ -10,28 +10,12 @@ const require = createRequire(import.meta.url);
 const fs = require('fs');
 const path = require('path');
 const { postCompletionLint } = require('./post-completion-lint.js');
-const { prepareTurn, dispatchSendPrompt } = require('./lib/pipeline.js');
+const { dispatchSendPrompt } = require('./lib/pipeline.js');
 const { tokensToString } = require('./lib/send-prompt-common.js');
 const pqutils = require('./lib/pq-utils.js');
-const { rpToHtml } = require('./rp-to-html.js');
-const os = require('os');
-const { execFile, execFileSync } = require('child_process');
+const { SLASH_COMMANDS, cmdSubmitText } = require('./lib/commands.js');
 
 const h = React.createElement;
-
-const midnightTemplate = fs.readFileSync(
-    path.join(path.dirname(fileURLToPath(import.meta.url)), 'templates', 'midnight.mustache'),
-    'utf8'
-);
-
-function findOpener() {
-    if (process.platform === 'darwin') return 'open';
-    if (process.platform === 'win32') return 'start';
-    for (const cmd of ['firefox', 'google-chrome', 'chromium', 'chromium-browser', 'xdg-open']) {
-        try { execFileSync('which', [cmd], { stdio: 'ignore' }); return cmd; } catch { /* not found */ }
-    }
-    return null;
-}
 
 // ─── App ────────────────────────────────────────────────────────────────────
 
@@ -207,189 +191,20 @@ function App({ pqueenPath, cwd, initialMessages, resolvedConfig, rawConfig }) {
         setError('');
         setPrefill('');
 
-        if (text.trim() === '/exit') {
-            saveFile(allMsgs);
-            if (process.stderr.isTTY) process.stderr.write(`\nSaved to ${pqueenPath}\n`);
-            exit();
+        const ctx = {
+            allMsgs, messages, pendingMsg, resolvedConfig, cwd, pqueenPath,
+            saveFile, runGeneration, refreshScreen, exit,
+            setMessages, setPendingMsg, setPrefill, setError, setStreamToEditbox,
+        };
+
+        const trimmed = text.trim();
+        const handler = SLASH_COMMANDS[trimmed] || (trimmed === '' ? SLASH_COMMANDS['/generate'] : null);
+        if (handler) {
+            handler(ctx);
             return;
         }
 
-        if (text.trim() === '/show-prompt') {
-            const turn = prepareTurn(allMsgs, resolvedConfig, cwd);
-            const preview = pqutils.serializeDocument(resolvedConfig, turn.apiMessages);
-            const tmpFile = path.join(os.tmpdir(), `pq-preview-prompt-${Date.now()}.pqueen`);
-            fs.writeFileSync(tmpFile, preview);
-            const opener = findOpener();
-            if (!opener) {
-                setError('No file opener found');
-                return;
-            }
-            execFile(opener, [tmpFile], (err) => {
-                if (err) setError(`Could not open file: ${err.message}`);
-            });
-            return;
-        }
-
-        if (text.trim() === '/html') {
-            const doc = { messages: allMsgs };
-            const html = rpToHtml(doc, resolvedConfig, midnightTemplate);
-            const tmpFile = path.join(os.tmpdir(), `pq-preview-${Date.now()}.html`);
-            fs.writeFileSync(tmpFile, html);
-            const opener = findOpener();
-            if (!opener) {
-                setError('No browser found');
-                return;
-            }
-            execFile(opener, [tmpFile], (err) => {
-                if (err) setError(`Could not open browser: ${err.message}`);
-            });
-            return;
-        }
-
-        if (text.trim() === '/show-card') {
-            if (!resolvedConfig.charcard) {
-                setError('No charcard configured');
-                return;
-            }
-            const cardPath = path.resolve(cwd, resolvedConfig.charcard);
-            if (!fs.existsSync(cardPath)) {
-                setError(`Card not found: ${cardPath}`);
-                return;
-            }
-            const opener = findOpener();
-            if (!opener) {
-                setError('No file opener found');
-                return;
-            }
-            execFile(opener, [cardPath], (err) => {
-                if (err) setError(`Could not open card: ${err.message}`);
-            });
-            return;
-        }
-
-        if (text.trim() === '/regenerate') {
-            if (messages.length === 0) return;
-            const lastMsg = messages[messages.length - 1];
-            const hollow = { ...lastMsg, content: null, decorators: [] };
-            const priorMessages = [...messages.slice(0, -1), hollow];
-
-            const turn = prepareTurn(priorMessages, resolvedConfig, cwd);
-            const { apiMessages, nextEntry } = turn;
-
-            // Capture rollback state before optimistic updates
-            const rollbackMessages = messages;
-            const rollbackPending = pendingMsg;
-
-            setMessages(messages.slice(0, -1));
-            setPendingMsg(null);
-            refreshScreen();
-            saveFile(priorMessages);
-
-            runGeneration({
-                apiMessages,
-                streamName: nextEntry.name || '',
-                onSuccess(content) {
-                    const completed = { ...nextEntry, content };
-                    const completedMessages = [...messages.slice(0, -1), completed];
-                    setMessages(completedMessages);
-                    return [...completedMessages];
-                },
-                onError() {
-                    setMessages(rollbackMessages);
-                    setPendingMsg(rollbackPending);
-                    saveFile(rollbackPending ? [...rollbackMessages, rollbackPending] : rollbackMessages);
-                },
-            });
-            return;
-        }
-
-        if (text.trim() === '/delete-last') {
-            if (messages.length === 0) return;
-            const remaining = messages.slice(0, -1);
-            const lastRemaining = remaining[remaining.length - 1];
-            if (lastRemaining) {
-                // Pop the now-last message out of completed and into the editor
-                setMessages(remaining.slice(0, -1));
-                setPendingMsg({ ...lastRemaining, content: null, decorators: [] });
-                setPrefill(lastRemaining.content || '');
-                saveFile(remaining);
-            } else {
-                setMessages([]);
-                setPendingMsg(null);
-                saveFile([]);
-            }
-            refreshScreen();
-            return;
-        }
-
-        if (text.trim() === '/generate' || text.trim() === '') {
-            if (!pendingMsg) return;
-
-            const turn = prepareTurn(allMsgs, resolvedConfig, cwd);
-            const { apiMessages, nextEntry } = turn;
-
-            setStreamToEditbox(true);
-            runGeneration({
-                apiMessages,
-                streamName: nextEntry.name || '',
-                onSuccess(content) {
-                    setPrefill(content);
-                    return allMsgs;
-                },
-                onError() {},
-            });
-            return;
-        }
-
-        if (text.trim() === '/edit-last') {
-            if (messages.length === 0) return;
-            const lastMsg = messages[messages.length - 1];
-            setMessages(messages.slice(0, -1));
-            setPendingMsg({ ...lastMsg, content: null, decorators: [] });
-            setPrefill(lastMsg.content || '');
-            refreshScreen();
-            return;
-        }
-
-        if (!pendingMsg) return;
-
-        const filled = { ...pendingMsg, content: (pendingMsg.content || '') + text };
-        const allMessages = [...messages, filled];
-        // Capture rollback state before optimistic updates
-        const rollbackMessages = messages;
-        const rollbackPending = pendingMsg;
-
-        setMessages(allMessages);
-        setPendingMsg(null);
-        refreshScreen();
-        saveFile(allMessages);
-
-        const turn = prepareTurn(allMessages, resolvedConfig, cwd);
-        const { apiMessages, nextEntry } = turn;
-
-        // precompletionLint decided the next speaker — if it's a user role,
-        // show the edit box instead of generating.
-        if (nextEntry.role === 'user') {
-            setPendingMsg(nextEntry);
-            saveFile([...allMessages, nextEntry]);
-            return;
-        }
-
-        runGeneration({
-            apiMessages,
-            streamName: nextEntry.name,
-            onSuccess(content) {
-                const completed = { ...nextEntry, content };
-                setMessages(prev => [...prev, completed]);
-                return [...allMessages, completed];
-            },
-            onError() {
-                setMessages(rollbackMessages);
-                setPendingMsg(rollbackPending);
-                saveFile(rollbackPending ? [...rollbackMessages, rollbackPending] : rollbackMessages);
-                setPrefill(text);
-            },
-        });
+        cmdSubmitText(ctx, text);
     }, [messages, pendingMsg, allMsgs, busy, resolvedConfig, cwd, saveFile,
         runGeneration, refreshScreen]);
 
