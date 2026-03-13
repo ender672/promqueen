@@ -6,40 +6,24 @@ Supports OpenAI, Anthropic, Google, DeepSeek, Mistral, Cohere, xAI, local llama.
 
 ## Quick Start
 
-```
-npx pqueen examples/simple_prompt.pqueen
-```
-
-Set at least one API key in your environment, e.g.:
+Set at least one API key in your environment:
 
 ```
 export OPENAI_API_KEY=sk-...
 export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-## Install
-
-To install globally:
+Point it at a character card PNG and start chatting:
 
 ```
-npm install -g pqueen
+npx pqueen character.png
 ```
 
-Then run:
+Or at an existing `.pqueen` file:
 
 ```
-pqueen examples/simple_prompt.pqueen
+npx pqueen chat.pqueen
 ```
-
-You can set up roleplay scenarios with named characters:
-
-```
-pqueen examples/creative_prompt.pqueen
-```
-
-## Character Cards
-
-PromQueen can read character card PNG files. Point it at a `.png` card and it will extract the character definition automatically.
 
 ## VS Code Extension
 
