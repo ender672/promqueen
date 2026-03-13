@@ -45,6 +45,23 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
         }
 
         if (key.return) {
+            // If autocomplete is showing, accept the selected command and submit it
+            if (activeCommands && activeCommands.length > 0 && historyIdxRef.current === -1) {
+                const accepted = onCommandAccept();
+                if (accepted) {
+                    historyIdxRef.current = -1;
+                    const hist = historyRef.current;
+                    if (hist.length === 0 || hist[hist.length - 1] !== accepted) {
+                        hist.push(accepted);
+                    }
+                    onSubmit(accepted);
+                    buf.lines = [''];
+                    buf.row = 0;
+                    buf.col = 0;
+                    kick();
+                    return;
+                }
+            }
             const text = buf.lines.join('\n').trim();
             if (text) {
                 const hist = historyRef.current;
