@@ -15,7 +15,7 @@
     "charcard-png-to-txt": "charcard-png-to-txt.js",
     "charcard-png-to-openings": "charcard-png-to-openings.js",
     "charcard-png-get-field": "charcard-png-get-field.js",
-    "pqueen": "pqueen",
+    "pqueen": "pqueen.mjs",
     "pqueen-setup": "setup.js",
     "pqueen-apply-lorebook": "apply-lorebook.js",
     "pqueen-rp-to-html": "rp-to-html.js",
@@ -32,7 +32,7 @@
   "files": [
     "*.js",
     "chat-ink-view.mjs",
-    "pqueen",
+    "pqueen.mjs",
     "lib/",
     "templates/",
     "defaults.yaml"

@@ -4,10 +4,10 @@ A prompt engineering tool for chatting with AI APIs. Write prompts as readable `
 
 Supports OpenAI, Anthropic, Google, DeepSeek, Mistral, Cohere, xAI, local llama.cpp, and any OpenAI-compatible API.
 
-## Install
+## Quick Start
 
 ```
-npm install
+npx pqueen examples/simple_prompt.pqueen
 ```
 
 Set at least one API key in your environment, e.g.:
@@ -17,16 +17,24 @@ export OPENAI_API_KEY=sk-...
 export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-## Usage
+## Install
+
+To install globally:
 
 ```
-./pqueen examples/simple_prompt.pqueen
+npm install -g pqueen
+```
+
+Then run:
+
+```
+pqueen examples/simple_prompt.pqueen
 ```
 
 You can set up roleplay scenarios with named characters:
 
 ```
-./pqueen examples/creative_prompt.pqueen
+pqueen examples/creative_prompt.pqueen
 ```
 
 ## Character Cards

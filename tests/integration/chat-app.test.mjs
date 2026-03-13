@@ -10,7 +10,7 @@ import { createRequire } from 'module';
 const require_ = createRequire(import.meta.url);
 const pqutils = require_('../../lib/pq-utils.js');
 
-import { App } from '../../pqueen';
+import { App } from '../../pqueen.mjs';
 import { COMMANDS } from '../../chat-ink-view.mjs';
 
 const { SLASH_COMMANDS } = require_('../../lib/commands.js');
