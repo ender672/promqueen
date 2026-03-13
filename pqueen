@@ -193,7 +193,6 @@ function App({ pqueenPath: initialPqueenPath, cwd: initialCwd, initialMessages, 
     }, [resolvedConfig, streamCompletion, accumulateTokens, makeThrottledWriter, saveFile, refreshScreen]);
 
     const handleCycleGeneration = useCallback((delta) => {
-        if (generations.length <= 1) return;
         const newIdx = generationIdx + delta;
         if (newIdx < 0) return;
         if (newIdx >= generations.length) {
