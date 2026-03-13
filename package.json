@@ -1,7 +1,7 @@
 {
-  "name": "promqueen",
+  "name": "pqueen",
   "version": "0.0.1",
-  "description": "",
+  "description": "LLM prompt engineering tool for .pqueen prompt files",
   "main": "pqueen-run.js",
   "bin": {
     "pqueen-run": "pqueen-run.js",
@@ -27,8 +27,16 @@
     "lint": "eslint ."
   },
   "keywords": [],
-  "author": "",
+  "author": "Tim Elliott <tim.elliott.365@gmail.com>",
   "license": "ISC",
+  "files": [
+    "*.js",
+    "chat-ink-view.mjs",
+    "pqueen",
+    "lib/",
+    "templates/",
+    "defaults.yaml"
+  ],
   "dependencies": {
     "@ender672/minja-js": "^0.1.2",
     "chokidar": "^3.6.0",
