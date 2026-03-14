@@ -22,6 +22,8 @@ npx pqueen https://example.com/character.png
 npx pqueen https://chub.ai/characters/author/character-name
 ```
 
+**Note:** Chub.ai downloading uses an unofficial API and may break without notice.
+
 ## VS Code Extension
 
 A VS Code extension with syntax highlighting and editor integration is included in `vscode_extension/`.

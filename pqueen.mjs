@@ -324,6 +324,7 @@ async function main() {
     let resolved;
 
     if (isChubUrl(inputPath)) {
+        console.error('Note: chub.ai downloading uses an unofficial API and may break without notice.');
         const { outputFilename } = await chubFetch(inputPath);
         resolved = path.resolve(outputFilename);
     } else if (isUrl(inputPath)) {
