@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { Static, Box, Text, useInput, useApp } from 'ink';
 
 const h = React.createElement;
@@ -253,7 +253,7 @@ function truncateStreamHead(buf) {
     return lines.slice(-maxLines).join('\n');
 }
 
-export function ChatView({ messages, streamName, streamBuf, streamToEditbox, pendingMsg, busy, connectionName, costInfo, onSubmit, errorBanner, initialText, staticKey, generationInfo, onCycleGeneration }) {
+export function ChatView({ messages, streamName, streamLines, streamPartial, streamToEditbox, pendingMsg, busy, connectionName, costInfo, onSubmit, errorBanner, initialText, staticKey, generationInfo, onCycleGeneration }) {
     const [inputText, setInputText] = useState('');
     const [selectedIdx, setSelectedIdx] = useState(0);
     const trimmed = inputText.trim();
@@ -272,17 +272,35 @@ export function ChatView({ messages, streamName, streamBuf, streamToEditbox, pen
 
     const visibleMessages = messages.filter(m => !m.decorators?.includes('pq:hidden'));
 
+    // Combine messages and streaming lines into a single Static list.
+    // Static only renders NEW items (no re-render), so completed stream
+    // lines scroll up flicker-free.  Only streamPartial lives in the
+    // dynamic area — one line max.
+    const staticItems = useMemo(() => {
+        const items = visibleMessages.map((msg, i) => ({ _t: 'm', msg, _k: `msg-${i}` }));
+        if (streamName && !streamToEditbox) {
+            items.push({ _t: 'sh', _k: 'sh' });
+            for (let i = 0; i < streamLines.length; i++) {
+                items.push({ _t: 'sl', text: streamLines[i], _k: `sl-${i}` });
+            }
+        }
+        return items;
+    }, [visibleMessages, streamName, streamToEditbox, streamLines]);
+
+    const streamEditboxBuf = streamToEditbox ? [...streamLines, streamPartial].join('\n') : '';
+
     return h(Box, { flexDirection: 'column' },
-        h(Static, { key: `static-${staticKey}`, items: visibleMessages }, (msg, index) =>
-            h(Box, { key: `msg-${index}`, flexDirection: 'column', marginTop: index > 0 ? 1 : 0 },
-                msg.name ? h(Text, { color: 'cyan' }, `@${msg.name}`) : null,
-                msg.content ? h(Text, null, msg.content) : null,
-            )
+        h(Static, { key: `static-${staticKey}`, items: staticItems }, (item, index) =>
+            item._t === 'm'
+                ? h(Box, { key: item._k, flexDirection: 'column', marginTop: index > 0 ? 1 : 0 },
+                    item.msg.name ? h(Text, { color: 'cyan' }, `@${item.msg.name}`) : null,
+                    item.msg.content ? h(Text, null, item.msg.content) : null,
+                )
+                : item._t === 'sh'
+                    ? h(Box, { key: item._k, marginTop: 1 }, h(Text, { color: 'cyan' }, `@${streamName}`))
+                    : h(Box, { key: item._k }, h(Text, null, item.text))
         ),
-        streamName && !streamToEditbox ? h(Box, { flexDirection: 'column', marginTop: 1 },
-            h(Text, { color: 'cyan' }, `@${streamName}`),
-            streamBuf ? h(Text, null, truncateStreamHead(streamBuf)) : null,
-        ) : null,
+        streamPartial && !streamToEditbox ? h(Text, null, streamPartial) : null,
         pendingMsg && pendingMsg.name ? h(Box, { marginTop: 1 }, h(Text, { color: 'cyan' }, `@${pendingMsg.name}`)) : null,
         errorBanner ? h(Text, { color: 'red' }, errorBanner) : null,
         h(Box, {
@@ -292,7 +310,7 @@ export function ChatView({ messages, streamName, streamBuf, streamToEditbox, pen
             paddingRight: 1,
         },
             streamToEditbox
-                ? h(Text, null, streamBuf ? truncateStreamHead(streamBuf) : '')
+                ? h(Text, null, streamEditboxBuf ? truncateStreamHead(streamEditboxBuf) : '')
                 : h(TextArea, {
                 onSubmit, onChange: setInputText, height: 3, disabled: busy, initialText, onCycleGeneration,
                 activeCommands: filteredCommands.length > 0 ? filteredCommands : null,

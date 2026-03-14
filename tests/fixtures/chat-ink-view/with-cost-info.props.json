@@ -14,7 +14,7 @@
     }
   ],
   "streamName": "",
-  "streamBuf": "",
+  "streamLines": [], "streamPartial": "",
   "pendingMsg": {
     "name": "Tom"
   },

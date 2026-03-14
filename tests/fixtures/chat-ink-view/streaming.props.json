@@ -6,7 +6,8 @@
     }
   ],
   "streamName": "Bilinda",
-  "streamBuf": "I am responding...",
+  "streamLines": [],
+  "streamPartial": "I am responding...",
   "pendingMsg": null,
   "busy": true,
   "connectionName": "test",

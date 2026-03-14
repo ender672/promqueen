@@ -42,7 +42,8 @@ const tick = () => new Promise(r => setTimeout(r, 0));
 const baseProps = {
     messages: [],
     streamName: '',
-    streamBuf: '',
+    streamLines: [],
+    streamPartial: '',
     pendingMsg: null,
     sentMsg: null,
     busy: false,
