@@ -191,6 +191,64 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
             buf.col = 0;
             kick(); return;
         }
+        if (input === 'e' && key.ctrl) {
+            buf.col = buf.lines[buf.row].length;
+            kick(); return;
+        }
+        if (input === 'k' && key.ctrl) {
+            buf.lines[buf.row] = buf.lines[buf.row].slice(0, buf.col);
+            kick(); return;
+        }
+        if (input === 'u' && key.ctrl) {
+            buf.lines[buf.row] = buf.lines[buf.row].slice(buf.col);
+            buf.col = 0;
+            kick(); return;
+        }
+        if (input === 'w' && key.ctrl) {
+            const line = buf.lines[buf.row];
+            let c = buf.col;
+            while (c > 0 && /\s/.test(line[c - 1])) c--;
+            while (c > 0 && !/\s/.test(line[c - 1])) c--;
+            buf.lines[buf.row] = line.slice(0, c) + line.slice(buf.col);
+            buf.col = c;
+            kick(); return;
+        }
+        if (input === 'd' && key.ctrl) {
+            const hasText = buf.lines.some(l => l.length > 0);
+            if (!hasText) {
+                exit();
+                return;
+            }
+            if (buf.col < buf.lines[buf.row].length) {
+                buf.lines[buf.row] = buf.lines[buf.row].slice(0, buf.col) + buf.lines[buf.row].slice(buf.col + 1);
+            } else if (buf.row < buf.lines.length - 1) {
+                buf.lines[buf.row] += buf.lines[buf.row + 1];
+                buf.lines.splice(buf.row + 1, 1);
+            }
+            kick(); return;
+        }
+        if (input === 'b' && key.ctrl) {
+            buf.col = Math.max(0, buf.col - 1);
+            kick(); return;
+        }
+        if (input === 'f' && key.ctrl) {
+            buf.col = Math.min(buf.lines[buf.row].length, buf.col + 1);
+            kick(); return;
+        }
+        if (input === 'p' && key.ctrl) {
+            if (buf.row > 0) {
+                buf.row--;
+                buf.col = Math.min(buf.col, buf.lines[buf.row].length);
+            }
+            kick(); return;
+        }
+        if (input === 'n' && key.ctrl) {
+            if (buf.row < buf.lines.length - 1) {
+                buf.row++;
+                buf.col = Math.min(buf.col, buf.lines[buf.row].length);
+            }
+            kick(); return;
+        }
 
         if (input && !key.ctrl && !key.meta) {
             historyIdxRef.current = -1;
