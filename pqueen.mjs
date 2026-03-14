@@ -19,7 +19,7 @@ const h = React.createElement;
 
 // ─── App ────────────────────────────────────────────────────────────────────
 
-function App({ pqueenPath: initialPqueenPath, cwd: initialCwd, initialMessages, resolvedConfig, rawConfig, noSave }) {
+function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, rawConfig, noSave }) {
     const { exit } = useApp();
     const [pqueenPath, setPqueenPath] = useState(initialPqueenPath);
     const cwd = useMemo(() => path.dirname(pqueenPath), [pqueenPath]);
@@ -48,8 +48,9 @@ function App({ pqueenPath: initialPqueenPath, cwd: initialCwd, initialMessages, 
     const [pendingMsg, setPendingMsg] = useState(initPending);
     const [busy, setBusy] = useState(false);
     const [costInfo, setCostInfo] = useState('');
-    const [, setCumulativeTokens] = useState({ prompt: 0, cached: 0, completion: 0 });
-    const [streamBuf, setStreamBuf] = useState('');
+    const cumulativeTokensRef = useRef({ prompt: 0, cached: 0, completion: 0 });
+    const [streamLines, setStreamLines] = useState([]);
+    const [streamPartial, setStreamPartial] = useState('');
     const [streamName, setStreamName] = useState('');
     const [streamToEditbox, setStreamToEditbox] = useState(false);
     const [error, setError] = useState('');
@@ -65,28 +66,29 @@ function App({ pqueenPath: initialPqueenPath, cwd: initialCwd, initialMessages, 
         setStaticKey(k => k + 1);
     }, []);
 
-    // Returns { writer, flush } — writer batches chunks, flushing to
-    // setStreamBuf at most once per animation frame to avoid jumpy redraws.
-    const makeThrottledWriter = useCallback(() => {
+    // Returns { writer, flush } — completed lines go to streamLines (rendered
+    // via Static, no re-render), current partial line to streamPartial (tiny
+    // dynamic-area redraw).  No throttle needed since renders are cheap.
+    const makeStreamWriter = useCallback(() => {
         const chunks = [];
-        let pending = '';
-        let rafId = null;
+        let buffer = '';
+        let flushedLines = 0;
         const flush = () => {
-            if (pending) {
-                const p = pending;
-                pending = '';
-                setStreamBuf(buf => buf + p);
+            const lines = buffer.split('\n');
+            const completed = lines.slice(0, -1);
+            if (completed.length > flushedLines) {
+                const newLines = completed.slice(flushedLines);
+                flushedLines = completed.length;
+                setStreamLines(prev => [...prev, ...newLines]);
             }
-            if (rafId) { clearTimeout(rafId); rafId = null; }
+            setStreamPartial(lines[lines.length - 1]);
         };
         const writer = {
             chunks,
             write(chunk) {
                 chunks.push(chunk);
-                pending += chunk;
-                if (!rafId) {
-                    rafId = setTimeout(flush, 60);
-                }
+                buffer += chunk;
+                flush();
             },
             flush,
         };
@@ -107,21 +109,24 @@ function App({ pqueenPath: initialPqueenPath, cwd: initialCwd, initialMessages, 
     // Accumulate token counts from a pricingResult into cumulative state.
     const accumulateTokens = useCallback((pricingResult) => {
         if (!pricingResult) return;
-        setCumulativeTokens(prev => {
-            const next = {
-                prompt: prev.prompt + pricingResult.promptTokens,
-                cached: prev.cached + pricingResult.cachedTokens,
-                completion: prev.completion + pricingResult.completionTokens,
-            };
-            setCostInfo(tokensToString(next.prompt, next.cached, next.completion));
-            return next;
-        });
+        const prev = cumulativeTokensRef.current;
+        const next = {
+            prompt: prev.prompt + pricingResult.promptTokens,
+            cached: prev.cached + pricingResult.cachedTokens,
+            completion: prev.completion + pricingResult.completionTokens,
+        };
+        cumulativeTokensRef.current = next;
+        setCostInfo(tokensToString(next.prompt, next.cached, next.completion));
     }, []);
 
     // Collect all messages including pending, for save/preview operations.
     const allMsgs = useMemo(() => {
         return pendingMsg ? [...messages, pendingMsg] : messages;
     }, [messages, pendingMsg]);
+
+    const saveToPath = useCallback((filePath, msgs) => {
+        fs.writeFileSync(filePath, pqutils.serializeDocument(rawConfig, msgs));
+    }, [rawConfig]);
 
     useEffect(() => {
         const onResize = () => refreshScreen();
@@ -141,10 +146,11 @@ function App({ pqueenPath: initialPqueenPath, cwd: initialCwd, initialMessages, 
     const runGeneration = useCallback(({ apiMessages, streamName: name, onSuccess, onError }) => {
         setStreamName(name);
         setBusy(true);
-        setStreamBuf('');
+        setStreamLines([]);
+        setStreamPartial('');
 
         (async () => {
-            const tw = makeThrottledWriter();
+            const tw = makeStreamWriter();
             try {
                 const ac = new AbortController();
                 const { content, pricingResult } = await streamCompletion(
@@ -185,12 +191,13 @@ function App({ pqueenPath: initialPqueenPath, cwd: initialCwd, initialMessages, 
                 }
             }
             refreshScreen();
-            setStreamBuf('');
+            setStreamLines([]);
+            setStreamPartial('');
             setStreamName('');
             setStreamToEditbox(false);
             setBusy(false);
         })();
-    }, [resolvedConfig, streamCompletion, accumulateTokens, makeThrottledWriter, saveFile, refreshScreen]);
+    }, [resolvedConfig, streamCompletion, accumulateTokens, makeStreamWriter, saveFile, refreshScreen]);
 
     const handleCycleGeneration = useCallback((delta) => {
         const newIdx = generationIdx + delta;
@@ -199,8 +206,8 @@ function App({ pqueenPath: initialPqueenPath, cwd: initialCwd, initialMessages, 
             // Trigger a new regeneration when pressing right past the last generation
             const ctx = {
                 allMsgs: pendingMsg ? [...messages, pendingMsg] : messages,
-                messages, pendingMsg, resolvedConfig, cwd, pqueenPath, rawConfig,
-                saveFile, runGeneration, refreshScreen,
+                messages, pendingMsg, resolvedConfig, cwd, pqueenPath,
+                saveFile, saveToPath, runGeneration, refreshScreen,
                 setMessages, setPendingMsg, setPrefill, setError, setStreamToEditbox,
                 generations, setGenerations, setGenerationIdx,
             };
@@ -214,7 +221,7 @@ function App({ pqueenPath: initialPqueenPath, cwd: initialCwd, initialMessages, 
         const allUpdated = pendingMsg ? [...updated, pendingMsg] : updated;
         saveFile(allUpdated);
         refreshScreen();
-    }, [generations, generationIdx, messages, pendingMsg, resolvedConfig, cwd, pqueenPath, rawConfig, saveFile, runGeneration, refreshScreen]);
+    }, [generations, generationIdx, messages, pendingMsg, resolvedConfig, cwd, pqueenPath, saveFile, saveToPath, runGeneration, refreshScreen]);
 
     const handleSubmit = useCallback((text) => {
         if (busy) return;
@@ -222,11 +229,11 @@ function App({ pqueenPath: initialPqueenPath, cwd: initialCwd, initialMessages, 
         setPrefill('');
 
         const ctx = {
-            allMsgs, messages, pendingMsg, resolvedConfig, cwd, pqueenPath, rawConfig,
-            saveFile, runGeneration, refreshScreen, exit,
+            allMsgs, messages, pendingMsg, resolvedConfig, cwd, pqueenPath,
+            saveFile, saveToPath, runGeneration, refreshScreen, exit,
             setMessages, setPendingMsg, setPrefill, setError, setStreamToEditbox,
             generations, setGenerations, setGenerationIdx,
-            editingSpeaker, setEditingSpeaker,
+            setEditingSpeaker,
             setPqueenPath,
         };
 
@@ -243,7 +250,7 @@ function App({ pqueenPath: initialPqueenPath, cwd: initialCwd, initialMessages, 
         }
 
         cmdSubmitText(ctx, text);
-    }, [messages, pendingMsg, allMsgs, busy, resolvedConfig, cwd, pqueenPath, rawConfig, saveFile,
+    }, [messages, pendingMsg, allMsgs, busy, resolvedConfig, cwd, pqueenPath, saveFile, saveToPath,
         runGeneration, refreshScreen, generations, editingSpeaker]);
 
     useInput((_input, key) => {
@@ -260,7 +267,7 @@ function App({ pqueenPath: initialPqueenPath, cwd: initialCwd, initialMessages, 
     const generationInfo = generations.length > 1 ? `(${generationIdx + 1}/${generations.length})` : '';
 
     return h(ChatView, {
-        messages, streamName, streamBuf, streamToEditbox, pendingMsg,
+        messages, streamName, streamLines, streamPartial, streamToEditbox, pendingMsg,
         busy, connectionName: resolvedConfig.connection || '', costInfo, staticKey,
         onSubmit: handleSubmit,
         errorBanner: error,
@@ -275,6 +282,34 @@ export { App };
 // ─── Main ───────────────────────────────────────────────────────────────────
 
 const { runSetup, testExistingConnection, wizardSelectConnection, updatePqueenConnection } = require('./lib/chat-setup.js');
+const { chubFetch } = require('./chub-fetch.js');
+
+function isUrl(str) {
+    return /^https?:\/\//i.test(str);
+}
+
+function isChubUrl(str) {
+    return /^https?:\/\/(www\.)?chub\.ai\/characters\//i.test(str);
+}
+
+async function downloadPng(url) {
+    const res = await fetch(url, {
+        headers: {
+            'accept': '*/*',
+            'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36',
+        },
+    });
+    if (!res.ok) throw new Error(`Failed to download PNG: ${res.status} ${res.statusText}`);
+    const buffer = Buffer.from(await res.arrayBuffer());
+    // Derive filename from URL path
+    const urlPath = new URL(url).pathname;
+    const basename = path.basename(urlPath) || 'downloaded.png';
+    const filename = basename.endsWith('.png') ? basename : basename + '.png';
+    const dest = path.resolve(filename);
+    fs.writeFileSync(dest, buffer);
+    console.error(`Downloaded ${dest}`);
+    return dest;
+}
 
 async function main() {
     const args = process.argv.slice(2);
@@ -282,14 +317,23 @@ async function main() {
     const positional = args.filter(a => !a.startsWith('--'));
     const inputPath = positional[0];
     if (!inputPath) {
-        console.error('Usage: pqueen [--no-save] <file.png | file.pqueen>');
+        console.error('Usage: pqueen [--no-save] <file.png | file.pqueen | URL>');
         process.exit(1);
     }
 
-    const resolved = path.resolve(inputPath);
-    if (!fs.existsSync(resolved)) {
-        console.error(`File not found: ${resolved}`);
-        process.exit(1);
+    let resolved;
+
+    if (isChubUrl(inputPath)) {
+        const { outputFilename } = await chubFetch(inputPath);
+        resolved = path.resolve(outputFilename);
+    } else if (isUrl(inputPath)) {
+        resolved = await downloadPng(inputPath);
+    } else {
+        resolved = path.resolve(inputPath);
+        if (!fs.existsSync(resolved)) {
+            console.error(`File not found: ${resolved}`);
+            process.exit(1);
+        }
     }
 
     let pqueenPath;
@@ -328,7 +372,6 @@ async function main() {
 
     render(h(App, {
         pqueenPath,
-        cwd,
         initialMessages: doc.messages,
         resolvedConfig,
         rawConfig: doc.config,
