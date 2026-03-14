@@ -298,7 +298,7 @@ export function ChatView({ messages, streamName, streamLines, streamPartial, str
                 )
                 : item._t === 'sh'
                     ? h(Box, { key: item._k, marginTop: 1 }, h(Text, { color: 'cyan' }, `@${streamName}`))
-                    : h(Box, { key: item._k }, h(Text, null, item.text))
+                    : h(Box, { key: item._k }, h(Text, null, item.text || ' '))
         ),
         streamPartial && !streamToEditbox ? h(Text, null, streamPartial) : null,
         pendingMsg && pendingMsg.name ? h(Box, { marginTop: 1 }, h(Text, { color: 'cyan' }, `@${pendingMsg.name}`)) : null,
