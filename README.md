@@ -13,16 +13,13 @@ export OPENAI_API_KEY=sk-...
 export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-Point it at a character card PNG and start chatting:
+Point it at a character card PNG, a `.pqueen` file, a PNG URL, or a chub.ai character URL:
 
 ```
 npx pqueen character.png
-```
-
-Or at an existing `.pqueen` file:
-
-```
 npx pqueen chat.pqueen
+npx pqueen https://example.com/character.png
+npx pqueen https://chub.ai/characters/author/character-name
 ```
 
 ## VS Code Extension
