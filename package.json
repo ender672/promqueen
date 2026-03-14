@@ -1,6 +1,6 @@
 {
   "name": "pqueen",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "LLM prompt engineering tool for .pqueen prompt files",
   "main": "pqueen-run.js",
   "bin": {
@@ -32,6 +32,7 @@
     "marked": "^17.0.3",
     "mustache": "^4.2.0",
     "png-chunk-text": "^1.0.0",
+    "png-chunks-encode": "^1.0.0",
     "png-chunks-extract": "^1.0.0",
     "react": "^19.2.4"
   },
