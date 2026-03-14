@@ -314,10 +314,11 @@ async function downloadPng(url) {
 async function main() {
     const args = process.argv.slice(2);
     const noSave = args.includes('--no-save');
+    const dumpConfig = args.includes('--dump-config') || args.includes('--show-config');
     const positional = args.filter(a => !a.startsWith('--'));
     const inputPath = positional[0];
     if (!inputPath) {
-        console.error('Usage: pqueen [--no-save] <file.png | file.pqueen | URL>');
+        console.error('Usage: pqueen [--no-save] [--dump-config] <file.png | file.pqueen | URL>');
         process.exit(1);
     }
 
@@ -348,6 +349,22 @@ async function main() {
     } else {
         console.error('Expected a .png or .pqueen file.');
         process.exit(1);
+    }
+
+    if (dumpConfig) {
+        const cwd = path.dirname(pqueenPath);
+        const content = fs.readFileSync(pqueenPath, 'utf8');
+        const doc = pqutils.parseConfigAndMessages(content);
+        const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, {});
+        if (resolvedConfig.connection && resolvedConfig.connection_profiles) {
+            const active = resolvedConfig.connection_profiles[resolvedConfig.connection];
+            resolvedConfig.connection_profiles = { [resolvedConfig.connection]: active };
+        } else {
+            delete resolvedConfig.connection_profiles;
+        }
+        const yaml = (await import('js-yaml')).default;
+        process.stdout.write(yaml.dump(resolvedConfig, { lineWidth: 120, noRefs: true }));
+        process.exit(0);
     }
 
     // Ensure the file has a working connection configured
