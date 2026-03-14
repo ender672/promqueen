@@ -391,6 +391,25 @@ test('TextArea: backspace after recalling history re-enables command autocomplet
     assert.strictEqual(getNavCount(), 1, 'After backspace, up should trigger command nav');
 });
 
+test('TextArea: pasted text with newlines splits into buffer lines', async () => {
+    const { stdin, getSubmitted, getFrame } = renderTextArea();
+    // Simulate pasting multi-line text
+    stdin.write('line1\nline2\nline3');
+    await tick();
+    const frame = getFrame();
+    assert.ok(frame.includes('line1'), 'Should show line1');
+    assert.ok(frame.includes('line2'), 'Should show line2');
+    assert.ok(frame.includes('line3'), 'Should show line3');
+    // Up arrow should navigate between pasted lines
+    stdin.write('\x1b[A'); // up to line2
+    await tick();
+    stdin.write('X');
+    await tick();
+    stdin.write('\r');
+    await tick();
+    assert.strictEqual(getSubmitted(), 'line1\nline2X\nline3');
+});
+
 test('TextArea: backspace at start of line joins with previous line', async () => {
     const { stdin, getSubmitted } = renderTextArea({ initialText: 'ab\ncd' });
     // Cursor is at end of 'cd' (row=1, col=2)

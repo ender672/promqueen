@@ -194,8 +194,18 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
 
         if (input && !key.ctrl && !key.meta) {
             historyIdxRef.current = -1;
-            buf.lines[buf.row] = buf.lines[buf.row].slice(0, buf.col) + input + buf.lines[buf.row].slice(buf.col);
-            buf.col += input.length;
+            const parts = input.split(/\r?\n|\r/);
+            if (parts.length === 1) {
+                buf.lines[buf.row] = buf.lines[buf.row].slice(0, buf.col) + input + buf.lines[buf.row].slice(buf.col);
+                buf.col += input.length;
+            } else {
+                const before = buf.lines[buf.row].slice(0, buf.col);
+                const after = buf.lines[buf.row].slice(buf.col);
+                buf.lines[buf.row] = before + parts[0];
+                buf.lines.splice(buf.row + 1, 0, ...parts.slice(1, -1), parts[parts.length - 1] + after);
+                buf.row += parts.length - 1;
+                buf.col = parts[parts.length - 1].length;
+            }
             kick();
         }
     }, { isActive: !disabled, exitOnCtrlC: false });
