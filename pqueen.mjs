@@ -313,14 +313,34 @@ async function downloadPng(url) {
 
 async function main() {
     pqutils.ensureDotConfig();
+    pqutils.ensureTemplateDir();
 
     const args = process.argv.slice(2);
     const noSave = args.includes('--no-save');
     const dumpConfig = args.includes('--dump-config') || args.includes('--show-config');
+    const listTemplates = args.includes('--list-templates');
+
+    if (listTemplates) {
+        const { discoverTemplates } = require('./lib/template-registry.js');
+        const templates = discoverTemplates();
+        if (templates.length === 0) {
+            console.error('No templates found.');
+            process.exit(0);
+        }
+        for (const t of templates) {
+            console.log(t.id);
+            console.log(`  Name: ${t.name}`);
+            if (t.description) console.log(`  Description: ${t.description}`);
+            console.log(`  Path: ${t.filePath}`);
+            console.log();
+        }
+        process.exit(0);
+    }
+
     const positional = args.filter(a => !a.startsWith('--'));
     const inputPath = positional[0];
     if (!inputPath) {
-        console.error('Usage: pqueen [--no-save] [--dump-config] <file.png | file.pqueen | URL>');
+        console.error('Usage: pqueen [--no-save] [--dump-config] [--list-templates] <file.png | file.pqueen | URL>');
         process.exit(1);
     }
 

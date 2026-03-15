@@ -5,13 +5,9 @@ const path = require('path');
 const { Parser, Context } = require('@ender672/minja-js/minja');
 const { extractAiCardData } = require('./lib/card-utils');
 const { loadDotConfig } = require('./lib/pq-utils');
+const { discoverTemplates } = require('./lib/template-registry');
 
-const BUILTIN_TEMPLATES = {
-    'char-sheet': 'charcard-char-sheet.jinja',
-    'prompt-includes': 'charcard-prompt-includes.jinja',
-    'prompt-complete': 'charcard-prompt-charcard-complete.jinja',
-};
-const defaultTemplatePath = path.join(__dirname, 'templates', BUILTIN_TEMPLATES['char-sheet']);
+const defaultTemplatePath = path.join(__dirname, 'templates', 'charcard-char-sheet.jinja');
 
 function buildTemplateView(characterData, { altGreeting } = {}) {
     const charcard = { ...characterData };
@@ -64,10 +60,13 @@ function main() {
     const { Command } = require('commander');
     const program = new Command();
 
+    const templates = discoverTemplates();
+    const templateIds = templates.map(t => t.id);
+
     program
         .argument('<png_path>', 'path to character card PNG')
         .argument('[template_path]', 'path to a custom jinja template')
-        .option('--builtin <name>', `use a built-in template (${Object.keys(BUILTIN_TEMPLATES).join(', ')})`)
+        .option('--template <name>', `use a template by ID (${templateIds.join(', ')})`)
         .option('--alt-greeting <n>', 'use alternate greeting by index', parseInt)
         .parse();
 
@@ -75,12 +74,13 @@ function main() {
     const [pngPath, customTemplatePath] = program.args;
 
     let templatePath;
-    if (opts.builtin) {
-        if (!BUILTIN_TEMPLATES[opts.builtin]) {
-            console.error(`Error: unknown builtin template '${opts.builtin}'. Available: ${Object.keys(BUILTIN_TEMPLATES).join(', ')}`);
+    if (opts.template) {
+        const match = templates.find(t => t.id === opts.template);
+        if (!match) {
+            console.error(`Error: unknown template '${opts.template}'. Available: ${templateIds.join(', ')}`);
             process.exit(1);
         }
-        templatePath = path.join(__dirname, 'templates', BUILTIN_TEMPLATES[opts.builtin]);
+        templatePath = match.filePath;
     } else {
         templatePath = customTemplatePath || defaultTemplatePath;
     }

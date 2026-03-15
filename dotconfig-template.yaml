@@ -21,8 +21,9 @@
 
 # ─── Templates ────────────────────────────────────────────
 
-# Path to a custom Jinja2 template for generating new .pqueen files from character
-# cards.
+# Template for generating new .pqueen files from character cards.
+# Use a template ID (run pqueen --list-templates to see available IDs) or an
+# absolute path to a custom .jinja file.
 # charcard_pqueen_template: ''
 
 # Path to a YAML file mapping decorator names to instruction text.
