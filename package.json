@@ -27,7 +27,8 @@
     "pqueen.mjs",
     "lib/",
     "templates/",
-    "defaults.yaml"
+    "defaults.yaml",
+    "dotconfig-template.yaml"
   ],
   "dependencies": {
     "@ender672/minja-js": "^0.1.2",
