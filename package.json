@@ -13,6 +13,14 @@
   "keywords": [],
   "author": "Tim Elliott <tim.elliott.365@gmail.com>",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ender672/promqueen.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ender672/promqueen/issues"
+  },
+  "homepage": "https://github.com/ender672/promqueen#readme",
   "files": [
     "*.js",
     "chat-ink-view.mjs",
