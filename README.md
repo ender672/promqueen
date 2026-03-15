@@ -1,6 +1,6 @@
-# PromQueen
+# promqueen
 
-A prompt engineering tool for chatting with AI APIs. Write prompts as readable `.pqueen` text files, then run them interactively from the terminal. The underlying prompt format is designed to be human-friendly — plain text with minimal syntax that's easy to read and edit by hand.
+A tool for chatting with AI APIs. Write prompts as readable `.pqueen` text files, then run them interactively from the terminal. The underlying prompt format is designed to be human-friendly — plain text with minimal syntax that's easy to read and edit by hand.
 
 Supports OpenAI, Anthropic, Google, DeepSeek, Mistral, Cohere, xAI, local llama.cpp, and any OpenAI-compatible API.
 
@@ -9,8 +9,9 @@ Supports OpenAI, Anthropic, Google, DeepSeek, Mistral, Cohere, xAI, local llama.
 Set at least one API key in your environment:
 
 ```
-export OPENAI_API_KEY=sk-...
-export ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_API_KEY    OPENAI_API_KEY    GOOGLE_API_KEY
+DEEPSEEK_API_KEY     XAI_API_KEY       MISTRAL_API_KEY
+COHERE_API_KEY       MOONSHOT_API_KEY  ZAI_API_KEY
 ```
 
 Point it at a character card PNG, a `.pqueen` file, a PNG URL, or a chub.ai character URL:
