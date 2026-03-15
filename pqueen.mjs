@@ -312,6 +312,8 @@ async function downloadPng(url) {
 }
 
 async function main() {
+    pqutils.ensureDotConfig();
+
     const args = process.argv.slice(2);
     const noSave = args.includes('--no-save');
     const dumpConfig = args.includes('--dump-config') || args.includes('--show-config');

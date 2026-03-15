@@ -1,0 +1,60 @@
+# ─── Connection ───────────────────────────────────────────
+
+# Default connection profile name (must match a key in connection_profiles)
+# connection: claude-haiku-4-5
+
+# ─── Roleplay ─────────────────────────────────────────────
+
+# Your character name in roleplays (also the {{user}} template variable)
+# roleplay_user: user
+
+# Description of your character (used when generating .pqueen files from character cards)
+# roleplay_user_description: ''
+
+# Instruction injected as a user message when the LLM writes as a character.
+# Supports {{char}} and {{user}} template variables.
+# roleplay_impersonation_instruction: '[Write {{char}}''s turn.]'
+
+# Per-character overrides for the impersonation instruction.
+# roleplay_char_impersonation_instruction:
+#   Character Name: "[OOC: Write the next reply as {{char}}.]"
+
+# ─── Templates ────────────────────────────────────────────
+
+# Path to a custom Jinja2 template for generating new .pqueen files from character
+# cards.
+# charcard_pqueen_template: ''
+
+# Path to a YAML file mapping decorator names to instruction text.
+# Decorators are applied via @Character [decorator] syntax in messages.
+# decorators: ''
+
+# ─── Lorebook ─────────────────────────────────────────────
+
+# Path to a JSON lorebook file for keyword-triggered context injection.
+# Entries with matching keywords are automatically inserted into the prompt.
+# lorebook: ''
+
+# ─── Advanced ─────────────────────────────────────────────
+
+# Directory to save last API request payload for debugging
+# debug_log_path: '~/pqdebug'
+
+# ─── Connection Profiles ─────────────────────────────────
+# Add custom profiles or override built-in ones.
+# Example:
+# connection_profiles:
+#   my-model:
+#     requires_env: MY_API_KEY
+#     api_url: https://api.example.com/v1/chat/completions
+#     api_call_headers:
+#       content-type: application/json
+#       authorization: Bearer $MY_API_KEY
+#     api_call_props:
+#       model: model-name
+#       stream: true
+#       max_tokens: 4096
+#     pricing:                          # optional, dollars per million tokens
+#       cost_uncached: 10
+#       cost_cached: 5
+#       cost_output: 20
