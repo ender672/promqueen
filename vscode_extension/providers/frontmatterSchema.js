@@ -115,7 +115,7 @@ const FRONTMATTER_SCHEMA = [
         key: 'lorebook',
         type: 'String (file path)',
         defaultValue: 'none',
-        description: 'Path to a JSON lorebook (character book) file. Scans message content for keyword matches and conditionally inserts lorebook entries.',
+        description: 'Path to a JSON lorebook (character book) file. Scans message content for keyword matches and conditionally inserts lorebook entries. If omitted and a `charcard` PNG is set, the lorebook is auto-loaded from the charcard.',
         example: 'lorebook: character_book.json'
     },
     {

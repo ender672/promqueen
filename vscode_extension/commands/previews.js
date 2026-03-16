@@ -4,6 +4,7 @@ const path = require('path');
 const { applyLorebook, resolveLorebookPath } = require('../../apply-lorebook.js');
 const pqutils = require('../../lib/pq-utils.js');
 const { prepareTurn } = require('../../lib/pipeline.js');
+const { extractAiCardData } = require('../../lib/card-utils.js');
 const { getDocumentText } = require('./helpers');
 
 function registerPreviewCommands(context) {
@@ -89,8 +90,17 @@ function registerPreviewCommands(context) {
                 if (fs.existsSync(defaultPath)) lorebookPath = defaultPath;
             }
             let resultMessages = parsedDoc.messages;
+            let lorebook;
             if (lorebookPath) {
-                const lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
+                lorebook = JSON.parse(fs.readFileSync(lorebookPath, 'utf8'));
+            } else if (resolvedConfig.charcard) {
+                const charcardPath = path.resolve(templateLoaderPath, resolvedConfig.charcard);
+                if (fs.existsSync(charcardPath)) {
+                    const cardData = extractAiCardData(charcardPath);
+                    lorebook = cardData.character_book;
+                }
+            }
+            if (lorebook) {
                 resultMessages = applyLorebook(parsedDoc.messages, resolvedConfig, lorebook);
             }
 
