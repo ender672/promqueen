@@ -202,6 +202,7 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
     const handleCycleGeneration = useCallback((delta) => {
         const newIdx = generationIdx + delta;
         if (newIdx < 0) return;
+        setError('');
         if (newIdx >= generations.length) {
             // Trigger a new regeneration when pressing right past the last generation
             const ctx = {
