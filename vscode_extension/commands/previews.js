@@ -24,7 +24,7 @@ function registerPreviewCommands(context) {
             const text = getDocumentText(document);
             const parsedDoc = pqutils.parseConfigAndMessages(text);
             const resolvedConfig = pqutils.resolveConfig(parsedDoc.config, projectRoot, {});
-            const { apiMessages } = prepareTurn(parsedDoc.messages, resolvedConfig, templateLoaderPath);
+            const { apiMessages } = prepareTurn(parsedDoc.messages, resolvedConfig, templateLoaderPath, document.uri.fsPath);
 
             // Serialize for display using role-based format
             const displayOutput = pqutils.serializeDocument(parsedDoc.config, apiMessages);

@@ -2,12 +2,12 @@ const path = require('path');
 const { serializeMessages, PROMPT_ROLES } = require('./lib/pq-utils');
 const { expandCBS, buildTemplateContext } = require('./lib/render-template');
 
-function applyLorebook(messages, resolvedConfig, lorebook) {
+function applyLorebook(messages, resolvedConfig, lorebook, options = {}) {
   const entries = lorebook.entries || [];
   if (entries.length === 0) return messages;
 
   const result = messages.map(m => ({ ...m }));
-  const templateContext = buildTemplateContext(resolvedConfig, result);
+  const templateContext = buildTemplateContext(resolvedConfig, result, options);
   const hashSeed = serializeMessages(result);
 
   // Scannable message indices: skip system prompt (index 0) and initial user message (index 1)

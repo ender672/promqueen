@@ -29,7 +29,7 @@ async function runPipeline(filePath, { cwd = process.cwd(), stderr = process.std
         }
 
         // 4. Ephemeral transforms (each copies messages before transforming)
-        const apiMessages = preparePrompt(doc.messages, resolvedConfig, templateLoaderPath, cwd);
+        const apiMessages = preparePrompt(doc.messages, resolvedConfig, templateLoaderPath, cwd, absolutePath);
 
         // 5. Send to API (streams response to file)
         const fileStream = fileSystem.createWriteStream(absolutePath, { flags: 'a' });
