@@ -1,0 +1,10 @@
+{
+  "entries": [
+    {
+      "keys": ["(a|a)+b"],
+      "content": "Entry.",
+      "enabled": true,
+      "use_regex": true
+    }
+  ]
+}

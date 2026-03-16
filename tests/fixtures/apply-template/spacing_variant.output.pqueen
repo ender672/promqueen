@@ -7,7 +7,5 @@ message_template_variables:
 ---
 Test 1: worked
 Test 2: worked
-Test 3: included
-
-Test 4: included
-
+Test 3: {%include 'spacing_include.txt'%}
+Test 4: {% include 'spacing_include.txt' %}

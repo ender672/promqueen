@@ -1,7 +1,6 @@
 const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
-const { applyTemplate } = require('../../apply-template.js');
 const { applyLorebook, resolveLorebookPath } = require('../../apply-lorebook.js');
 const pqutils = require('../../lib/pq-utils.js');
 const { prepareTurn } = require('../../lib/pipeline.js');
@@ -50,20 +49,11 @@ function registerPreviewCommands(context) {
         }
 
         const document = editor.document;
-        const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
-        const projectRoot = workspaceFolder ? workspaceFolder.uri.fsPath : path.dirname(document.uri.fsPath);
-        const templateLoaderPath = path.dirname(document.uri.fsPath);
 
         try {
             const text = getDocumentText(document);
             const parsedDoc = pqutils.parseConfigAndMessages(text);
-            const resolvedConfig = pqutils.resolveConfig(parsedDoc.config, projectRoot, {});
-            const resultMessages = applyTemplate(parsedDoc.messages, resolvedConfig, {
-                messageTemplateLoaderPath: templateLoaderPath,
-                cwd: projectRoot
-            });
-
-            const result = pqutils.serializeDocument(parsedDoc.config, resultMessages);
+            const result = pqutils.serializeDocument(parsedDoc.config, parsedDoc.messages);
 
             const doc = await vscode.workspace.openTextDocument({
                 content: result,

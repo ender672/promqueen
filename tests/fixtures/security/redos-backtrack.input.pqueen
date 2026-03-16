@@ -1,0 +1,12 @@
+---
+dot_config_loading: false
+roleplay_user: Alice
+---
+@system
+You are a character.
+
+@user
+Setup.
+
+@Evil
+aaaaaaaaaaaaaaaaaaaaaaaaa

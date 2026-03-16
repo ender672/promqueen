@@ -106,8 +106,7 @@ function applyLorebook(messages, resolvedConfig, lorebook) {
     if (entry.enabled === false) continue;
     if (!entry.content) continue;
 
-    // When use_regex is true, constant is ignored (per V3 spec)
-    if (entry.constant === true && !entry.use_regex) {
+    if (entry.constant === true) {
       if (firstNonSystemIndex < result.length) {
         if (!insertions.has(firstNonSystemIndex)) insertions.set(firstNonSystemIndex, []);
         insertions.get(firstNonSystemIndex).push(entry);
@@ -117,25 +116,19 @@ function applyLorebook(messages, resolvedConfig, lorebook) {
 
     const keys = entry.keys || [];
     const caseSensitive = entry.case_sensitive === true;
-    const useRegex = entry.use_regex === true;
+
+    // use_regex is intentionally ignored — executing attacker-supplied regex
+    // patterns from untrusted charcard data is a ReDoS vector.
 
     // Find the first scannable message containing a matching primary key
     let targetIndex = -1;
     for (const idx of scannableIndices) {
       const msgText = result[idx].content || '';
-      let found;
-      if (useRegex) {
-        const flags = caseSensitive ? '' : 'i';
-        found = keys.some(key => {
-          try { return new RegExp(key, flags).test(msgText); } catch { return false; }
-        });
-      } else {
-        const textToSearch = caseSensitive ? msgText : msgText.toLowerCase();
-        found = keys.some(key => {
-          const searchKey = caseSensitive ? key : key.toLowerCase();
-          return textToSearch.includes(searchKey);
-        });
-      }
+      const textToSearch = caseSensitive ? msgText : msgText.toLowerCase();
+      const found = keys.some(key => {
+        const searchKey = caseSensitive ? key : key.toLowerCase();
+        return textToSearch.includes(searchKey);
+      });
       if (found) {
         targetIndex = idx;
         break;
@@ -144,9 +137,7 @@ function applyLorebook(messages, resolvedConfig, lorebook) {
 
     if (targetIndex === -1) continue;
 
-    // When selective is true and use_regex is false, require a secondary key match
-    // against all scannable text combined
-    if (entry.selective === true && !useRegex) {
+    if (entry.selective === true) {
       const secondaryKeys = entry.secondary_keys || [];
       if (secondaryKeys.length > 0) {
         const textForSecondary = caseSensitive ? allScannedText : allScannedText.toLowerCase();

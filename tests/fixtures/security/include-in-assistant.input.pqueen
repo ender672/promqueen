@@ -1,0 +1,16 @@
+---
+dot_config_loading: false
+roleplay_user: Alice
+message_template_loader_path: tests/fixtures/security
+---
+@system
+You are a character.
+
+@user
+Setup message.
+
+@assistant
+Opening: {% include "secret.txt" %}
+
+@Alice
+Hi

@@ -3,9 +3,5 @@ dot_config_loading: false
 ---
 @system
 Before include
-outer start
-inner content
-
-outer end
-
+{% include 'tests/fixtures/apply-template/nested_outer.txt' %}
 After include

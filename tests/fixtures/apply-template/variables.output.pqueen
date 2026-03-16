@@ -5,9 +5,7 @@ message_template_variables:
   my_prefix: tests/fixtures/apply-template/concat
 ---
 Start
-Simple Include
-
+{% include my_path %}
 Middle
-Concatenated Include
-
+{% include my_prefix ~ '.txt' %}
 End

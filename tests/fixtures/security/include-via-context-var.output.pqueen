@@ -1,0 +1,17 @@
+---
+dot_config_loading: false
+roleplay_user: Alice
+message_template_loader_path: tests/fixtures/security
+message_template_variables:
+  payload: secret.txt
+---
+@system [pq:hidden]
+You are a character.
+
+@user [pq:hidden]
+{% include payload %}
+
+@Evil
+Hello!
+
+@Alice

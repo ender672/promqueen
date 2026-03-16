@@ -9,10 +9,20 @@ const { discoverTemplates } = require('./lib/template-registry');
 
 const defaultTemplatePath = path.join(__dirname, 'templates', 'charcard-char-sheet.jinja');
 
-function buildTemplateView(characterData, { altGreeting } = {}) {
+function sanitizeCardText(text) {
+    // Escape \n\n@ sequences to prevent message boundary injection in .pqueen files.
+    // Escape {% and {{ to prevent template directive injection.
+    text = text.replace(/\n\n@/g, '\n\n\\@');
+    text = text.replace(/\{\{/g, '\\{{');
+    text = text.replace(/\{%/g, '\\{%');
+    return text;
+}
+
+function buildTemplateView(characterData, { altGreeting, userName } = {}) {
     const charcard = { ...characterData };
     if (!charcard.name) charcard.name = 'Character';
-    charcard.name = charcard.name.trim();
+    // Strip newlines from name — it appears in @markers and YAML
+    charcard.name = charcard.name.replace(/[\r\n]+/g, ' ').trim();
 
     if (charcard.mes_example) {
         charcard.mes_example = charcard.mes_example
@@ -31,12 +41,20 @@ function buildTemplateView(characterData, { altGreeting } = {}) {
         charcard.first_mes = alts[altGreeting];
     }
 
-    // Replace {{char}} with the character name in all string fields
+    // Replace {{char}} and {{user}} with plain text before any template processing.
+    // This eliminates the need to parse charcard fields as templates.
     for (const [key, value] of Object.entries(charcard)) {
         if (typeof value === 'string') {
-            charcard[key] = value.replaceAll('{{char}}', charcard.name);
+            let v = value.replaceAll('{{char}}', charcard.name);
+            if (userName) v = v.replaceAll('{{user}}', userName);
+            charcard[key] = sanitizeCardText(v);
         } else if (Array.isArray(value)) {
-            charcard[key] = value.map(v => typeof v === 'string' ? v.replaceAll('{{char}}', charcard.name) : v);
+            charcard[key] = value.map(v => {
+                if (typeof v !== 'string') return v;
+                let s = v.replaceAll('{{char}}', charcard.name);
+                if (userName) s = s.replaceAll('{{user}}', userName);
+                return sanitizeCardText(s);
+            });
         }
     }
 
