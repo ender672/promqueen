@@ -1,0 +1,19 @@
+---
+roleplay_user: Bob
+post_history_instructions: '[Remember: You are writing as a character in a roleplay with {{user}}.]'
+roleplay_impersonation_instruction: '[Write the next reply as {{char}}.]'
+dot_config_loading: false
+---
+@system
+This is the system instruction
+
+@user
+This is a user instruction
+
+@Alice
+Hi, Bob!
+
+@Bob
+Hello, Alice!
+
+@Alice

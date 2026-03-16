@@ -112,6 +112,13 @@ const FRONTMATTER_SCHEMA = [
         example: 'message_template_loader_path: /home/user/shared_templates'
     },
     {
+        key: 'post_history_instructions',
+        type: 'String',
+        defaultValue: 'none',
+        description: 'Text injected as a user message after the conversation history, before impersonation instructions. Supports `{{char}}` and `{{user}}` variables. When a charcard PNG is configured, this is automatically loaded from the card if not set here.',
+        example: "post_history_instructions: '[Stay in character as {{char}}.]'"
+    },
+    {
         key: 'lorebook',
         type: 'String (file path)',
         defaultValue: 'none',

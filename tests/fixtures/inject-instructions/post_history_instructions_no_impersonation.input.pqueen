@@ -1,0 +1,13 @@
+---
+roleplay_user: Bob
+post_history_instructions: '[Stay in character.]'
+dot_config_loading: false
+---
+@system
+This is the system instruction
+
+@Alice
+Hi there!
+
+@user
+Hello!

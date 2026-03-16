@@ -45,13 +45,23 @@ function injectInstructions(messages, resolvedConfig, basePath = process.cwd()) 
   // 3. Handle impersonation / next-speaker signal
   // In combined group chat mode, the empty last message is kept for name prefixing
   if (resolvedConfig.roleplay_combined_group_chat) {
+    if (resolvedConfig.post_history_instructions) {
+      const phi = expandCBS(resolvedConfig.post_history_instructions, { user });
+      appendOrPushUserMessage(messages, phi);
+    }
     return messages;
   }
 
   const lastMsg = messages.length ? messages[messages.length - 1] : null;
   const lastIsCharacter = lastMsg && !pqutils.PROMPT_ROLES.includes(lastMsg.name);
 
-  if (!lastIsCharacter) return messages;
+  if (!lastIsCharacter) {
+    if (resolvedConfig.post_history_instructions) {
+      const phi = expandCBS(resolvedConfig.post_history_instructions, { user });
+      appendOrPushUserMessage(messages, phi);
+    }
+    return messages;
+  }
 
   const templateVars = { char: null, user };
 
@@ -59,6 +69,11 @@ function injectInstructions(messages, resolvedConfig, basePath = process.cwd()) 
     // Empty content = next speaker / impersonation request
     templateVars.char = lastMsg.name;
     messages.pop();
+
+    if (resolvedConfig.post_history_instructions) {
+      const phi = expandCBS(resolvedConfig.post_history_instructions, { ...templateVars });
+      appendOrPushUserMessage(messages, phi);
+    }
 
     let instructionTemplate = resolvedConfig.roleplay_impersonation_instruction;
     if (resolvedConfig.roleplay_char_impersonation_instruction &&
@@ -75,6 +90,11 @@ function injectInstructions(messages, resolvedConfig, basePath = process.cwd()) 
     templateVars.char = lastMsg.name;
     const prefill = messages.pop();
 
+    if (resolvedConfig.post_history_instructions) {
+      const phi = expandCBS(resolvedConfig.post_history_instructions, { ...templateVars });
+      appendOrPushUserMessage(messages, phi);
+    }
+
     let instructionTemplate = resolvedConfig.roleplay_impersonation_instruction;
     if (resolvedConfig.roleplay_char_impersonation_instruction &&
         resolvedConfig.roleplay_char_impersonation_instruction[lastMsg.name]) {
@@ -90,6 +110,12 @@ function injectInstructions(messages, resolvedConfig, basePath = process.cwd()) 
   } else {
     // Normal content on last character = complete from previous message
     messages.pop();
+
+    if (resolvedConfig.post_history_instructions) {
+      const phi = expandCBS(resolvedConfig.post_history_instructions, { user });
+      appendOrPushUserMessage(messages, phi);
+    }
+
     messages[messages.length - 1].role = 'assistant';
   }
 
