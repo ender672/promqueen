@@ -1,6 +1,6 @@
 const process = require('process');
 const pqutils = require('./lib/pq-utils.js');
-const { renderTemplate } = require('./lib/render-template.js');
+const { expandCBS } = require('./lib/render-template.js');
 
 function resolveDecorators(message, decoratorsMap) {
   if (!message.decorators || message.decorators.length === 0) return;
@@ -67,7 +67,7 @@ function injectInstructions(messages, resolvedConfig, basePath = process.cwd()) 
     }
 
     if (instructionTemplate) {
-      const instruction = renderTemplate(instructionTemplate, templateVars);
+      const instruction = expandCBS(instructionTemplate, templateVars);
       appendOrPushUserMessage(messages, instruction);
     }
   } else if (typeof lastMsg.content === 'string' && lastMsg.content.endsWith(' ')) {
@@ -82,7 +82,7 @@ function injectInstructions(messages, resolvedConfig, basePath = process.cwd()) 
     }
 
     if (instructionTemplate) {
-      const instruction = renderTemplate(instructionTemplate, templateVars);
+      const instruction = expandCBS(instructionTemplate, templateVars);
       appendOrPushUserMessage(messages, instruction);
     }
 

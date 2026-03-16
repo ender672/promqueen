@@ -5,7 +5,7 @@ const fs = require('fs');
 const { buildTemplateView } = require('../../charcard-png-to-txt.js');
 const { applyLorebook } = require('../../apply-lorebook.js');
 const { parseConfigAndMessages, resolveConfig } = require('../../lib/pq-utils.js');
-const { renderTemplate } = require('../../lib/render-template.js');
+const { expandCBS } = require('../../lib/render-template.js');
 const { Parser, Context } = require('@ender672/minja-js/minja');
 
 const fixturesDir = path.join(__dirname, '../fixtures/security');
@@ -16,31 +16,30 @@ function hasUnescapedDirective(text) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 1. TEMPLATE INJECTION: {% include %} removed from render-template
-//    renderTemplate must not process include directives at all.
+// 1. TEMPLATE INJECTION: expandCBS does not process include directives.
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('security: renderTemplate does not process {% include %} directives', () => {
+test('security: expandCBS does not process {% include %} directives', () => {
   const input = 'Hello {% include "secret.txt" %} world';
-  const output = renderTemplate(input, {});
+  const output = expandCBS(input, {});
   assert.strictEqual(output, input,
-    'renderTemplate must leave {% include %} as literal text');
+    'expandCBS must leave {% include %} as literal text');
 });
 
-test('security: renderTemplate does not process {% include %} with tilde concatenation', () => {
+test('security: expandCBS does not process {% include %} with tilde concatenation', () => {
   const input = '{% include "sec" ~ "ret.txt" %}';
-  const output = renderTemplate(input, {});
+  const output = expandCBS(input, {});
   assert.strictEqual(output, input);
 });
 
-test('security: renderTemplate does not process {% include %} with variable path', () => {
+test('security: expandCBS does not process {% include %} with variable path', () => {
   const input = '{% include payload %}';
-  const output = renderTemplate(input, { payload: 'secret.txt' });
+  const output = expandCBS(input, { payload: 'secret.txt' });
   assert.strictEqual(output, input);
 });
 
-test('security: renderTemplate still substitutes {{ variables }}', () => {
-  const output = renderTemplate('Hello {{ name }}!', { name: 'World' });
+test('security: expandCBS still substitutes {{ variables }}', () => {
+  const output = expandCBS('Hello {{ name }}!', { name: 'World' });
   assert.strictEqual(output, 'Hello World!');
 });
 
@@ -223,18 +222,17 @@ test('security: alternate_greetings with message injection', () => {
 //    is used directly. Verify that Minja syntax in first_mes is inert.
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('security: first_mes {{ user }} is escaped, not leaked', () => {
+test('security: first_mes {{ user }} is resolved by CBS (same as {{user}})', () => {
   const view = buildTemplateView({
     name: 'Evil',
     description: 'Normal.',
     first_mes: 'Hello {{ user }}, welcome!',
   }, { userName: 'SecretUsername42' });
 
-  // {{user}} (no spaces) would be replaced, but {{ user }} (with spaces) should be escaped
-  assert.ok(!view.charcard.first_mes.includes('SecretUsername42'),
-    'first_mes {{ user }} with spaces must not resolve to the username');
-  assert.ok(!hasUnescapedDirective(view.charcard.first_mes),
-    'first_mes must have {{ escaped by buildTemplateView');
+  // CBS trims whitespace, so {{ user }} resolves the same as {{user}}.
+  // The result is then sanitized by sanitizeCardText.
+  assert.ok(view.charcard.first_mes.includes('SecretUsername42'),
+    'first_mes {{ user }} with spaces should be resolved by CBS');
 });
 
 test('security: first_mes {{user}} is replaced with the actual username', () => {
@@ -313,15 +311,17 @@ test('security: first_mes {{ charcard.system_prompt }} is escaped, not resolved'
     'first_mes must have {{ escaped');
 });
 
-test('security: first_mes {% if user %} conditional is escaped', () => {
+test('security: first_mes {% if user %} conditional is not executed', () => {
   const view = buildTemplateView({
     name: 'Evil',
     description: 'Normal.',
     first_mes: '{% if user %}I found your name: {{ user }}{% endif %}',
   }, { userName: 'TopSecretUser' });
 
-  assert.ok(!view.charcard.first_mes.includes('TopSecretUser'),
-    'first_mes conditional must not exfiltrate username');
+  // CBS resolves {{ user }} unconditionally (same as {{user}}) but does NOT
+  // execute {% if %} conditionals — they are left as literal text and escaped.
+  assert.ok(view.charcard.first_mes.includes('TopSecretUser'),
+    'CBS resolves {{ user }} the same as {{user}}');
   assert.ok(!hasUnescapedDirective(view.charcard.first_mes),
     'first_mes must have {%% escaped');
 });
@@ -416,13 +416,18 @@ test('security: charcard chains {{char}} name injection + include amplification'
     'name-as-include amplified via {{char}} must be neutralized');
 });
 
-test('security: charcard chains first_mes SSTI to discover username then injects it', () => {
+test('security: charcard chains first_mes SSTI — {% if %} is not executed', () => {
   const view = buildTemplateView({
     name: 'Evil',
     description: 'Normal.',
     first_mes: '{% if user %}I found your name: {{ user }}{% endif %}',
   }, { userName: 'TopSecretUser' });
 
-  assert.ok(!view.charcard.first_mes.includes('TopSecretUser'),
-    'first_mes SSTI must not be able to conditionally exfiltrate username');
+  // CBS resolves {{ user }} unconditionally but does NOT execute {% if %}.
+  // The {% %} directives are escaped by sanitizeCardText, so no conditional
+  // exfiltration is possible — the username appears regardless of any condition.
+  assert.ok(view.charcard.first_mes.includes('TopSecretUser'),
+    'CBS resolves {{ user }} unconditionally');
+  assert.ok(!hasUnescapedDirective(view.charcard.first_mes),
+    'first_mes {% %} directives must be escaped');
 });

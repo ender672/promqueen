@@ -1,8 +1,8 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { renderTemplate } = require('../../lib/render-template.js');
+const { expandCBS } = require('../../lib/render-template.js');
 
-test('renderTemplate resolves dot-notation variable paths', () => {
+test('expandCBS resolves dot-notation variable paths', () => {
   const template = 'Hello {{ user.name }}, your role is {{ user.settings.role }}.';
   const context = {
     user: {
@@ -13,14 +13,14 @@ test('renderTemplate resolves dot-notation variable paths', () => {
     }
   };
 
-  const result = renderTemplate(template, context);
+  const result = expandCBS(template, context);
   assert.strictEqual(result, 'Hello Alice, your role is admin.');
 });
 
-test('renderTemplate returns empty string for missing nested path segments', () => {
+test('expandCBS leaves unrecognized macros intact', () => {
   const template = 'Value: {{ a.b.c }}';
   const context = { a: { x: 1 } };
 
-  const result = renderTemplate(template, context);
-  assert.strictEqual(result, 'Value: ');
+  const result = expandCBS(template, context);
+  assert.strictEqual(result, 'Value: {{ a.b.c }}');
 });

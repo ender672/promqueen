@@ -41,19 +41,18 @@ function buildTemplateView(characterData, { altGreeting, userName } = {}) {
         charcard.first_mes = alts[altGreeting];
     }
 
-    // Replace {{char}} and {{user}} with plain text before any template processing.
-    // This eliminates the need to parse charcard fields as templates.
+    // Expand CBS patterns ({{char}}, {{user}}, etc.) before any Minja processing.
+    // Lazy require to break circular dependency with lib/render-template.js.
+    const { expandCBS } = require('./lib/render-template');
+    const cbsContext = { char: charcard.name };
+    if (userName) cbsContext.user = userName;
     for (const [key, value] of Object.entries(charcard)) {
         if (typeof value === 'string') {
-            let v = value.replaceAll('{{char}}', charcard.name);
-            if (userName) v = v.replaceAll('{{user}}', userName);
-            charcard[key] = sanitizeCardText(v);
+            charcard[key] = sanitizeCardText(expandCBS(value, cbsContext));
         } else if (Array.isArray(value)) {
             charcard[key] = value.map(v => {
                 if (typeof v !== 'string') return v;
-                let s = v.replaceAll('{{char}}', charcard.name);
-                if (userName) s = s.replaceAll('{{user}}', userName);
-                return sanitizeCardText(s);
+                return sanitizeCardText(expandCBS(v, cbsContext));
             });
         }
     }
