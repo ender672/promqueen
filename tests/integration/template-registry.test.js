@@ -36,12 +36,12 @@ test('discoverTemplates finds templates in ~/.promqueen-templates/', (t) => {
     const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'pq-tmpl-'));
     const userDir = path.join(fakeHome, '.promqueen-templates');
     fs.mkdirSync(userDir);
-    fs.writeFileSync(path.join(userDir, 'my-template.jinja'), `{# ---
+    fs.writeFileSync(path.join(userDir, 'my-template.pqueen.jinja'), `{# ---
 name: My Template
 description: A custom template.
 --- #}
 content`);
-    fs.writeFileSync(path.join(userDir, 'bare.jinja'), 'no metadata here');
+    fs.writeFileSync(path.join(userDir, 'bare.pqueen.jinja'), 'no metadata here');
 
     os.homedir = () => fakeHome;
     t.after(() => {

@@ -101,7 +101,7 @@ function renderMaliciousCard(maliciousCard) {
   const altGreeting = maliciousCard._altGreeting;
   delete maliciousCard._altGreeting;
 
-  const templatePath = path.join(__dirname, '../../templates/charcard-prompt-complete.jinja');
+  const templatePath = path.join(__dirname, '../../templates/charcard-prompt-complete.pqueen.jinja');
   const templateText = fs.readFileSync(templatePath, 'utf8');
   const view = buildTemplateView(maliciousCard, { altGreeting, userName: 'Alice' });
   view.user = 'Alice';
