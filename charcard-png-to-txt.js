@@ -66,7 +66,12 @@ function renderCharcardTemplate(characterData, templateText, { altGreeting, role
     }
     const view = buildTemplateView(characterData, { altGreeting });
     if (roleplayUser) view.user = roleplayUser;
-    if (roleplayUserDescription) view.user_description = roleplayUserDescription;
+    if (roleplayUserDescription) {
+        const { expandCBS } = require('./lib/render-template');
+        const cbsContext = { char: view.charcard.name };
+        if (roleplayUser) cbsContext.user = roleplayUser;
+        view.user_description = sanitizeCardText(expandCBS(roleplayUserDescription, cbsContext));
+    }
     if (roleplayGuidelines) view.roleplay_guidelines = roleplayGuidelines;
     const root = Parser.parse(templateText);
     const ctx = Context.make(view);
@@ -116,4 +121,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { renderCharcardTemplate, buildTemplateView };
+module.exports = { renderCharcardTemplate, buildTemplateView, sanitizeCardText };
