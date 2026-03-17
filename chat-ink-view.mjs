@@ -7,7 +7,7 @@ const h = React.createElement;
 
 export function TextArea({ onSubmit, onChange, height, disabled, initialText, activeCommands, onCommandNav, onCommandAccept, onCycleGeneration }) {
     const { exit } = useApp();
-    const bufRef = useRef({ lines: [''], row: 0, col: 0 });
+    const bufRef = useRef({ lines: [''], row: 0, col: 0, goalCol: 0 });
     const prevInitialRef = useRef('');
     const historyRef = useRef([]);       // oldest first
     const historyIdxRef = useRef(-1);    // -1 = not browsing
@@ -23,6 +23,7 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
         buf.lines = initialText.split('\n');
         buf.row = buf.lines.length - 1;
         buf.col = buf.lines[buf.row].length;
+        buf.goalCol = buf.col;
         prevInitialRef.current = initialText;
     } else if (!initialText && prevInitialRef.current) {
         prevInitialRef.current = '';
@@ -105,6 +106,7 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
                 buf.row--;
                 buf.col = prevLen;
             }
+            buf.goalCol = buf.col;
             kick();
             return;
         }
@@ -119,9 +121,13 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
                 while (c > 0 && /\s/.test(line[c])) c--;
                 while (c > 0 && !/\s/.test(line[c - 1])) c--;
                 buf.col = Math.max(0, c);
-            } else {
-                buf.col = Math.max(0, buf.col - 1);
+            } else if (buf.col > 0) {
+                buf.col--;
+            } else if (buf.row > 0) {
+                buf.row--;
+                buf.col = buf.lines[buf.row].length;
             }
+            buf.goalCol = buf.col;
             kick(); return;
         }
         if (key.rightArrow) {
@@ -134,15 +140,19 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
                 while (c < line.length && !/\s/.test(line[c])) c++;
                 while (c < line.length && /\s/.test(line[c])) c++;
                 buf.col = c;
-            } else {
-                buf.col = Math.min(buf.lines[buf.row].length, buf.col + 1);
+            } else if (buf.col < buf.lines[buf.row].length) {
+                buf.col++;
+            } else if (buf.row < buf.lines.length - 1) {
+                buf.row++;
+                buf.col = 0;
             }
+            buf.goalCol = buf.col;
             kick(); return;
         }
         if (key.upArrow) {
             if (buf.row > 0) {
                 buf.row--;
-                buf.col = Math.min(buf.col, buf.lines[buf.row].length);
+                buf.col = Math.min(buf.goalCol, buf.lines[buf.row].length);
             } else {
                 // At top of buffer — browse history
                 const hist = historyRef.current;
@@ -165,7 +175,7 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
         if (key.downArrow) {
             if (buf.row < buf.lines.length - 1) {
                 buf.row++;
-                buf.col = Math.min(buf.col, buf.lines[buf.row].length);
+                buf.col = Math.min(buf.goalCol, buf.lines[buf.row].length);
             } else if (historyIdxRef.current !== -1) {
                 // At bottom of buffer while browsing history — go forward
                 const hist = historyRef.current;
@@ -189,19 +199,23 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
 
         if (input === 'a' && key.ctrl) {
             buf.col = 0;
+            buf.goalCol = 0;
             kick(); return;
         }
         if (input === 'e' && key.ctrl) {
             buf.col = buf.lines[buf.row].length;
+            buf.goalCol = buf.col;
             kick(); return;
         }
         if (input === 'k' && key.ctrl) {
             buf.lines[buf.row] = buf.lines[buf.row].slice(0, buf.col);
+            buf.goalCol = buf.col;
             kick(); return;
         }
         if (input === 'u' && key.ctrl) {
             buf.lines[buf.row] = buf.lines[buf.row].slice(buf.col);
             buf.col = 0;
+            buf.goalCol = 0;
             kick(); return;
         }
         if (input === 'w' && key.ctrl) {
@@ -211,6 +225,7 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
             while (c > 0 && !/\s/.test(line[c - 1])) c--;
             buf.lines[buf.row] = line.slice(0, c) + line.slice(buf.col);
             buf.col = c;
+            buf.goalCol = c;
             kick(); return;
         }
         if (input === 'd' && key.ctrl) {
@@ -225,27 +240,30 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
                 buf.lines[buf.row] += buf.lines[buf.row + 1];
                 buf.lines.splice(buf.row + 1, 1);
             }
+            buf.goalCol = buf.col;
             kick(); return;
         }
         if (input === 'b' && key.ctrl) {
             buf.col = Math.max(0, buf.col - 1);
+            buf.goalCol = buf.col;
             kick(); return;
         }
         if (input === 'f' && key.ctrl) {
             buf.col = Math.min(buf.lines[buf.row].length, buf.col + 1);
+            buf.goalCol = buf.col;
             kick(); return;
         }
         if (input === 'p' && key.ctrl) {
             if (buf.row > 0) {
                 buf.row--;
-                buf.col = Math.min(buf.col, buf.lines[buf.row].length);
+                buf.col = Math.min(buf.goalCol, buf.lines[buf.row].length);
             }
             kick(); return;
         }
         if (input === 'n' && key.ctrl) {
             if (buf.row < buf.lines.length - 1) {
                 buf.row++;
-                buf.col = Math.min(buf.col, buf.lines[buf.row].length);
+                buf.col = Math.min(buf.goalCol, buf.lines[buf.row].length);
             }
             kick(); return;
         }
@@ -264,6 +282,7 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
                 buf.row += parts.length - 1;
                 buf.col = parts[parts.length - 1].length;
             }
+            buf.goalCol = buf.col;
             kick();
         }
     }, { isActive: !disabled, exitOnCtrlC: false });
