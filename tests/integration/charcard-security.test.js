@@ -108,8 +108,9 @@ function renderMaliciousCard(maliciousCard) {
   view.charcard_path = 'evil.png';
   view.opening_message = view.charcard.first_mes || '';
 
-  const content = Parser.parse(templateText).render(Context.make(view)).trimEnd();
-  return parseConfigAndMessages(content + '\n');
+  const body = Parser.parse(templateText).render(Context.make(view)).trimEnd();
+  const frontmatter = '---\nroleplay_user: Alice\ncharcard: evil.png\n---\n';
+  return parseConfigAndMessages(frontmatter + body + '\n');
 }
 
 test('security: charcard description with \\n\\n@ does not inject messages into .pqueen', () => {

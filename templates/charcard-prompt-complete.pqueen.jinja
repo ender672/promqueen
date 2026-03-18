@@ -6,8 +6,6 @@ description: System prompt, character sheet, roleplay guidelines, and opening me
    Available variables:
      user                - roleplay username (from ~/.promqueen)
      user_description    - user's character description
-     connection          - connection profile name (may be empty)
-     charcard_path       - filename of the source PNG
      charcard.name       - character name
      charcard.description, charcard.personality, charcard.scenario
      charcard.first_mes  - opening message text
@@ -16,13 +14,6 @@ description: System prompt, character sheet, roleplay guidelines, and opening me
      charcard_char_sheet - pre-rendered character sheet block
      roleplay_guidelines - roleplay guidelines text (from ~/.promqueen)
    ────────────────────────────────────────────────────────────────────── -#}
----
-roleplay_user: {{ user }}
-{%- if connection %}
-connection: {{ connection }}
-{%- endif %}
-charcard: {{ charcard_path }}
----
 @system [pq:hidden]
 You are a character in this fictional, never-ending roleplay.
 
