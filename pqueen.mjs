@@ -29,7 +29,7 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
     let initPrefill = '';
     if (!initPending && initCompleted.length > 0) {
         const last = initCompleted[initCompleted.length - 1];
-        if (last.role === 'user') {
+        if (last.role === 'user' && !last.decorators?.includes('pq:hidden')) {
             // User message: pop into editor for continued editing
             initCompleted = initCompleted.slice(0, -1);
             initPrefill = last.content || '';
@@ -56,8 +56,11 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
     const [error, setError] = useState('');
     const [prefill, setPrefill] = useState(initPrefill);
     const [staticKey, setStaticKey] = useState(0);
-    const [generations, setGenerations] = useState([]);
-    const [generationIdx, setGenerationIdx] = useState(-1);
+    const initCard = useMemo(() => readCharcardGreetings(resolvedConfig, cwd), []);
+    const initGreetings = initCard && initCard.greetings.length > 1 ? initCard.greetings : null;
+    const [generations, setGenerations] = useState(initGreetings || []);
+    const [generationIdx, setGenerationIdx] = useState(initGreetings ? 0 : -1);
+    const greetingGenerations = useRef(!!initGreetings);
     const [editingSpeaker, setEditingSpeaker] = useState(false);
     const abortRef = useRef(null);
 
@@ -134,6 +137,19 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
         return () => process.stdout.off('resize', onResize);
     }, [refreshScreen]);
 
+    // Re-seed greeting generations when user deletes back to a greeting message
+    useEffect(() => {
+        if (generations.length > 0 || messages.length === 0) return;
+        const card = readCharcardGreetings(resolvedConfig, cwd);
+        if (!card || card.greetings.length <= 1) return;
+        const idx = card.greetings.indexOf(messages[messages.length - 1].content);
+        if (idx >= 0) {
+            setGenerations(card.greetings);
+            setGenerationIdx(idx);
+            greetingGenerations.current = true;
+        }
+    }, [messages, generations.length, resolvedConfig, cwd]);
+
     const saveFile = useCallback((msgs) => {
         if (noSave) return;
         fs.writeFileSync(pqueenPath, pqutils.serializeDocument(rawConfig, msgs));
@@ -204,6 +220,7 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
         if (newIdx < 0) return;
         setError('');
         if (newIdx >= generations.length) {
+            if (greetingGenerations.current) return;
             // Trigger a new regeneration when pressing right past the last generation
             const ctx = {
                 allMsgs: pendingMsg ? [...messages, pendingMsg] : messages,
@@ -228,6 +245,7 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
         if (busy) return;
         setError('');
         setPrefill('');
+        greetingGenerations.current = false;
 
         const ctx = {
             allMsgs, messages, pendingMsg, resolvedConfig, cwd, pqueenPath,
@@ -282,8 +300,27 @@ export { App };
 
 // ─── Main ───────────────────────────────────────────────────────────────────
 
+const { extractAiCardData } = require('./lib/card-utils.js');
+const { sanitizeCardText } = require('./charcard-png-to-txt.js');
+const { expandCBS } = require('./lib/render-template.js');
 const { runSetup, testExistingConnection, wizardSelectConnection, updatePqueenConnection } = require('./lib/chat-setup.js');
 const { chubFetch } = require('./chub-fetch.js');
+
+function readCharcardGreetings(resolvedConfig, cwd) {
+    if (!resolvedConfig.charcard) return null;
+    const cardPath = path.resolve(cwd, resolvedConfig.charcard);
+    if (!fs.existsSync(cardPath)) return null;
+    const cardData = extractAiCardData(cardPath);
+    const charName = (cardData.name || 'Character').replace(/[\r\n]+/g, ' ').trim();
+    const cbsContext = { char: charName };
+    if (resolvedConfig.roleplay_user) cbsContext.user = resolvedConfig.roleplay_user;
+    const expandGreeting = (text) => sanitizeCardText(expandCBS(text, cbsContext));
+    const greetings = [
+        expandGreeting(cardData.first_mes || ''),
+        ...(cardData.alternate_greetings || []).map(expandGreeting),
+    ].filter(g => g);
+    return greetings.length > 0 ? { charName, greetings } : null;
+}
 
 function isUrl(str) {
     return /^https?:\/\//i.test(str);
@@ -417,6 +454,27 @@ async function main() {
     const content = fs.readFileSync(pqueenPath, 'utf8');
     const doc = pqutils.parseConfigAndMessages(content);
     const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, cliConfig);
+
+    // For fresh charcard files (only hidden messages), inject greeting from PNG
+    const isFresh = doc.messages.every(m => m.decorators?.includes('pq:hidden'));
+    if (isFresh) {
+        const card = readCharcardGreetings(resolvedConfig, cwd);
+        if (card) {
+            const charRole = card.charName === resolvedConfig.roleplay_user ? 'user' : 'assistant';
+            doc.messages.push({
+                name: card.charName, role: charRole,
+                content: card.greetings[0], decorators: [],
+            });
+            const userName = resolvedConfig.roleplay_user || 'user';
+            doc.messages.push({
+                name: userName, role: 'user',
+                content: null, decorators: [],
+            });
+            if (!noSave) {
+                fs.writeFileSync(pqueenPath, pqutils.serializeDocument(doc.config, doc.messages));
+            }
+        }
+    }
 
     // Clear any remaining setup output before starting the chat UI
     if (process.stderr.isTTY) process.stderr.write('\x1b[2J\x1b[H');

@@ -401,8 +401,8 @@ test('security: charcard chains message injection + include for file exfiltratio
   });
 
   const userMessages = messages.filter(m => m.name === 'user' || m.role === 'user');
-  assert.strictEqual(userMessages.length, 2,
-    'chained attack must not inject additional user messages (expected: 1 pq:hidden user + 1 Alice)');
+  assert.strictEqual(userMessages.length, 1,
+    'chained attack must not inject additional user messages (expected: 1 pq:hidden user)');
 });
 
 test('security: charcard chains {{char}} name injection + include amplification', () => {
