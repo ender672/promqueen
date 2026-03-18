@@ -46,7 +46,7 @@ function injectInstructions(messages, resolvedConfig, basePath = process.cwd()) 
   // In combined group chat mode, the empty last message is kept for name prefixing
   if (resolvedConfig.roleplay_combined_group_chat) {
     if (resolvedConfig.post_history_instructions) {
-      const phi = expandCBS(resolvedConfig.post_history_instructions, { user });
+      const phi = expandCBS(resolvedConfig.post_history_instructions, { original: '', user });
       appendOrPushUserMessage(messages, phi);
     }
     return messages;
@@ -57,13 +57,13 @@ function injectInstructions(messages, resolvedConfig, basePath = process.cwd()) 
 
   if (!lastIsCharacter) {
     if (resolvedConfig.post_history_instructions) {
-      const phi = expandCBS(resolvedConfig.post_history_instructions, { user });
+      const phi = expandCBS(resolvedConfig.post_history_instructions, { original: '', user });
       appendOrPushUserMessage(messages, phi);
     }
     return messages;
   }
 
-  const templateVars = { char: null, user };
+  const templateVars = { original: '', char: null, user };
 
   if (lastMsg.content === null || lastMsg.content === '') {
     // Empty content = next speaker / impersonation request
@@ -112,7 +112,7 @@ function injectInstructions(messages, resolvedConfig, basePath = process.cwd()) 
     messages.pop();
 
     if (resolvedConfig.post_history_instructions) {
-      const phi = expandCBS(resolvedConfig.post_history_instructions, { user });
+      const phi = expandCBS(resolvedConfig.post_history_instructions, { original: '', user });
       appendOrPushUserMessage(messages, phi);
     }
 
