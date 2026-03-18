@@ -1,7 +1,7 @@
 const process = require('process');
 const {
     getStream, unescapeMessages, escapeContent, escapeContentBlock,
-    calculatePricing, pricingToString, debugLogBody, sendRequest,
+    calculatePricing, pricingToString, debugLogBody, debugLogFinalPqueen, sendRequest,
 } = require('./lib/send-prompt-common.js');
 const { getConnectionProfile } = require('./lib/pq-utils.js');
 
@@ -97,6 +97,7 @@ async function sendPromptAnthropic(messages, resolvedConfig, outputStream = proc
         body.system = systemMessages.map(m => m.content).join('\n\n');
     }
 
+    debugLogFinalPqueen(resolvedConfig, messages);
     debugLogBody(resolvedConfig, body);
     const response = await sendRequest(connProfile, body, options);
     return await responseToOutput(response, connProfile, outputStream);

@@ -4,7 +4,7 @@ const { Parser, Context } = require('@ender672/minja-js/minja');
 const path = require('path');
 const {
     getStream, unescapeMessages, escapeContent, escapeContentBlock,
-    calculatePricing, pricingToString, debugLogBody, sendRequest,
+    calculatePricing, pricingToString, debugLogBody, debugLogFinalPqueen, sendRequest,
 } = require('./lib/send-prompt-common.js');
 const { getConnectionProfile } = require('./lib/pq-utils.js');
 
@@ -117,6 +117,7 @@ async function sendRawPrompt(messages, resolvedConfig, outputStream = process.st
         ...connProfile.api_call_props,
         prompt: promptString,
     };
+    debugLogFinalPqueen(resolvedConfig, messages);
     debugLogBody(resolvedConfig, body);
     const response = await sendRequest(connProfile, body, options);
     return await responseToOutput(response, connProfile, outputStream);
