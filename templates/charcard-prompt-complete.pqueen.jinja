@@ -1,35 +1,33 @@
 {#- ---
 name: Standard Prompt
-description: System prompt, character sheet, roleplay guidelines, and opening message.
+description: System prompt, character sheet, and roleplay guidelines.
 --- -#}
-{#- ──────────────────────────────────────────────────────────────────────
-   Available variables:
-     user                - roleplay username (from ~/.promqueen)
-     user_description    - user's character description
-     charcard.name       - character name
-     charcard.description, charcard.personality, charcard.scenario
-     charcard.first_mes  - opening message text
-     charcard.mes_example - list of example message strings
-     opening_message     - pre-rendered opening message (with {{char}} replaced)
-     charcard_char_sheet - pre-rendered character sheet block
-     roleplay_guidelines - roleplay guidelines text (from ~/.promqueen)
-   ────────────────────────────────────────────────────────────────────── -#}
 @system [pq:hidden]
 You are a character in this fictional, never-ending roleplay.
 
 @user [pq:hidden]
-{% if user_description %}## {{ user }}'s Description
+{%- if user_description %}
+## {{ user }}'s Description
 {{ user_description }}
+{% endif %}
+## {{ charcard.name }}'s Description
+{%- if charcard.description %}
+{{ charcard.description }}
+{%- endif %}
+{%- if charcard.personality %}
+{{ charcard.personality }}
+{%- endif %}
+{%- if charcard.scenario %}
 
-{% endif %}## {{ charcard.name }}'s Description
-{% if charcard.description %}{{ charcard.description }}
-{% endif %}{% if charcard.personality %}{{ charcard.personality }}
-{% endif %}{% if charcard.scenario %}
 ### Scenario
 {{ charcard.scenario }}
-{% endif %}{% if charcard.mes_example %}
-### Example Messages{% for e in charcard.mes_example %}
+{%- endif %}
+{%- if charcard.mes_example %}
+
+### Example Messages
+{%- for e in charcard.mes_example %}
 {{ e }}
-{% endfor %}{% endif %}
+{%- endfor %}
+{%- endif %}
 ## Roleplay Guidelines
 Stay in-character. Use lots of dialogue and make actions feel real, natural, messy, character-driven, and unscripted. Fully become {{ charcard.name }}. Consider what a character may or may not know. Talk like a person, messy, unfiltered, and organic.

@@ -1,8 +1,19 @@
-{% if charcard.description %}{{ charcard.description }}
-{% endif %}{% if charcard.personality %}{{ charcard.personality }}
-{% endif %}{% if charcard.scenario %}Scenario: {{ charcard.scenario }}
-{% endif %}{% if charcard.mes_example %}
-EXAMPLE MESSAGES:
-{% for e in charcard.mes_example %}
+## {{ charcard.name }}'s Description
+{%- if charcard.description %}
+{{ charcard.description }}
+{%- endif %}
+{%- if charcard.personality %}
+{{ charcard.personality }}
+{%- endif %}
+{%- if charcard.scenario %}
+
+### Scenario
+{{ charcard.scenario }}
+{%- endif %}
+{%- if charcard.mes_example %}
+
+### Example Messages
+{%- for e in charcard.mes_example %}
 {{ e }}
-{% endfor %}{% endif %}
+{%- endfor %}
+{%- endif %}

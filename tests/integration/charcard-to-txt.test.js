@@ -12,7 +12,7 @@ test('renderCharcardTemplate assembles description, personality, and scenario', 
 
     assert.strictEqual(
         result,
-        'A mysterious sorceress\nWise and enigmatic\nScenario: A dark forest at midnight'
+        "## Luna's Description\nA mysterious sorceress\nWise and enigmatic\n\n### Scenario\nA dark forest at midnight"
     );
 });
 
@@ -25,7 +25,7 @@ test('renderCharcardTemplate parses mes_example with <START> delimiters', () => 
 
     assert.strictEqual(
         result,
-        'A sorceress\n\nEXAMPLE MESSAGES:\n\nHello traveler\n\nWelcome to my tower'
+        "## Luna's Description\nA sorceress\n\n### Example Messages\nHello traveler\nWelcome to my tower"
     );
 });
 
@@ -35,7 +35,7 @@ test('renderCharcardTemplate with missing optional fields', () => {
         name: 'Luna',
         description: 'A sorceress',
     });
-    assert.strictEqual(descOnly, 'A sorceress');
+    assert.strictEqual(descOnly, "## Luna's Description\nA sorceress");
 
     // No personality
     const noPersonality = renderCharcardTemplate({
@@ -43,7 +43,7 @@ test('renderCharcardTemplate with missing optional fields', () => {
         description: 'A sorceress',
         scenario: 'A dark forest',
     });
-    assert.strictEqual(noPersonality, 'A sorceress\nScenario: A dark forest');
+    assert.strictEqual(noPersonality, "## Luna's Description\nA sorceress\n\n### Scenario\nA dark forest");
 
     // No scenario
     const noScenario = renderCharcardTemplate({
@@ -51,7 +51,7 @@ test('renderCharcardTemplate with missing optional fields', () => {
         description: 'A sorceress',
         personality: 'Wise',
     });
-    assert.strictEqual(noScenario, 'A sorceress\nWise');
+    assert.strictEqual(noScenario, "## Luna's Description\nA sorceress\nWise");
 
     // No description
     const noDescription = renderCharcardTemplate({
@@ -59,15 +59,15 @@ test('renderCharcardTemplate with missing optional fields', () => {
         personality: 'Wise',
         scenario: 'A dark forest',
     });
-    assert.strictEqual(noDescription, 'Wise\nScenario: A dark forest');
+    assert.strictEqual(noDescription, "## Luna's Description\nWise\n\n### Scenario\nA dark forest");
 
     // All optional fields missing — only name provided
     const nameOnly = renderCharcardTemplate({ name: 'Luna' });
-    assert.strictEqual(nameOnly, '');
+    assert.strictEqual(nameOnly, "## Luna's Description");
 
     // Empty object — name defaults to 'Character'
     const empty = renderCharcardTemplate({});
-    assert.strictEqual(empty, '');
+    assert.strictEqual(empty, "## Character's Description");
 });
 
 test('renderCharcardTemplate replaces {{char}} in the final output', () => {
