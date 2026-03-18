@@ -33,13 +33,13 @@ You are a character in this fictional, never-ending roleplay.
 {% endif %}## {{ charcard.name }}'s Description
 {% if charcard.description %}{{ charcard.description }}
 {% endif %}{% if charcard.personality %}{{ charcard.personality }}
-{% endif %}{% if charcard.scenario %}Scenario: {{ charcard.scenario }}
+{% endif %}{% if charcard.scenario %}
+### Scenario
+{{ charcard.scenario }}
 {% endif %}{% if charcard.mes_example %}
-EXAMPLE MESSAGES:
-{% for e in charcard.mes_example %}
+### Example Messages{% for e in charcard.mes_example %}
 {{ e }}
 {% endfor %}{% endif %}
-
 ## Roleplay Guidelines
 Stay in-character. Use lots of dialogue and make actions feel real, natural, messy, character-driven, and unscripted. Fully become {{ charcard.name }}. Consider what a character may or may not know. Talk like a person, messy, unfiltered, and organic.
 
