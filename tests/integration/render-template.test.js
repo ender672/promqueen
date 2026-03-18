@@ -17,6 +17,26 @@ test('expandCBS resolves dot-notation variable paths', () => {
   assert.strictEqual(result, 'Hello Alice, your role is admin.');
 });
 
+test('expandCBS random trims whitespace from options', () => {
+  const template = 'Hi, {{random: Harry, Dick, Tom}}';
+  const context = {};
+  const result = expandCBS(template, context);
+  assert.ok(
+    ['Hi, Harry', 'Hi, Dick', 'Hi, Tom'].includes(result),
+    `expected trimmed result, got: "${result}"`
+  );
+});
+
+test('expandCBS pick trims whitespace from options', () => {
+  const template = '{{pick: alpha , beta , gamma }}';
+  const context = {};
+  const result = expandCBS(template, context, 'seed');
+  assert.ok(
+    ['alpha', 'beta', 'gamma'].includes(result),
+    `expected trimmed result, got: "${result}"`
+  );
+});
+
 test('expandCBS leaves unrecognized macros intact', () => {
   const template = 'Value: {{ a.b.c }}';
   const context = { a: { x: 1 } };
