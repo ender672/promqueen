@@ -90,6 +90,14 @@ async function chubFetch(chubUrl) {
     const outputBuffer = embedCardInPng(pngBuffer, cardJson);
 
     const outputFilename = buildOutputFilename(charPath);
+    if (fs.existsSync(outputFilename)) {
+        const { promptTextInput } = require('./lib/tui.js');
+        const answer = await promptTextInput(`${outputFilename} already exists. Overwrite? [y/N] `);
+        if (answer.trim().toLowerCase() !== 'y') {
+            console.error('Aborted.');
+            process.exit(1);
+        }
+    }
     fs.writeFileSync(outputFilename, outputBuffer);
     console.error(`Wrote ${outputFilename}`);
 

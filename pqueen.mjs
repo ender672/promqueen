@@ -293,6 +293,15 @@ function isChubUrl(str) {
     return /^https?:\/\/(www\.)?chub\.ai\/characters\//i.test(str);
 }
 
+async function confirmOverwrite(dest) {
+    const { promptTextInput } = require('./lib/tui.js');
+    const answer = await promptTextInput(`${dest} already exists. Overwrite? [y/N] `);
+    if (answer.trim().toLowerCase() !== 'y') {
+        console.error('Aborted.');
+        process.exit(1);
+    }
+}
+
 async function downloadPng(url) {
     const res = await fetch(url, {
         headers: {
@@ -307,6 +316,7 @@ async function downloadPng(url) {
     const basename = path.basename(urlPath) || 'downloaded.png';
     const filename = basename.endsWith('.png') ? basename : basename + '.png';
     const dest = path.resolve(filename);
+    if (fs.existsSync(dest)) await confirmOverwrite(dest);
     fs.writeFileSync(dest, buffer);
     console.error(`Downloaded ${dest}`);
     return dest;
