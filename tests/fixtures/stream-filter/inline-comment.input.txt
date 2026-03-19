@@ -1,0 +1,2 @@
+Hello <!-- hidden --> world
+Some text <!-- comment --> more text

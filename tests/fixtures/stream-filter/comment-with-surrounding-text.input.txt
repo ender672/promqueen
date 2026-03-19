@@ -1,0 +1,2 @@
+Start<!-- comment -->End
+A<!-- one -->B<!-- two -->C

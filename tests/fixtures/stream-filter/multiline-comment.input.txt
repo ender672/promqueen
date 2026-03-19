@@ -1,0 +1,5 @@
+Before comment
+<!-- this comment
+spans multiple
+lines -->
+After comment

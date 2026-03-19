@@ -14,6 +14,7 @@ const { dispatchSendPrompt } = require('./lib/pipeline.js');
 const { tokensToString } = require('./lib/send-prompt-common.js');
 const pqutils = require('./lib/pq-utils.js');
 const { SLASH_COMMANDS, cmdSubmitText, cmdFinishEditSpeaker } = require('./lib/commands.js');
+const { filterLine } = require('./lib/stream-filter.js');
 
 const h = React.createElement;
 
@@ -79,25 +80,6 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
         let buffer = '';
         let flushedLines = 0;
         let inComment = false;
-        const filterLine = (line, ic) => {
-            let result = '';
-            let i = 0;
-            while (i < line.length) {
-                if (ic) {
-                    const close = line.indexOf('-->', i);
-                    if (close === -1) return { text: result, inComment: true };
-                    ic = false;
-                    i = close + 3;
-                } else {
-                    const open = line.indexOf('<!--', i);
-                    if (open === -1) { result += line.slice(i); break; }
-                    result += line.slice(i, open);
-                    ic = true;
-                    i = open + 4;
-                }
-            }
-            return { text: result, inComment: ic };
-        };
         const flush = () => {
             const rawLines = buffer.split('\n');
             const rawCompleted = rawLines.slice(0, -1);
@@ -106,6 +88,8 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
                 for (let i = flushedLines; i < rawCompleted.length; i++) {
                     const result = filterLine(rawCompleted[i], inComment);
                     inComment = result.inComment;
+                    // Skip lines that become empty purely from comment removal
+                    if (result.text === '' && rawCompleted[i].trim() !== '') continue;
                     newDisplayLines.push(result.text);
                 }
                 flushedLines = rawCompleted.length;
