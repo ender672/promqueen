@@ -72,19 +72,48 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
     // Returns { writer, flush } — completed lines go to streamLines (rendered
     // via Static, no re-render), current partial line to streamPartial (tiny
     // dynamic-area redraw).  No throttle needed since renders are cheap.
+    // HTML comments (<!-- ... -->) are stripped from display output but
+    // preserved in chunks for saving.
     const makeStreamWriter = useCallback(() => {
         const chunks = [];
         let buffer = '';
         let flushedLines = 0;
-        const flush = () => {
-            const lines = buffer.split('\n');
-            const completed = lines.slice(0, -1);
-            if (completed.length > flushedLines) {
-                const newLines = completed.slice(flushedLines);
-                flushedLines = completed.length;
-                setStreamLines(prev => [...prev, ...newLines]);
+        let inComment = false;
+        const filterLine = (line, ic) => {
+            let result = '';
+            let i = 0;
+            while (i < line.length) {
+                if (ic) {
+                    const close = line.indexOf('-->', i);
+                    if (close === -1) return { text: result, inComment: true };
+                    ic = false;
+                    i = close + 3;
+                } else {
+                    const open = line.indexOf('<!--', i);
+                    if (open === -1) { result += line.slice(i); break; }
+                    result += line.slice(i, open);
+                    ic = true;
+                    i = open + 4;
+                }
             }
-            setStreamPartial(lines[lines.length - 1]);
+            return { text: result, inComment: ic };
+        };
+        const flush = () => {
+            const rawLines = buffer.split('\n');
+            const rawCompleted = rawLines.slice(0, -1);
+            if (rawCompleted.length > flushedLines) {
+                const newDisplayLines = [];
+                for (let i = flushedLines; i < rawCompleted.length; i++) {
+                    const result = filterLine(rawCompleted[i], inComment);
+                    inComment = result.inComment;
+                    newDisplayLines.push(result.text);
+                }
+                flushedLines = rawCompleted.length;
+                setStreamLines(prev => [...prev, ...newDisplayLines]);
+            }
+            const partialRaw = rawLines[rawLines.length - 1];
+            const { text: partialDisplay } = filterLine(partialRaw, inComment);
+            setStreamPartial(partialDisplay);
         };
         const writer = {
             chunks,

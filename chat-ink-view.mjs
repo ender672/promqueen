@@ -306,6 +306,29 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
     return h(Text, null, displayLines.join('\n'));
 }
 
+// Strip <!-- ... --> from text for display purposes.
+function stripHtmlComments(text) {
+    if (!text || !text.includes('<!--')) return text;
+    let result = '';
+    let i = 0;
+    let inComment = false;
+    while (i < text.length) {
+        if (inComment) {
+            const close = text.indexOf('-->', i);
+            if (close === -1) break;
+            inComment = false;
+            i = close + 3;
+        } else {
+            const open = text.indexOf('<!--', i);
+            if (open === -1) { result += text.slice(i); break; }
+            result += text.slice(i, open);
+            inComment = true;
+            i = open + 4;
+        }
+    }
+    return result;
+}
+
 // ─── Pure presentational component ──────────────────────────────────────────
 
 export function splitMessages(msgs) {
@@ -381,7 +404,7 @@ export function ChatView({ messages, streamName, streamLines, streamPartial, str
             item._t === 'm'
                 ? h(Box, { key: item._k, flexDirection: 'column', marginTop: index > 0 ? 1 : 0 },
                     item.msg.name ? h(Text, { color: 'cyan' }, `@${item.msg.name}`) : null,
-                    item.msg.content ? h(Text, null, item.msg.content) : null,
+                    item.msg.content ? h(Text, null, stripHtmlComments(item.msg.content)) : null,
                 )
                 : item._t === 'sh'
                     ? h(Box, { key: item._k, marginTop: 1 }, h(Text, { color: 'cyan' }, `@${streamName}`))
