@@ -31,11 +31,11 @@ content`;
     assert.strictEqual(meta.description, undefined);
 });
 
-test('discoverTemplates finds templates in ~/.promqueen-templates/', (t) => {
+test('discoverTemplates finds templates in ~/.promqueen/templates/', (t) => {
     const originalHomedir = os.homedir;
     const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'pq-tmpl-'));
-    const userDir = path.join(fakeHome, '.promqueen-templates');
-    fs.mkdirSync(userDir);
+    const userDir = path.join(fakeHome, '.promqueen', 'templates');
+    fs.mkdirSync(userDir, { recursive: true });
     fs.writeFileSync(path.join(userDir, 'my-template.pqueen.jinja'), `{# ---
 name: My Template
 description: A custom template.
@@ -49,11 +49,7 @@ content`);
         fs.rmSync(fakeHome, { recursive: true, force: true });
     });
 
-    const registryPath = require.resolve('../../lib/template-registry.js');
-    delete require.cache[registryPath];
-    const fresh = require('../../lib/template-registry.js');
-
-    const templates = fresh.discoverTemplates();
+    const templates = discoverTemplates();
     assert.strictEqual(templates.length, 2);
 
     const withMeta = templates.find(t => t.id === 'my-template');
@@ -65,9 +61,6 @@ content`);
     assert.ok(bare);
     assert.strictEqual(bare.name, 'bare');
     assert.strictEqual(bare.description, '');
-
-    delete require.cache[registryPath];
-    require('../../lib/template-registry.js');
 });
 
 test('discoverTemplates returns empty array when dir does not exist', (t) => {
@@ -79,15 +72,26 @@ test('discoverTemplates returns empty array when dir does not exist', (t) => {
         fs.rmSync(fakeHome, { recursive: true, force: true });
     });
 
-    const registryPath = require.resolve('../../lib/template-registry.js');
-    delete require.cache[registryPath];
-    const fresh = require('../../lib/template-registry.js');
-
-    const templates = fresh.discoverTemplates();
+    const templates = discoverTemplates();
     assert.strictEqual(templates.length, 0);
+});
 
-    delete require.cache[registryPath];
-    require('../../lib/template-registry.js');
+test('discoverTemplates uses configDir override', (t) => {
+    const configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pq-tmpl-override-'));
+    const templateDir = path.join(configDir, 'templates');
+    fs.mkdirSync(templateDir);
+    fs.writeFileSync(path.join(templateDir, 'custom.pqueen.jinja'), `{# ---
+name: Custom Override
+--- #}
+content`);
+
+    t.after(() => {
+        fs.rmSync(configDir, { recursive: true, force: true });
+    });
+
+    const templates = discoverTemplates(configDir);
+    assert.strictEqual(templates.length, 1);
+    assert.strictEqual(templates[0].name, 'Custom Override');
 });
 
 test('resolveTemplatePath resolves a known template id', () => {

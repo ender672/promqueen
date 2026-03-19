@@ -389,17 +389,26 @@ async function downloadPng(url) {
 }
 
 async function main() {
-    pqutils.ensureDotConfig();
-    pqutils.ensureTemplateDir();
-
     const args = process.argv.slice(2);
     const noSave = args.includes('--no-save');
     const dumpConfig = args.includes('--dump-config') || args.includes('--show-config');
     const listTemplates = args.includes('--list-templates');
+    const configIdx = args.indexOf('--config-dir');
+    let configDir;
+    if (configIdx !== -1) {
+        const configArg = args[configIdx + 1];
+        if (!configArg || configArg.startsWith('--')) {
+            console.error('--config-dir requires a path argument');
+            process.exit(1);
+        }
+        configDir = path.resolve(configArg);
+    }
+
+    pqutils.ensureConfigDir(configDir);
 
     if (listTemplates) {
         const { discoverTemplates } = require('./lib/template-registry.js');
-        const templates = discoverTemplates();
+        const templates = discoverTemplates(configDir);
         if (templates.length === 0) {
             console.error('No templates found.');
             process.exit(0);
@@ -414,10 +423,10 @@ async function main() {
         process.exit(0);
     }
 
-    const positional = args.filter(a => !a.startsWith('--'));
+    const positional = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && args[i - 1] === '--config-dir'));
     const inputPath = positional[0];
     if (!inputPath) {
-        console.error('Usage: pqueen [--no-save] [--dump-config] [--list-templates] <file.png | file.pqueen | URL>');
+        console.error('Usage: pqueen [--no-save] [--dump-config] [--list-templates] [--config-dir <path>] <file.png | file.pqueen | URL>');
         process.exit(1);
     }
 
@@ -441,7 +450,7 @@ async function main() {
     let cliConfig = {};
 
     if (resolved.endsWith('.png')) {
-        const result = await runSetup(resolved);
+        const result = await runSetup(resolved, configDir);
         pqueenPath = result.pqueenPath;
     } else if (resolved.endsWith('.pqueen')) {
         pqueenPath = resolved;
@@ -454,7 +463,7 @@ async function main() {
         const cwd = path.dirname(pqueenPath);
         const content = fs.readFileSync(pqueenPath, 'utf8');
         const doc = pqutils.parseConfigAndMessages(content);
-        const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, {});
+        const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, {}, configDir);
         if (resolvedConfig.connection && resolvedConfig.connection_profiles) {
             const active = resolvedConfig.connection_profiles[resolvedConfig.connection];
             resolvedConfig.connection_profiles = { [resolvedConfig.connection]: active };
@@ -467,10 +476,10 @@ async function main() {
     }
 
     // Ensure the file has a working connection configured
-    const connectionOk = testExistingConnection(pqueenPath, cliConfig);
+    const connectionOk = testExistingConnection(pqueenPath, cliConfig, configDir);
     if (!connectionOk) {
-        const dotConfig = pqutils.loadDotConfig();
-        const connResult = await wizardSelectConnection(dotConfig);
+        const dotConfig = pqutils.loadDotConfig(configDir);
+        const connResult = await wizardSelectConnection(dotConfig, configDir);
         cliConfig = connResult.cliConfig;
         if (noSave) {
             cliConfig.connection = connResult.connectionName;
@@ -482,7 +491,7 @@ async function main() {
     const cwd = path.dirname(pqueenPath);
     const content = fs.readFileSync(pqueenPath, 'utf8');
     const doc = pqutils.parseConfigAndMessages(content);
-    const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, cliConfig);
+    const resolvedConfig = pqutils.resolveConfig(doc.config, cwd, cliConfig, configDir);
 
     // For fresh charcard files (only hidden messages), inject greeting from PNG
     const isFresh = doc.messages.every(m => m.decorators?.includes('pq:hidden'));

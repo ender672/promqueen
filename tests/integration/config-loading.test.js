@@ -11,8 +11,12 @@ test('resolveConfig honors dot_config_loading option and only checks home dir', 
   const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'pq-home-'));
   const otherPath = fs.mkdtempSync(path.join(os.tmpdir(), 'pq-other-'));
 
-  const homeConfig = path.join(fakeHome, '.promqueen');
-  const otherConfig = path.join(otherPath, '.promqueen');
+  const homeConfigDir = path.join(fakeHome, '.promqueen');
+  fs.mkdirSync(homeConfigDir);
+  const homeConfig = path.join(homeConfigDir, 'config.yaml');
+  const otherConfigDir = path.join(otherPath, '.promqueen');
+  fs.mkdirSync(otherConfigDir);
+  const otherConfig = path.join(otherConfigDir, 'config.yaml');
   const workingDir = path.join(otherPath, 'subdir');
 
   fs.mkdirSync(workingDir);
@@ -215,7 +219,9 @@ test('expandEnvVars passes through non-string values unchanged', () => {
 test('resolveConfig full priority ordering across all layers', async (t) => {
   const originalHomedir = os.homedir;
   const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'pq-priority-'));
-  const homeConfig = path.join(fakeHome, '.promqueen');
+  const homeConfigDir = path.join(fakeHome, '.promqueen');
+  fs.mkdirSync(homeConfigDir);
+  const homeConfig = path.join(homeConfigDir, 'config.yaml');
 
   fs.writeFileSync(homeConfig, 'custom_a: from-dotfile\ncustom_b: from-dotfile\n');
   os.homedir = () => fakeHome;

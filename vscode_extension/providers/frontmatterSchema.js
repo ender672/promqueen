@@ -129,7 +129,7 @@ const FRONTMATTER_SCHEMA = [
         key: 'dot_config_loading',
         type: 'Boolean',
         defaultValue: 'true',
-        description: 'Whether to load `~/.promqueen` as a base config layer.',
+        description: 'Whether to load `~/.promqueen/config.yaml` as a base config layer.',
         example: 'dot_config_loading: false'
     },
     {
