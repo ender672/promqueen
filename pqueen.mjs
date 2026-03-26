@@ -15,6 +15,11 @@ const { tokensToString } = require('./lib/send-prompt-common.js');
 const pqutils = require('./lib/pq-utils.js');
 const { SLASH_COMMANDS, cmdSubmitText, cmdFinishEditSpeaker } = require('./lib/commands.js');
 const { filterLine } = require('./lib/stream-filter.js');
+const { extractAiCardData } = require('./lib/card-utils.js');
+const { sanitizeCardText } = require('./charcard-png-to-txt.js');
+const { expandCBS } = require('./lib/render-template.js');
+const { runSetup, testExistingConnection, wizardSelectConnection, updatePqueenConnection } = require('./lib/chat-setup.js');
+const { chubFetch } = require('./chub-fetch.js');
 
 const h = React.createElement;
 
@@ -173,6 +178,11 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
         fs.writeFileSync(filePath, pqutils.serializeDocument(rawConfig, msgs));
     }, [rawConfig]);
 
+    const saveFile = useCallback((msgs) => {
+        if (noSave) return;
+        saveToPath(pqueenPath, msgs);
+    }, [pqueenPath, noSave, saveToPath]);
+
     useEffect(() => {
         const onResize = () => refreshScreen();
         process.stdout.on('resize', onResize);
@@ -191,11 +201,6 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
             greetingGenerations.current = true;
         }
     }, [messages, generations.length, resolvedConfig, cwd]);
-
-    const saveFile = useCallback((msgs) => {
-        if (noSave) return;
-        fs.writeFileSync(pqueenPath, pqutils.serializeDocument(rawConfig, msgs));
-    }, [pqueenPath, rawConfig, noSave]);
 
     // Stream a generation and run the post-completion pipeline.  Callers
     // control what happens on success/error via callbacks:
@@ -257,8 +262,7 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
             if (greetingGenerations.current) return;
             // Trigger a new regeneration when pressing right past the last generation
             const ctx = {
-                allMsgs: pendingMsg ? [...messages, pendingMsg] : messages,
-                messages, pendingMsg, resolvedConfig, cwd, pqueenPath,
+                allMsgs, messages, pendingMsg, resolvedConfig, cwd, pqueenPath,
                 saveFile, saveToPath, runGeneration, refreshScreen,
                 setMessages, setPendingMsg, setPrefill, setError, setStreamToEditbox,
                 generations, setGenerations, setGenerationIdx,
@@ -273,7 +277,7 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
         const allUpdated = pendingMsg ? [...updated, pendingMsg] : updated;
         saveFile(allUpdated);
         refreshScreen();
-    }, [generations, generationIdx, messages, pendingMsg, resolvedConfig, cwd, pqueenPath, saveFile, saveToPath, runGeneration, refreshScreen]);
+    }, [generations, generationIdx, messages, pendingMsg, allMsgs, resolvedConfig, cwd, pqueenPath, saveFile, saveToPath, runGeneration, refreshScreen]);
 
     const handleSpeakerAccept = useCallback((name) => {
         if (!pendingMsg) return;
@@ -349,7 +353,6 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
         if ((key.escape || (key.ctrl && _input === 'c')) && busy) {
             if (abortRef.current) abortRef.current.abort();
         } else if (key.escape && !busy) {
-            const allMsgs = pendingMsg ? [...messages, pendingMsg] : messages;
             saveFile(allMsgs);
             if (process.stderr.isTTY) process.stderr.write(noSave ? '\n' : `\nSaved to ${pqueenPath}\n`);
             exit();
@@ -376,12 +379,6 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
 export { App };
 
 // ─── Main ───────────────────────────────────────────────────────────────────
-
-const { extractAiCardData } = require('./lib/card-utils.js');
-const { sanitizeCardText } = require('./charcard-png-to-txt.js');
-const { expandCBS } = require('./lib/render-template.js');
-const { runSetup, testExistingConnection, wizardSelectConnection, updatePqueenConnection } = require('./lib/chat-setup.js');
-const { chubFetch } = require('./chub-fetch.js');
 
 function readCharcardGreetings(resolvedConfig, cwd) {
     if (!resolvedConfig.charcard) return null;
