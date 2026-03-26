@@ -207,22 +207,22 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
         setStreamLines([]);
         setStreamPartial('');
 
+        const finalizeTurn = (content) => {
+            const afterTurn = onSuccess(content);
+            postCompletionLint(afterTurn, resolvedConfig);
+            const lastMsg = afterTurn[afterTurn.length - 1];
+            if (lastMsg.content === null) setPendingMsg(lastMsg);
+            saveFile(afterTurn);
+            return afterTurn;
+        };
+
         (async () => {
             const tw = makeStreamWriter();
             try {
                 const ac = new AbortController();
                 const { content, pricingResult } = await streamCompletion(
                     apiMessages, ac, tw);
-
-                const afterTurn = onSuccess(content);
-                postCompletionLint(afterTurn, resolvedConfig);
-
-                const lastMsg = afterTurn[afterTurn.length - 1];
-                if (lastMsg.content === null) {
-                    setPendingMsg(lastMsg);
-                }
-
-                saveFile(afterTurn);
+                finalizeTurn(content);
                 accumulateTokens(pricingResult);
             } catch (err) {
                 if (err.name === 'AbortError') {
@@ -230,15 +230,7 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
                     let partial = tw.chunks.join('');
                     if (partial.endsWith('\n')) partial = partial.slice(0, -1);
                     if (partial) {
-                        const afterTurn = onSuccess(partial);
-                        postCompletionLint(afterTurn, resolvedConfig);
-
-                        const lastMsg = afterTurn[afterTurn.length - 1];
-                        if (lastMsg.content === null) {
-                            setPendingMsg(lastMsg);
-                        }
-
-                        saveFile(afterTurn);
+                        finalizeTurn(partial);
                     } else {
                         if (onError) onError(err);
                     }
