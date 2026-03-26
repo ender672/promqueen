@@ -24,9 +24,8 @@ const h = React.createElement;
 const stripAnsi = s => s.replace(/\x1b\[[0-9;]*m/g, '');
 const tick = (ms = 0) => new Promise(r => setTimeout(r, ms));
 
-async function waitFor(lastFrame, predicate, timeoutOrLabel = 2000, maybeLabel) {
-    const timeout = typeof timeoutOrLabel === 'number' ? timeoutOrLabel : 2000;
-    const label = typeof timeoutOrLabel === 'string' ? timeoutOrLabel : maybeLabel;
+async function waitFor(lastFrame, predicate, label) {
+    const timeout = 2000;
     const start = Date.now();
     while (Date.now() - start < timeout) {
         if (predicate(stripAnsi(lastFrame()))) return;
@@ -56,21 +55,7 @@ connection_profiles:
     api_url: http://dummy
 dot_config_loading: false`;
 
-function sseResponse(...chunks) {
-    return {
-        ok: true, status: 200,
-        headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'text/event-stream' : null },
-        body: {
-            async *[Symbol.asyncIterator]() {
-                for (const chunk of chunks) {
-                    const data = JSON.stringify({ choices: [{ delta: { content: chunk } }] });
-                    yield new TextEncoder().encode(`data: ${data}\n\n`);
-                }
-                yield new TextEncoder().encode(`data: [DONE]\n\n`);
-            }
-        }
-    };
-}
+const testContent = (body) => `---\n${SELF_CONTAINED_CONFIG}\n---\n${body}`;
 
 function errorResponse(status, body) {
     return { ok: false, status, text: async () => body };
@@ -151,7 +136,7 @@ test('App: initial render shows existing messages and pending speaker', async ()
 });
 
 test('App: submit sends API call and displays response', async () => {
-    await withApp({ fetch: async () => sseResponse('Nice to meet you, Tom!') },
+    await withApp({ fetch: async () => streamingResponse(['Nice to meet you, Tom!']) },
         async ({ frame, typeAndSubmit, waitFor, readFile }) => {
             await typeAndSubmit('Hey there!');
             await waitFor(f => f.includes('Nice to meet you'));
@@ -196,7 +181,7 @@ test('App: escape saves file and exits', async () => {
 });
 
 test('App: multi-chunk streaming accumulates response', async () => {
-    await withApp({ fetch: async () => sseResponse('Hello ', 'there ', 'Tom!') },
+    await withApp({ fetch: async () => streamingResponse(['Hello ', 'there ', 'Tom!']) },
         async ({ frame, typeAndSubmit, waitFor, readFile }) => {
             await typeAndSubmit('Hi');
             await waitFor(f => f.includes('Hello there Tom!'));
@@ -206,7 +191,7 @@ test('App: multi-chunk streaming accumulates response', async () => {
 });
 
 test('App: postCompletionLint adds next speaker after response', async () => {
-    await withApp({ fetch: async () => sseResponse('Catch some waves!') },
+    await withApp({ fetch: async () => streamingResponse(['Catch some waves!']) },
         async ({ typeAndSubmit, waitFor, readFile }) => {
             await typeAndSubmit('Teach me to surf');
             await waitFor(f => f.includes('Catch some waves!'));
@@ -239,7 +224,7 @@ test('App: mid-stream API failure restores state and prefills input', async () =
 });
 
 test('App: writeFileSync failure on save shows error and preserves state', async () => {
-    await withApp({ fetch: async () => sseResponse('Great response!') },
+    await withApp({ fetch: async () => streamingResponse(['Great response!']) },
         async ({ frame, typeAndSubmit, waitFor, tmpFile }) => {
             const origWriteFileSync = fs.writeFileSync;
             let callCount = 0;
@@ -274,7 +259,7 @@ test('App: /exit command saves and exits', async () => {
 
 test('App: /regenerate re-requests last assistant message', async () => {
     let fetchCount = 0;
-    const fetch = async () => { fetchCount++; return fetchCount === 1 ? sseResponse('First response') : sseResponse('Regenerated response'); };
+    const fetch = async () => { fetchCount++; return streamingResponse([fetchCount === 1 ? 'First response' : 'Regenerated response']); };
     await withApp({ fetch }, async ({ frame, typeAndSubmit, waitFor, readFile }) => {
         await typeAndSubmit('Hi');
         await waitFor(f => f.includes('First response'), 'first response');
@@ -291,7 +276,7 @@ test('App: /regenerate re-requests last assistant message', async () => {
 
 test('App: multi-turn conversation works correctly', async () => {
     let fetchCount = 0;
-    const fetch = async () => { fetchCount++; return fetchCount === 1 ? sseResponse('Reply one') : sseResponse('Reply two'); };
+    const fetch = async () => { fetchCount++; return streamingResponse([fetchCount === 1 ? 'Reply one' : 'Reply two']); };
     await withApp({ fetch }, async ({ frame, typeAndSubmit, waitFor, readFile }) => {
         await typeAndSubmit('Message one');
         await waitFor(f => f.includes('Reply one'), 'first reply');
@@ -322,7 +307,7 @@ test('App: streaming content is visible before completion', async () => {
 });
 
 test('App: unknown slash command is submitted as regular text', async () => {
-    await withApp({ fetch: async () => sseResponse('Got it!') },
+    await withApp({ fetch: async () => streamingResponse(['Got it!']) },
         async ({ typeAndSubmit, waitFor, readFile }) => {
             await typeAndSubmit('/foo');
             await waitFor(f => f.includes('Got it!'), 'response to unknown command');
@@ -350,8 +335,8 @@ test('App: escape during busy state is ignored', async () => {
 // ─── Edge-case .pqueen file loading tests ────────────────────────────────────
 
 test('App: simple prompt with standard role names (user/assistant)', async () => {
-    const content = `---\n${SELF_CONTAINED_CONFIG}\n---\n@system\nYou are helpful.\n\n@user\n`;
-    await withApp({ content, fetch: async () => sseResponse('I can help!') },
+    const content = testContent('@system\nYou are helpful.\n\n@user\n');
+    await withApp({ content, fetch: async () => streamingResponse(['I can help!']) },
         async ({ frame, typeAndSubmit, waitFor, readFile }) => {
             assert.ok(frame().includes('@user'), 'Pending @user visible');
 
@@ -365,7 +350,7 @@ test('App: simple prompt with standard role names (user/assistant)', async () =>
 });
 
 test('App: system-only file (no user message) shows last message as prefill', async () => {
-    const content = `---\n${SELF_CONTAINED_CONFIG}\n---\n@system\nYou are helpful.`;
+    const content = testContent('@system\nYou are helpful.');
     await withApp(content, async ({ frame }) => {
         assert.ok(frame().includes('You are helpful'), 'System message content should be prefilled');
     });
@@ -381,15 +366,14 @@ test('App: mid-conversation file with all messages filled triggers prefill', asy
 });
 
 test('App: file with no messages (frontmatter only) renders without crash', async () => {
-    const content = `---\n${SELF_CONTAINED_CONFIG}\n---\n`;
-    await withApp(content, async ({ frame }) => {
+    await withApp(testContent(''), async ({ frame }) => {
         assert.ok(frame().includes('Enter send') || frame().includes('quit'), 'Status hint visible');
     });
 });
 
 test('App: file with single @user message and no system prompt', async () => {
-    const content = `---\n${SELF_CONTAINED_CONFIG}\n---\n@user\n`;
-    await withApp({ content, fetch: async () => sseResponse('Hi there!') },
+    const content = testContent('@user\n');
+    await withApp({ content, fetch: async () => streamingResponse(['Hi there!']) },
         async ({ frame, typeAndSubmit, waitFor, readFile }) => {
             assert.ok(frame().includes('@user'), 'Pending @user visible');
             await typeAndSubmit('Hello world');
@@ -400,7 +384,7 @@ test('App: file with single @user message and no system prompt', async () => {
 });
 
 test('App: file with assistant as last message creates pending user turn', async () => {
-    const content = `---\n${SELF_CONTAINED_CONFIG}\n---\n@system\nBe helpful.\n\n@user\nHello!\n\n@assistant\n`;
+    const content = testContent('@system\nBe helpful.\n\n@user\nHello!\n\n@assistant\n');
     await withApp(content, async ({ frame, typeAndSubmit, waitFor, readFile }) => {
         assert.ok(frame().includes('@assistant'), 'Pending @assistant visible');
         assert.ok(frame().includes('Hello!'), 'User message visible');
@@ -415,9 +399,9 @@ test('App: file with assistant as last message creates pending user turn', async
 });
 
 test('App: multi-turn with standard roles preserves correct file structure', async () => {
-    const content = `---\n${SELF_CONTAINED_CONFIG}\n---\n@system\nYou are helpful.\n\n@user\n`;
+    const content = testContent('@system\nYou are helpful.\n\n@user\n');
     let fetchCount = 0;
-    const fetch = async () => { fetchCount++; return sseResponse(`Reply ${fetchCount}`); };
+    const fetch = async () => { fetchCount++; return streamingResponse([`Reply ${fetchCount}`]); };
     await withApp({ content, fetch }, async ({ typeAndSubmit, waitFor, readFile }) => {
         await typeAndSubmit('First message');
         await waitFor(f => f.includes('Reply 1'), 'first reply');
@@ -441,7 +425,7 @@ test('App: file with decorators on messages renders correctly', async () => {
 });
 
 test('App: save roundtrip preserves file structure', async () => {
-    const content = `---\n${SELF_CONTAINED_CONFIG}\n---\n@system\nBe helpful.\n\n@user\n`;
+    const content = testContent('@system\nBe helpful.\n\n@user\n');
     await withApp(content, async ({ typeAndSubmit, readFile }) => {
         await typeAndSubmit('/exit');
         await tick(50);
