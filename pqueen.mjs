@@ -65,6 +65,24 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
     const [editingSpeaker, setEditingSpeaker] = useState(false);
     const abortRef = useRef(null);
 
+    const speakerNames = useMemo(() => {
+        const seen = new Set();
+        const names = [];
+        for (let i = messages.length - 1; i >= 0; i--) {
+            const name = messages[i].name;
+            if (name && !seen.has(name) && !messages[i].decorators?.includes('pq:hidden')) {
+                seen.add(name);
+                names.push(name);
+            }
+        }
+        const rpUser = resolvedConfig.roleplay_user;
+        if (rpUser && !seen.has(rpUser)) names.push(rpUser);
+        for (const r of ['user', 'assistant', 'system']) {
+            if (!seen.has(r)) names.push(r);
+        }
+        return names;
+    }, [messages, resolvedConfig.roleplay_user]);
+
     const refreshScreen = useCallback(() => {
         process.stdout.write('\x1b[2J\x1b[H');
         setStaticKey(k => k + 1);
@@ -254,6 +272,17 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
         refreshScreen();
     }, [generations, generationIdx, messages, pendingMsg, resolvedConfig, cwd, pqueenPath, saveFile, saveToPath, runGeneration, refreshScreen]);
 
+    const handleSpeakerAccept = useCallback((name) => {
+        if (!pendingMsg) return;
+        const role = pqutils.PROMPT_ROLES.includes(name) ? name
+            : name === resolvedConfig.roleplay_user ? 'user'
+            : 'assistant';
+        const updated = { ...pendingMsg, name, role };
+        setPendingMsg(updated);
+        saveFile([...messages, updated]);
+        refreshScreen();
+    }, [pendingMsg, messages, resolvedConfig, saveFile, refreshScreen]);
+
     const handleSubmit = useCallback((text) => {
         if (busy) return;
         setError('');
@@ -275,6 +304,15 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
         }
 
         const trimmed = text.trim();
+
+        if (trimmed.startsWith('@') && !trimmed.includes('\n')) {
+            const speakerName = trimmed.slice(1).trim();
+            if (speakerName) {
+                handleSpeakerAccept(speakerName);
+                return;
+            }
+        }
+
         const handler = SLASH_COMMANDS[trimmed] || (trimmed === '' ? SLASH_COMMANDS['/generate'] : null);
         if (handler) {
             handler(ctx);
@@ -283,7 +321,7 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
 
         cmdSubmitText(ctx, text);
     }, [messages, pendingMsg, allMsgs, busy, resolvedConfig, cwd, pqueenPath, saveFile, saveToPath,
-        runGeneration, refreshScreen, generations, editingSpeaker]);
+        runGeneration, refreshScreen, generations, editingSpeaker, handleSpeakerAccept]);
 
     useInput((_input, key) => {
         if ((key.escape || (key.ctrl && _input === 'c')) && busy) {
@@ -306,6 +344,8 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
         initialText: prefill,
         generationInfo,
         onCycleGeneration: handleCycleGeneration,
+        speakerNames,
+        onSpeakerAccept: handleSpeakerAccept,
     });
 }
 

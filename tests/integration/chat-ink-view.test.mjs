@@ -146,3 +146,66 @@ test('ChatView: autocomplete hidden when busy', async () => {
     assert.ok(!frame.includes('▸'), 'No autocomplete selection marker when busy');
     cleanup();
 });
+
+// ─── Speaker autocomplete tests ─────────────────────────────────────────────
+
+test('ChatView: typing "@" shows speaker autocomplete list', async () => {
+    const props = { ...baseProps, speakerNames: ['Alice', 'Bob'], onSpeakerAccept: () => {}, onSubmit: () => {} };
+    const { lastFrame, stdin, cleanup } = render(React.createElement(ChatView, props));
+    await tick();
+
+    stdin.write('@');
+    await tick();
+    const frame = stripAnsi(lastFrame());
+    assert.ok(frame.includes('@Alice'), 'Should show @Alice');
+    assert.ok(frame.includes('@Bob'), 'Should show @Bob');
+    cleanup();
+});
+
+test('ChatView: typing "@al" filters to matching speakers', async () => {
+    const props = { ...baseProps, speakerNames: ['Alice', 'Bob'], onSpeakerAccept: () => {}, onSubmit: () => {} };
+    const { lastFrame, stdin, cleanup } = render(React.createElement(ChatView, props));
+    await tick();
+
+    stdin.write('@Al');
+    await tick();
+    const frame = stripAnsi(lastFrame());
+    assert.ok(frame.includes('@Alice'), 'Should show @Alice');
+    const lines = frame.split('\n');
+    const autocompleteLines = lines.filter(l => l.includes('▸') || l.trimStart().startsWith('@'));
+    const hasBob = autocompleteLines.some(l => l.includes('@Bob'));
+    assert.ok(!hasBob, 'Should not show @Bob in autocomplete');
+    cleanup();
+});
+
+test('ChatView: Enter accepts speaker and calls onSpeakerAccept', async () => {
+    let acceptedSpeaker = null;
+    let submitted = null;
+    const props = {
+        ...baseProps,
+        speakerNames: ['Alice', 'Bob'],
+        onSpeakerAccept: (name) => { acceptedSpeaker = name; },
+        onSubmit: (t) => { submitted = t; },
+    };
+    const { stdin, cleanup } = render(React.createElement(ChatView, props));
+    await tick();
+
+    stdin.write('@');
+    await tick();
+    stdin.write('\r');
+    await tick();
+
+    assert.strictEqual(acceptedSpeaker, 'Alice', 'Should accept first speaker');
+    assert.strictEqual(submitted, null, 'Should not call onSubmit');
+    cleanup();
+});
+
+test('ChatView: speaker autocomplete hidden when busy', async () => {
+    const props = { ...baseProps, busy: true, speakerNames: ['Alice', 'Bob'], onSpeakerAccept: () => {}, onSubmit: () => {} };
+    const { lastFrame, cleanup } = render(React.createElement(ChatView, props));
+    await tick();
+
+    const frame = stripAnsi(lastFrame());
+    assert.ok(!frame.includes('▸'), 'No autocomplete selection marker when busy');
+    cleanup();
+});

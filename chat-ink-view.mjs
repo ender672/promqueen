@@ -49,6 +49,14 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
             // If autocomplete is showing, accept the selected command and submit it
             if (activeCommands && activeCommands.length > 0 && historyIdxRef.current === -1) {
                 const accepted = onCommandAccept();
+                if (accepted === null) {
+                    // Speaker accepted — clear buffer, don't submit
+                    buf.lines = [''];
+                    buf.row = 0;
+                    buf.col = 0;
+                    kick();
+                    return;
+                }
                 if (accepted) {
                     historyIdxRef.current = -1;
                     const hist = historyRef.current;
@@ -84,7 +92,12 @@ export function TextArea({ onSubmit, onChange, height, disabled, initialText, ac
             if (key.downArrow) { onCommandNav(1); return; }
             if (key.tab) {
                 const text = onCommandAccept();
-                if (text) {
+                if (text === null) {
+                    buf.lines = [''];
+                    buf.row = 0;
+                    buf.col = 0;
+                    kick();
+                } else if (text) {
                     buf.lines = [text];
                     buf.row = 0;
                     buf.col = text.length;
@@ -363,7 +376,7 @@ function truncateStreamHead(buf) {
     return lines.slice(-maxLines).join('\n');
 }
 
-export function ChatView({ messages, streamName, streamLines, streamPartial, streamToEditbox, pendingMsg, busy, connectionName, costInfo, onSubmit, errorBanner, initialText, staticKey, generationInfo, onCycleGeneration }) {
+export function ChatView({ messages, streamName, streamLines, streamPartial, streamToEditbox, pendingMsg, busy, connectionName, costInfo, onSubmit, errorBanner, initialText, staticKey, generationInfo, onCycleGeneration, speakerNames, onSpeakerAccept }) {
     const [inputText, setInputText] = useState('');
     const [selectedIdx, setSelectedIdx] = useState(0);
     const trimmed = inputText.trim();
@@ -371,6 +384,15 @@ export function ChatView({ messages, streamName, streamLines, streamPartial, str
     const filteredCommands = showCommands
         ? COMMANDS.filter(c => c.name.startsWith(trimmed))
         : [];
+    const showSpeakers = trimmed.startsWith('@') && !trimmed.includes('\n') && !busy && speakerNames?.length > 0;
+    const speakerQuery = showSpeakers ? trimmed.slice(1).toLowerCase() : '';
+    const filteredSpeakers = showSpeakers
+        ? speakerNames.filter(n => n.toLowerCase().startsWith(speakerQuery))
+        : [];
+    const activeItems = filteredCommands.length > 0 ? filteredCommands
+        : filteredSpeakers.length > 0 ? filteredSpeakers.map(n => ({ name: '@' + n, description: '' }))
+        : [];
+    const isSpeakerMode = activeItems.length > 0 && filteredSpeakers.length > 0;
 
     useEffect(() => setSelectedIdx(0), [trimmed]);
 
@@ -423,20 +445,27 @@ export function ChatView({ messages, streamName, streamLines, streamPartial, str
                 ? h(Text, null, streamEditboxBuf ? truncateStreamHead(streamEditboxBuf) : '')
                 : h(TextArea, {
                 onSubmit, onChange: setInputText, height: 3, disabled: busy, initialText, onCycleGeneration,
-                activeCommands: filteredCommands.length > 0 ? filteredCommands : null,
+                activeCommands: activeItems.length > 0 ? activeItems : null,
                 onCommandNav: (delta) => setSelectedIdx(i => {
-                    const n = filteredCommands.length;
+                    const n = activeItems.length;
                     return ((i + delta) % n + n) % n;
                 }),
-                onCommandAccept: () => filteredCommands[selectedIdx]?.name,
+                onCommandAccept: () => {
+                    if (isSpeakerMode) {
+                        const item = activeItems[selectedIdx];
+                        if (item) onSpeakerAccept(item.name.slice(1));
+                        return null;
+                    }
+                    return activeItems[selectedIdx]?.name;
+                },
             })
         ),
-        filteredCommands.length > 0
+        activeItems.length > 0
             ? h(Box, { flexDirection: 'column', marginLeft: 1 },
-                ...filteredCommands.map((c, i) =>
+                ...activeItems.map((c, i) =>
                     h(Text, { key: c.name },
                         i === selectedIdx ? h(Text, { color: 'cyan', bold: true }, `▸ ${c.name}`) : h(Text, { color: 'cyan' }, `  ${c.name}`),
-                        h(Text, { dimColor: true }, `  ${c.description}`)
+                        c.description ? h(Text, { dimColor: true }, `  ${c.description}`) : null
                     )
                 )
             )
