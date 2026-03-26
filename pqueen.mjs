@@ -63,6 +63,7 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
     const [generationIdx, setGenerationIdx] = useState(initGreetings ? 0 : -1);
     const greetingGenerations = useRef(!!initGreetings);
     const [editingSpeaker, setEditingSpeaker] = useState(false);
+    const [responseAsOverride, setResponseAsOverride] = useState(null);
     const abortRef = useRef(null);
 
     const speakerNames = useMemo(() => {
@@ -82,6 +83,16 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
         }
         return names;
     }, [messages, resolvedConfig.roleplay_user]);
+
+    const guessedNextSpeaker = useMemo(() => {
+        if (!pendingMsg?.name) return null;
+        return pqutils.nextSpeakerFromNames(
+            [...messages.map(m => m.name), pendingMsg.name],
+            resolvedConfig.roleplay_user
+        );
+    }, [messages, pendingMsg?.name, resolvedConfig.roleplay_user]);
+
+    const responseAs = responseAsOverride || guessedNextSpeaker;
 
     const refreshScreen = useCallback(() => {
         process.stdout.write('\x1b[2J\x1b[H');
@@ -279,9 +290,15 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
             : 'assistant';
         const updated = { ...pendingMsg, name, role };
         setPendingMsg(updated);
+        setResponseAsOverride(null);
         saveFile([...messages, updated]);
         refreshScreen();
     }, [pendingMsg, messages, resolvedConfig, saveFile, refreshScreen]);
+
+    const handleResponseSpeakerAccept = useCallback((name) => {
+        setResponseAsOverride(name);
+        refreshScreen();
+    }, [refreshScreen]);
 
     const handleSubmit = useCallback((text) => {
         if (busy) return;
@@ -296,6 +313,7 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
             generations, setGenerations, setGenerationIdx,
             setEditingSpeaker,
             setPqueenPath,
+            responseAs, setResponseAsOverride,
         };
 
         if (editingSpeaker) {
@@ -313,6 +331,17 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
             }
         }
 
+        if (trimmed.startsWith('>') && !trimmed.includes('\n')) {
+            const name = trimmed.slice(1).trim();
+            if (name) {
+                handleResponseSpeakerAccept(name);
+            } else {
+                setResponseAsOverride(null);
+                refreshScreen();
+            }
+            return;
+        }
+
         const handler = SLASH_COMMANDS[trimmed] || (trimmed === '' ? SLASH_COMMANDS['/generate'] : null);
         if (handler) {
             handler(ctx);
@@ -321,7 +350,8 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
 
         cmdSubmitText(ctx, text);
     }, [messages, pendingMsg, allMsgs, busy, resolvedConfig, cwd, pqueenPath, saveFile, saveToPath,
-        runGeneration, refreshScreen, generations, editingSpeaker, handleSpeakerAccept]);
+        runGeneration, refreshScreen, generations, editingSpeaker, handleSpeakerAccept,
+        handleResponseSpeakerAccept, responseAs]);
 
     useInput((_input, key) => {
         if ((key.escape || (key.ctrl && _input === 'c')) && busy) {
@@ -346,6 +376,8 @@ function App({ pqueenPath: initialPqueenPath, initialMessages, resolvedConfig, r
         onCycleGeneration: handleCycleGeneration,
         speakerNames,
         onSpeakerAccept: handleSpeakerAccept,
+        responseAs,
+        onResponseSpeakerAccept: handleResponseSpeakerAccept,
     });
 }
 

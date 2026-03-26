@@ -376,7 +376,7 @@ function truncateStreamHead(buf) {
     return lines.slice(-maxLines).join('\n');
 }
 
-export function ChatView({ messages, streamName, streamLines, streamPartial, streamToEditbox, pendingMsg, busy, connectionName, costInfo, onSubmit, errorBanner, initialText, staticKey, generationInfo, onCycleGeneration, speakerNames, onSpeakerAccept }) {
+export function ChatView({ messages, streamName, streamLines, streamPartial, streamToEditbox, pendingMsg, busy, connectionName, costInfo, onSubmit, errorBanner, initialText, staticKey, generationInfo, onCycleGeneration, speakerNames, onSpeakerAccept, responseAs, onResponseSpeakerAccept }) {
     const [inputText, setInputText] = useState('');
     const [selectedIdx, setSelectedIdx] = useState(0);
     const trimmed = inputText.trim();
@@ -389,10 +389,17 @@ export function ChatView({ messages, streamName, streamLines, streamPartial, str
     const filteredSpeakers = showSpeakers
         ? speakerNames.filter(n => n.toLowerCase().startsWith(speakerQuery))
         : [];
+    const showResponseSpeakers = trimmed.startsWith('>') && !trimmed.includes('\n') && !busy && speakerNames?.length > 0;
+    const responseSpeakerQuery = showResponseSpeakers ? trimmed.slice(1).toLowerCase() : '';
+    const filteredResponseSpeakers = showResponseSpeakers
+        ? speakerNames.filter(n => n.toLowerCase().startsWith(responseSpeakerQuery))
+        : [];
     const activeItems = filteredCommands.length > 0 ? filteredCommands
         : filteredSpeakers.length > 0 ? filteredSpeakers.map(n => ({ name: '@' + n, description: '' }))
+        : filteredResponseSpeakers.length > 0 ? filteredResponseSpeakers.map(n => ({ name: '>' + n, description: '' }))
         : [];
     const isSpeakerMode = activeItems.length > 0 && filteredSpeakers.length > 0;
+    const isResponseSpeakerMode = activeItems.length > 0 && filteredResponseSpeakers.length > 0;
 
     useEffect(() => setSelectedIdx(0), [trimmed]);
 
@@ -433,7 +440,10 @@ export function ChatView({ messages, streamName, streamLines, streamPartial, str
                     : h(Box, { key: item._k }, h(Text, null, item.text || ' '))
         ),
         streamPartial && !streamToEditbox ? h(Text, null, streamPartial) : null,
-        pendingMsg && pendingMsg.name ? h(Box, { marginTop: 1 }, h(Text, { color: 'cyan' }, `@${pendingMsg.name}`)) : null,
+        pendingMsg && pendingMsg.name ? h(Box, { marginTop: 1 },
+            h(Text, { color: 'cyan' }, `@${pendingMsg.name}`),
+            responseAs ? h(Text, { dimColor: true }, ` >${responseAs}`) : null,
+        ) : null,
         errorBanner ? h(Text, { color: 'red' }, errorBanner) : null,
         h(Box, {
             borderStyle: 'round',
@@ -454,6 +464,11 @@ export function ChatView({ messages, streamName, streamLines, streamPartial, str
                     if (isSpeakerMode) {
                         const item = activeItems[selectedIdx];
                         if (item) onSpeakerAccept(item.name.slice(1));
+                        return null;
+                    }
+                    if (isResponseSpeakerMode) {
+                        const item = activeItems[selectedIdx];
+                        if (item) onResponseSpeakerAccept(item.name.slice(1));
                         return null;
                     }
                     return activeItems[selectedIdx]?.name;

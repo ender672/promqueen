@@ -906,6 +906,83 @@ test('App: save roundtrip preserves file structure', async () => {
     }
 });
 
+// ─── Response speaker tests ─────────────────────────────────────────────────
+
+test('App: pending line shows guessed response speaker', async () => {
+    const { props, cleanup } = setupApp();
+    try {
+        const { lastFrame, cleanup: inkCleanup } = render(h(App, props));
+        await tick();
+        const frame = stripAnsi(lastFrame());
+        // pendingMsg is Tom (user), guessNextSpeaker should return Bilinda
+        assert.ok(frame.includes('@Tom'), 'Should show pending speaker');
+        assert.ok(frame.includes('>Bilinda'), 'Should show guessed response speaker');
+        inkCleanup();
+    } finally {
+        cleanup();
+    }
+});
+
+test('App: changing speaker via @ recalculates response speaker', async () => {
+    const { props, cleanup } = setupApp();
+    try {
+        const { lastFrame, stdin, cleanup: inkCleanup } = render(h(App, props));
+        await tick();
+
+        // Change speaker to Bilinda
+        stdin.write('@Bilinda');
+        await tick();
+        stdin.write('\r');
+        await waitFor(lastFrame, f => f.includes('@Bilinda') && f.includes('>Tom'), 'pending shows @Bilinda >Tom');
+
+        const frame = stripAnsi(lastFrame());
+        assert.ok(frame.includes('@Bilinda'), 'Speaker should be Bilinda');
+        assert.ok(frame.includes('>Tom'), 'Response speaker should recalculate to Tom');
+        inkCleanup();
+    } finally {
+        cleanup();
+    }
+});
+
+test('App: > input overrides response speaker', async () => {
+    const content = `---
+connection: test
+connection_profiles:
+  test:
+    api_url: http://dummy
+dot_config_loading: false
+roleplay_user: Tom
+---
+@system
+You are a group chat.
+
+@Bilinda
+Hello!
+
+@Charlie
+Hi there!
+
+@Tom
+`;
+    const { props, cleanup } = setupApp(content);
+    try {
+        const { lastFrame, stdin, cleanup: inkCleanup } = render(h(App, props));
+        await tick();
+
+        // Override response speaker to Charlie
+        stdin.write('>Charlie');
+        await tick();
+        stdin.write('\r');
+        await waitFor(lastFrame, f => f.includes('>Charlie'), 'pending shows >Charlie');
+
+        const frame = stripAnsi(lastFrame());
+        assert.ok(frame.includes('>Charlie'), 'Response speaker should be overridden to Charlie');
+        inkCleanup();
+    } finally {
+        cleanup();
+    }
+});
+
 test('slash command lists stay in sync', () => {
     const handlerCommands = new Set(Object.keys(SLASH_COMMANDS));
     const autocompleteCommands = new Set(COMMANDS.map(c => c.name));
